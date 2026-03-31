@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+
+{% block title %}Perfil de {{ candidato.Nombre }}{% endblock %}
+
+{% block content %}
+<section class="dashboard">
+    <div class="dashboard-header">
+        <h1 class="dashboard-title">{{ candidato.Nombre }} {{ candidato.Apellido }}</h1>
+        <div>
+            <a href="javascript:history.back()" class="btn btn-outline">
+                <i class="fas fa-arrow-left"></i> Volver
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Información Personal</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="profile-picture">
+                                {% if candidato.Foto %}
+                                <img src="{{ url_for('static', filename='uploads/' + candidato.Foto) }}" 
+                                     alt="{{ candidato.Nombre }}" class="img-fluid rounded-circle">
+                                {% else %}
+                                <div class="default-avatar">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="personal-info">
+                                <h4>{{ candidato.Nombre }} {{ candidato.Apellido }}</h4>
+                                <p><i class="fas fa-envelope"></i> {{ candidato.CorreoElectronico }}</p>
+                                <p><i class="fas fa-phone"></i> {{ candidato.Telefono or 'No especificado' }}</p>
+                                <p><i class="fas fa-map-marker-alt"></i> {{ candidato.Ubicacion or 'No especificada' }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h3>Habilidades</h3>
+                </div>
+                <div class="card-body">
+                    <div class="skills-container">
+                        {% for habilidad in habilidades %}
+                        <span class="skill-tag">{{ habilidad.Nombre }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Experiencia Laboral</h3>
+                </div>
+                <div class="card-body">
+                    {% if experiencia %}
+                    <ul class="timeline">
+                        {% for exp in experiencia %}
+                        <li class="timeline-item">
+                            <h5>{{ exp.Puesto }}</h5>
+                            <h6>{{ exp.Empresa }}</h6>
+                            <small class="text-muted">
+                                {{ exp.FechaIngreso.strftime('%b %Y') }} - 
+                                {% if exp.FechaSalida %}
+                                    {{ exp.FechaSalida.strftime('%b %Y') }}
+                                {% else %}
+                                    Presente
+                                {% endif %}
+                            </small>
+                            <p>{{ exp.Funciones or 'Sin descripción' }}</p>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="text-muted">No hay experiencia registrada</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h3>Educación</h3>
+                </div>
+                <div class="card-body">
+                    {% if educacion %}
+                    <ul class="timeline">
+                        {% for edu in educacion %}
+                        <li class="timeline-item">
+                            <h5>{{ edu.Grado }}</h5>
+                            <h6>{{ edu.Institucion }}</h6>
+                            <small class="text-muted">
+                                {{ edu.FechaInicio.strftime('%b %Y') }} - 
+                                {% if edu.FechaFin %}
+                                    {{ edu.FechaFin.strftime('%b %Y') }}
+                                {% else %}
+                                    Presente
+                                {% endif %}
+                            </small>
+                            <p>{{ edu.Estatus }}</p>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="text-muted">No hay educación registrada</p>
+                    {% endif %}
+
+                    {% if cv_url %}
+                    <p>
+                        <i class="fas fa-file-pdf"></i> 
+                        <a href="{{ cv_url }}" target="_blank" class="btn btn-primary">
+                            Ver CV
+                        </a>
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+.profile-picture {
+    width: 200px;
+    height: 200px;
+    margin: 0 auto;
+    overflow: hidden;
+    border-radius: 50%;
+    border: 5px solid #f0f0f0;
+}
+
+.profile-picture img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.default-avatar {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f0f0f0;
+    color: #999;
+    font-size: 5rem;
+}
+
+.personal-info {
+    padding: 1rem;
+}
+
+.personal-info h4 {
+    margin-bottom: 1rem;
+    color: var(--primary-color);
+}
+
+.personal-info p {
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.skills-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.skill-tag {
+    background: #e0e7ff;
+    color: var(--primary-color);
+    padding: 0.35rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+}
+
+.timeline {
+    list-style: none;
+    padding-left: 0;
+}
+
+.timeline-item {
+    position: relative;
+    padding-left: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-left: 2px solid #eee;
+}
+
+.timeline-item:last-child {
+    padding-bottom: 0;
+    border-left: 2px solid transparent;
+}
+
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -7px;
+    top: 0;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--primary-color);
+}
+
+.timeline-item h5 {
+    margin-bottom: 0.25rem;
+}
+
+.timeline-item h6 {
+    margin-bottom: 0.25rem;
+    color: #555;
+    font-weight: normal;
+}
+
+.timeline-item small {
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.timeline-item p {
+    margin-top: 0.5rem;
+    color: #666;
+}
+</style>
+{% endblock %}

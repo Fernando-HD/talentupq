@@ -1,0 +1,597 @@
+{% extends "base.html" %}
+
+{% block title %}Mis Habilidades{% endblock %}
+
+{% block content %}
+<div class="dashboard skills-dashboard">
+    <div class="skills-header">
+        <h1 class="skills-title">
+            <i class="fas fa-star"></i> Mis Habilidades
+        </h1>
+        <a href="{{ url_for('candidato_dashboard') }}" class="btn btn-outline">
+            <i class="fas fa-arrow-left"></i> Volver al Dashboard
+        </a>
+    </div>
+
+    <form method="POST" action="{{ url_for('candidato_habilidades') }}" class="skills-form">
+        <!-- Habilidades Técnicas -->
+        <div class="skills-card">
+            <div class="card-header-modern">
+                <div class="header-icon">
+                    <i class="fas fa-code"></i>
+                </div>
+                <h3 class="card-title-modern">Habilidades Técnicas</h3>
+                <span class="selected-count" id="tech-count">0 seleccionadas</span>
+            </div>
+            
+            <div class="card-body-modern">
+                <div class="form-field">
+                    <label class="field-label">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Selecciona tus habilidades técnicas</span>
+                    </label>
+                    <div class="skills-grid">
+                        {% for habilidad in todas_habilidades %}
+                        <div class="skill-card-item" data-category="tech">
+                            <input type="checkbox" id="habilidad_{{ habilidad.HabilidadID }}" 
+                                   name="habilidades" value="{{ habilidad.HabilidadID }}"
+                                   {% if habilidad.HabilidadID in habilidades_actuales %}checked{% endif %}>
+                            <label for="habilidad_{{ habilidad.HabilidadID }}">
+                                <i class="fas fa-tag"></i>
+                                <span>{{ habilidad.Nombre }}</span>
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Competencias Organizacionales -->
+        <div class="skills-card">
+            <div class="card-header-modern">
+                <div class="header-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <h3 class="card-title-modern">Competencias Organizacionales</h3>
+                <span class="selected-count" id="org-count">0 seleccionadas</span>
+            </div>
+            
+            <div class="card-body-modern">
+                <div class="form-field">
+                    <label class="field-label">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Selecciona tus competencias organizacionales</span>
+                    </label>
+                    <div class="skills-grid">
+                        {% for competencia in todas_competencias %}
+                        <div class="skill-card-item" data-category="org">
+                            <input type="checkbox" id="competencia_{{ competencia.CompetenciaID }}" 
+                                   name="competencias" value="{{ competencia.CompetenciaID }}"
+                                   {% if competencia.CompetenciaID in competencias_actuales %}checked{% endif %}>
+                            <label for="competencia_{{ competencia.CompetenciaID }}">
+                                <i class="fas fa-tag"></i>
+                                <span>{{ competencia.Nombre }}</span>
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Botón Guardar -->
+        <div class="form-actions-modern">
+            <button type="submit" class="btn-primary-modern">
+                <i class="fas fa-save"></i> Guardar Habilidades
+            </button>
+        </div>
+    </form>
+
+    <!-- Vista Previa del Perfil -->
+    <div class="preview-card">
+        <div class="card-header-modern">
+            <div class="header-icon">
+                <i class="fas fa-eye"></i>
+            </div>
+            <h3 class="card-title-modern">Vista Previa de tu Perfil</h3>
+        </div>
+        
+        <div class="card-body-modern">
+            <div class="profile-skills-preview">
+                {% if habilidades_actuales %}
+                <div class="skill-section">
+                    <div class="section-title">
+                        <i class="fas fa-code"></i>
+                        <h4>Habilidades Técnicas</h4>
+                        <span class="section-count">{{ habilidades_actuales|length }}</span>
+                    </div>
+                    <div class="skills-preview-grid">
+                        {% for habilidad in todas_habilidades if habilidad.HabilidadID in habilidades_actuales %}
+                        <span class="preview-badge tech-badge">
+                            <i class="fas fa-tag"></i>
+                            {{ habilidad.Nombre }}
+                        </span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if competencias_actuales %}
+                <div class="skill-section">
+                    <div class="section-title">
+                        <i class="fas fa-users"></i>
+                        <h4>Competencias Organizacionales</h4>
+                        <span class="section-count">{{ competencias_actuales|length }}</span>
+                    </div>
+                    <div class="skills-preview-grid">
+                        {% for competencia in todas_competencias if competencia.CompetenciaID in competencias_actuales %}
+                        <span class="preview-badge org-badge">
+                            <i class="fas fa-tag"></i>
+                            {{ competencia.Nombre }}
+                        </span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if not habilidades_actuales and not competencias_actuales %}
+                <div class="empty-preview">
+                    <i class="fas fa-info-circle"></i>
+                    <p>Aún no has seleccionado habilidades. Selecciona tus habilidades y competencias para verlas aquí.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Variables */
+:root {
+    --primary-color: #2563eb;
+    --primary-dark: #1d4ed8;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --dark-color: #1e293b;
+    --gray-light: #f8fafc;
+    --gray-border: #e2e8f0;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --transition: all 0.3s ease;
+}
+
+/* Dashboard Principal */
+.skills-dashboard {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1.5rem;
+}
+
+.skills-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--gray-border);
+}
+
+.skills-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--dark-color);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.skills-title i {
+    color: var(--primary-color);
+    font-size: 1.85rem;
+}
+
+/* Tarjetas */
+.skills-card, .preview-card {
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--gray-border);
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+    transition: var(--transition);
+}
+
+.skills-card:hover, .preview-card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.card-header-modern {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem 1.75rem;
+    background: linear-gradient(135deg, #fafcff 0%, #ffffff 100%);
+    border-bottom: 1px solid var(--gray-border);
+    flex-wrap: wrap;
+}
+
+.header-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(37, 99, 235, 0.1);
+    border-radius: var(--radius-sm);
+}
+
+.header-icon i {
+    font-size: 1.25rem;
+    color: var(--primary-color);
+}
+
+.card-title-modern {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--dark-color);
+    flex: 1;
+}
+
+.selected-count {
+    font-size: 0.75rem;
+    color: var(--primary-color);
+    background: rgba(37, 99, 235, 0.1);
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-weight: 500;
+}
+
+.card-body-modern {
+    padding: 1.75rem;
+}
+
+/* Grid de habilidades */
+.skills-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.skill-card-item {
+    position: relative;
+}
+
+.skill-card-item input[type="checkbox"] {
+    display: none;
+}
+
+.skill-card-item label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.2rem;
+    background: var(--gray-light);
+    border: 1px solid var(--gray-border);
+    border-radius: 40px;
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--dark-color);
+}
+
+.skill-card-item label i {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    transition: var(--transition);
+}
+
+.skill-card-item:hover label {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+    border-color: var(--primary-color);
+    background: white;
+}
+
+.skill-card-item input[type="checkbox"]:checked + label {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+    border-color: var(--primary-color);
+    color: white;
+}
+
+.skill-card-item input[type="checkbox"]:checked + label i {
+    color: white;
+}
+
+/* Campo de formulario */
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.field-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--dark-color);
+}
+
+.field-label i {
+    color: var(--primary-color);
+}
+
+/* Botón guardar */
+.form-actions-modern {
+    display: flex;
+    justify-content: center;
+    margin: 1rem 0;
+}
+
+.btn-primary-modern {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.85rem 2rem;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-primary-modern:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+/* Vista Previa */
+.profile-skills-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.skill-section {
+    background: var(--gray-light);
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+    border: 1px solid var(--gray-border);
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--gray-border);
+}
+
+.section-title i {
+    font-size: 1.1rem;
+    color: var(--primary-color);
+}
+
+.section-title h4 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--dark-color);
+}
+
+.section-count {
+    background: white;
+    color: var(--primary-color);
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-left: auto;
+}
+
+.skills-preview-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+
+.preview-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 1rem;
+    border-radius: 30px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: var(--transition);
+}
+
+.preview-badge i {
+    font-size: 0.7rem;
+}
+
+.preview-badge:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+.tech-badge {
+    background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);
+    color: var(--primary-color);
+    border: 1px solid #bfdbfe;
+}
+
+.org-badge {
+    background: linear-gradient(135deg, #d1fae5 0%, #ecfdf5 100%);
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+
+/* Empty Preview */
+.empty-preview {
+    text-align: center;
+    padding: 2rem;
+    background: var(--gray-light);
+    border-radius: var(--radius-md);
+    border: 1px dashed var(--gray-border);
+}
+
+.empty-preview i {
+    font-size: 2rem;
+    color: #94a3b8;
+    margin-bottom: 0.75rem;
+}
+
+.empty-preview p {
+    margin: 0;
+    color: #64748b;
+    font-size: 0.85rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .skills-dashboard {
+        padding: 1rem;
+    }
+    
+    .skills-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .skills-title {
+        font-size: 1.5rem;
+    }
+    
+    .card-header-modern {
+        padding: 1rem 1.25rem;
+    }
+    
+    .card-body-modern {
+        padding: 1.25rem;
+    }
+    
+    .skills-grid {
+        gap: 0.6rem;
+    }
+    
+    .skill-card-item label {
+        padding: 0.5rem 1rem;
+        font-size: 0.8rem;
+    }
+    
+    .btn-primary-modern {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .section-title {
+        flex-wrap: wrap;
+    }
+    
+    .section-count {
+        margin-left: 0;
+    }
+}
+
+@media (max-width: 480px) {
+    .card-header-modern {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+    
+    .selected-count {
+        align-self: flex-start;
+    }
+    
+    .skill-card-item label {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .skills-grid {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .skill-card-item {
+        width: 100%;
+    }
+    
+    .skill-card-item label {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    
+    .preview-badge {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .skills-preview-grid {
+        flex-direction: column;
+    }
+}
+</style>
+
+<script>
+// Contador de habilidades seleccionadas
+document.addEventListener('DOMContentLoaded', function() {
+    function updateCounts() {
+        // Contar habilidades técnicas seleccionadas
+        const techCheckboxes = document.querySelectorAll('input[name="habilidades"]:checked');
+        const techCount = techCheckboxes.length;
+        const techCountSpan = document.getElementById('tech-count');
+        if (techCountSpan) {
+            techCountSpan.textContent = `${techCount} seleccionada${techCount !== 1 ? 's' : ''}`;
+        }
+        
+        // Contar competencias seleccionadas
+        const orgCheckboxes = document.querySelectorAll('input[name="competencias"]:checked');
+        const orgCount = orgCheckboxes.length;
+        const orgCountSpan = document.getElementById('org-count');
+        if (orgCountSpan) {
+            orgCountSpan.textContent = `${orgCount} seleccionada${orgCount !== 1 ? 's' : ''}`;
+        }
+    }
+    
+    // Actualizar al cargar
+    updateCounts();
+    
+    // Agregar eventos a todos los checkboxes
+    const allCheckboxes = document.querySelectorAll('input[type="checkbox"]');
+    allCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateCounts);
+    });
+});
+
+// Efecto visual al seleccionar
+document.querySelectorAll('.skill-card-item input').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+        const label = this.nextElementSibling;
+        if (this.checked) {
+            label.style.transform = 'scale(0.98)';
+            setTimeout(() => {
+                label.style.transform = '';
+            }, 150);
+        }
+    });
+});
+</script>
+{% endblock %}

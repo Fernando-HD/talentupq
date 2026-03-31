@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}{{ vacante.puesto }}{% endblock %}
+
+{% block content %}
+<div class="vacante-detalle">
+    <h1>{{ vacante.puesto }}</h1>
+    
+    <div class="info-empresa">
+        <h2>{{ empresa.nombre if empresa else 'Empresa no especificada' }}</h2>
+        <p>{{ empresa.descripcion if empresa and empresa.descripcion else '' }}</p>
+    </div>
+    
+    <div class="detalles">
+        <p><strong>Modalidad:</strong> {{ vacante.modalidad|capitalize }}</p>
+        <p><strong>Publicado:</strong> {{ vacante.fecha_publicacion.strftime('%d/%m/%Y') }}</p>
+        <p><strong>Tipo de contrato:</strong> {{ vacante.tipo_contrato if vacante.tipo_contrato else 'No especificado' }}</p>
+        <p><strong>Salario:</strong> {{ vacante.salario if vacante.salario else 'A convenir' }}</p>
+    </div>
+    
+    <div class="descripcion">
+        <h3>Descripción del puesto</h3>
+        <p>{{ vacante.resumen if vacante.resumen else 'No hay descripción disponible' }}</p>
+    </div>
+    
+    <div class="requisitos">
+        <h3>Requisitos</h3>
+        <ul>
+            <li><strong>Grado de estudios:</strong> {{ vacante.grado_estudios if vacante.grado_estudios else 'No especificado' }}</li>
+            <li><strong>Experiencia requerida:</strong> {{ vacante.experiencia if vacante.experiencia else 'No especificada' }}</li>
+        </ul>
+    </div>
+    
+    <a href="{{ url_for('ver_vacantes') }}" class="btn btn-volver">Volver a vacantes</a>
+</div>
+{% endblock %}

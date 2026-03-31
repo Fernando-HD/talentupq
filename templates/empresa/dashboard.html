@@ -1,0 +1,935 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Empresa{% endblock %}
+
+{% block content %}
+<div class="empresa-dashboard-modern">
+    <!-- Encabezado -->
+    <div class="dashboard-header-modern">
+        <div class="header-left">
+            <h1 class="dashboard-title">
+                <i class="fas fa-building"></i> Panel de Empresa
+            </h1>
+            <p class="dashboard-subtitle">Bienvenido de vuelta, {{ empresa.Nombre }}</p>
+        </div>
+        <div class="header-actions">
+            <a href="{{ url_for('empresa_perfil') }}" class="btn-outline-modern">
+                <i class="fas fa-edit"></i> Editar Perfil
+            </a>
+            <a href="{{ url_for('empresa_nueva_vacante') }}" class="btn-primary-gradient">
+                <i class="fas fa-plus-circle"></i> Nueva Vacante
+            </a>
+        </div>
+    </div>
+
+    <!-- Grid Principal -->
+    <div class="dashboard-grid-modern">
+        <!-- Vacantes Recientes -->
+        <div class="dashboard-card">
+            <div class="card-header-modern">
+                <div class="header-icon">
+                    <i class="fas fa-briefcase"></i>
+                </div>
+                <h3 class="card-title">Vacantes Recientes</h3>
+                <span class="card-badge">{{ vacantes_empresa|length }}</span>
+            </div>
+            <div class="card-body-modern">
+                {% if vacantes_empresa %}
+                <div class="vacantes-list">
+                    {% for vacante in vacantes_empresa %}
+                    <div class="vacante-item">
+                        <div class="vacante-info">
+                            <div class="vacante-header">
+                                <h4>{{ vacante['Puesto'] }}</h4>
+                                <span class="status-badge status-{{ vacante['Estatus']|replace('_', '-') }}">
+                                    {% if vacante['Estatus'] == 'abierta' %}
+                                        <i class="fas fa-play-circle"></i> Abierta
+                                    {% elif vacante['Estatus'] == 'cerrada' %}
+                                        <i class="fas fa-ban"></i> Cerrada
+                                    {% elif vacante['Estatus'] == 'en_revision' %}
+                                        <i class="fas fa-clock"></i> En revisión
+                                    {% else %}
+                                        {{ vacante['Estatus']|capitalize }}
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div class="vacante-stats">
+                                <span class="stat">
+                                    <i class="fas fa-users"></i> {{ vacante['NumPostulaciones'] }} postulaciones
+                                </span>
+                                <span class="stat">
+                                    <i class="fas fa-calendar-alt"></i> {{ vacante['FechaPublicacion'].strftime('%d/%m/%Y') }}
+                                </span>
+                            </div>
+                        </div>
+                        <a href="{{ url_for('empresa_ver_vacante', vacante_id=vacante['VacanteID']) }}" class="btn-view">
+                            <i class="fas fa-eye"></i> Ver detalles
+                            <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+                <a href="{{ url_for('empresa_vacantes') }}" class="btn-link-full">
+                    Ver todas las vacantes <i class="fas fa-arrow-right"></i>
+                </a>
+                {% else %}
+                <div class="empty-state-modern">
+                    <div class="empty-icon">
+                        <i class="fas fa-briefcase"></i>
+                    </div>
+                    <h4>No has publicado vacantes aún</h4>
+                    <p>Comienza creando tu primera vacante para atraer talento</p>
+                    <a href="{{ url_for('empresa_nueva_vacante') }}" class="btn-primary-small">
+                        <i class="fas fa-plus-circle"></i> Crear primera vacante
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Postulaciones Pendientes -->
+        <div class="dashboard-card">
+            <div class="card-header-modern">
+                <div class="header-icon">
+                    <i class="fas fa-user-clock"></i>
+                </div>
+                <h3 class="card-title">Postulaciones Recientes</h3>
+                <span class="card-badge">{{ postulaciones_recientes|length }}</span>
+            </div>
+            <div class="card-body-modern">
+                {% if postulaciones_recientes %}
+                <div class="postulaciones-list">
+                    {% for post in postulaciones_recientes %}
+                    <div class="postulacion-item">
+                        <div class="postulacion-avatar">
+                            <i class="fas fa-user-circle"></i>
+                        </div>
+                        <div class="postulacion-info">
+                            <div class="postulacion-header">
+                                <h4>{{ post['CandidatoNombre'] }} {{ post['CandidatoApellido'] }}</h4>
+                                <span class="badge-pending">
+                                    <i class="fas fa-clock"></i> Pendiente
+                                </span>
+                            </div>
+                            <div class="postulacion-details">
+                                <span class="detail">
+                                    <i class="fas fa-briefcase"></i> {{ post['VacantePuesto'] }}
+                                </span>
+                                <span class="detail">
+                                    <i class="fas fa-calendar-alt"></i> {{ post['FechaPostulacion'].strftime('%d/%m/%Y') }}
+                                </span>
+                            </div>
+                        </div>
+                        <a href="{{ url_for('empresa_ver_vacante', vacante_id=post['VacanteID']) }}" class="btn-review">
+                            <i class="fas fa-check-circle"></i> Revisar
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+                <a href="{{ url_for('empresa_vacantes') }}" class="btn-link-full">
+                    Ver todas las postulaciones <i class="fas fa-arrow-right"></i>
+                </a>
+                {% else %}
+                <div class="empty-state-modern">
+                    <div class="empty-icon">
+                        <i class="fas fa-user-check"></i>
+                    </div>
+                    <h4>No hay postulaciones recientes</h4>
+                    <p>Cuando los candidatos se postulen, aparecerán aquí</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Conversaciones Recientes -->
+    <div class="dashboard-card full-width">
+        <div class="card-header-modern">
+            <div class="header-icon">
+                <i class="fas fa-comments"></i>
+            </div>
+            <h3 class="card-title">
+                Conversaciones Recientes
+                {% if no_leidos_empresa > 0 %}
+                    <span class="unread-badge">{{ no_leidos_empresa }} nuevo{% if no_leidos_empresa > 1 %}s{% endif %}</span>
+                {% endif %}
+            </h3>
+            <a href="{{ url_for('mis_conversaciones') }}" class="btn-link-header">
+                Ver todas <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
+        <div class="card-body-modern">
+            {% if conversaciones_recientes and conversaciones_recientes|length > 0 %}
+                <div class="conversaciones-grid">
+                    {% for conv in conversaciones_recientes %}
+                    <a href="{{ url_for('ver_conversacion', vacante_id=conv.VacanteID, candidato_id=conv.CandidatoID) }}" 
+                       class="conversacion-card {% if conv.NoLeidos and conv.NoLeidos > 0 %}unread{% endif %}">
+                        <div class="conversacion-avatar">
+                            {% if conv.CandidatoFoto %}
+                                <img src="{{ url_for('static', filename='uploads/' + conv.CandidatoFoto) }}" 
+                                     class="avatar-img" alt="Foto">
+                            {% else %}
+                                <i class="fas fa-user-circle"></i>
+                            {% endif %}
+                        </div>
+                        <div class="conversacion-info">
+                            <div class="conversacion-header">
+                                <div class="conversacion-nombre">
+                                    <strong>{{ conv.CandidatoNombre }} {{ conv.CandidatoApellido }}</strong>
+                                    {% if conv.NoLeidos and conv.NoLeidos > 0 %}
+                                        <span class="new-message-badge">{{ conv.NoLeidos }}</span>
+                                    {% endif %}
+                                </div>
+                                <small class="conversacion-fecha">
+                                    {% if conv.UltimoMensajeFecha %}
+                                        {{ conv.UltimoMensajeFecha.strftime('%d/%m/%Y %H:%M') }}
+                                    {% endif %}
+                                </small>
+                            </div>
+                            <div class="conversacion-vacante">
+                                <i class="fas fa-briefcase"></i> {{ conv.VacantePuesto }}
+                            </div>
+                            <div class="conversacion-preview">
+                                <i class="fas fa-comment"></i>
+                                {% if conv.UltimoMensaje %}
+                                    {{ conv.UltimoMensaje|truncate(70) }}
+                                {% else %}
+                                    <em class="text-muted">Inicia la conversación</em>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="conversacion-arrow">
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state-modern">
+                    <div class="empty-icon">
+                        <i class="fas fa-comments"></i>
+                    </div>
+                    <h4>No hay conversaciones activas</h4>
+                    <p>Cuando aceptes candidatos para tus vacantes, podrás chatear con ellos aquí.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+/* Variables */
+:root {
+    --primary-color: #2563eb;
+    --primary-dark: #1d4ed8;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --danger-color: #ef4444;
+    --dark-color: #1e293b;
+    --gray-light: #f8fafc;
+    --gray-border: #e2e8f0;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --transition: all 0.3s ease;
+}
+
+/* Dashboard Principal */
+.empresa-dashboard-modern {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1.5rem;
+}
+
+/* Header */
+.dashboard-header-modern {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--gray-border);
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.dashboard-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--dark-color);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.dashboard-title i {
+    color: var(--primary-color);
+    font-size: 1.85rem;
+}
+
+.dashboard-subtitle {
+    margin: 0.25rem 0 0;
+    color: #64748b;
+    font-size: 0.85rem;
+}
+
+.header-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.btn-outline-modern {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.25rem;
+    background: transparent;
+    color: var(--dark-color);
+    border: 1px solid var(--gray-border);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.btn-outline-modern:hover {
+    background: var(--gray-light);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.btn-primary-gradient {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.25rem;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: var(--transition);
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-primary-gradient:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+/* Grid Principal */
+.dashboard-grid-modern {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Tarjetas */
+.dashboard-card {
+    background: white;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--gray-border);
+    overflow: hidden;
+    transition: var(--transition);
+}
+
+.dashboard-card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.dashboard-card.full-width {
+    grid-column: span 2;
+}
+
+.card-header-modern {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    background: var(--gray-light);
+    border-bottom: 1px solid var(--gray-border);
+    flex-wrap: wrap;
+}
+
+.header-icon {
+    width: 32px;
+    height: 32px;
+    background: rgba(37, 99, 235, 0.1);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.header-icon i {
+    font-size: 1rem;
+    color: var(--primary-color);
+}
+
+.card-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--dark-color);
+    flex: 1;
+}
+
+.card-badge {
+    background: var(--primary-color);
+    color: white;
+    padding: 0.2rem 0.5rem;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.card-body-modern {
+    padding: 1.25rem;
+}
+
+/* Vacantes List */
+.vacantes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.vacante-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: var(--gray-light);
+    border-radius: var(--radius-md);
+    transition: var(--transition);
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.vacante-item:hover {
+    background: white;
+    box-shadow: var(--shadow-sm);
+    transform: translateX(4px);
+}
+
+.vacante-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.5rem;
+}
+
+.vacante-header h4 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--dark-color);
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 30px;
+    font-size: 0.65rem;
+    font-weight: 600;
+}
+
+.status-abierta {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.status-cerrada {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.status-en-revision {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.vacante-stats {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.stat {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.7rem;
+    color: #64748b;
+}
+
+.stat i {
+    font-size: 0.65rem;
+}
+
+.btn-view {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.8rem;
+    background: transparent;
+    color: var(--primary-color);
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.btn-view i:last-child {
+    transition: transform 0.3s ease;
+}
+
+.btn-view:hover {
+    background: rgba(37, 99, 235, 0.1);
+}
+
+.btn-view:hover i:last-child {
+    transform: translateX(3px);
+}
+
+.btn-link-full {
+    display: block;
+    text-align: center;
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: transparent;
+    color: var(--primary-color);
+    border: 1px solid var(--gray-border);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.btn-link-full:hover {
+    background: var(--gray-light);
+    border-color: var(--primary-color);
+}
+
+/* Postulaciones List */
+.postulaciones-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.postulacion-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--gray-light);
+    border-radius: var(--radius-md);
+    transition: var(--transition);
+    flex-wrap: wrap;
+}
+
+.postulacion-item:hover {
+    background: white;
+    box-shadow: var(--shadow-sm);
+    transform: translateX(4px);
+}
+
+.postulacion-avatar {
+    width: 48px;
+    height: 48px;
+    background: rgba(37, 99, 235, 0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.postulacion-avatar i {
+    font-size: 1.5rem;
+    color: var(--primary-color);
+}
+
+.postulacion-info {
+    flex: 1;
+}
+
+.postulacion-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.25rem;
+}
+
+.postulacion-header h4 {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--dark-color);
+}
+
+.badge-pending {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem 0.6rem;
+    background: #fef3c7;
+    color: #92400e;
+    border-radius: 30px;
+    font-size: 0.65rem;
+    font-weight: 600;
+}
+
+.postulacion-details {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.detail {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.7rem;
+    color: #64748b;
+}
+
+.detail i {
+    font-size: 0.65rem;
+}
+
+.btn-review {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.8rem;
+    background: transparent;
+    color: var(--success-color);
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.btn-review:hover {
+    background: rgba(16, 185, 129, 0.1);
+}
+
+/* Conversaciones Grid */
+.conversaciones-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.conversacion-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    border: 1px solid var(--gray-border);
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    color: inherit;
+    transition: var(--transition);
+    background: white;
+}
+
+.conversacion-card:hover {
+    transform: translateX(5px);
+    box-shadow: var(--shadow-sm);
+    border-color: var(--primary-color);
+}
+
+.conversacion-card.unread {
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.02), rgba(37, 99, 235, 0.05));
+    border-left: 3px solid var(--primary-color);
+}
+
+.conversacion-avatar {
+    width: 48px;
+    height: 48px;
+    background: rgba(37, 99, 235, 0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.conversacion-avatar i {
+    font-size: 1.5rem;
+    color: var(--primary-color);
+}
+
+.avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.conversacion-info {
+    flex: 1;
+}
+
+.conversacion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.conversacion-nombre {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.conversacion-nombre strong {
+    font-size: 0.9rem;
+    color: var(--dark-color);
+}
+
+.new-message-badge {
+    background: var(--danger-color);
+    color: white;
+    padding: 0.15rem 0.4rem;
+    border-radius: 20px;
+    font-size: 0.6rem;
+    font-weight: 600;
+}
+
+.conversacion-fecha {
+    font-size: 0.65rem;
+    color: #94a3b8;
+}
+
+.conversacion-vacante {
+    font-size: 0.7rem;
+    color: var(--primary-color);
+    margin-bottom: 0.25rem;
+}
+
+.conversacion-vacante i {
+    font-size: 0.6rem;
+}
+
+.conversacion-preview {
+    font-size: 0.75rem;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.conversacion-preview i {
+    font-size: 0.65rem;
+    color: #94a3b8;
+}
+
+.conversacion-arrow {
+    flex-shrink: 0;
+    color: #cbd5e1;
+    transition: var(--transition);
+}
+
+.conversacion-card:hover .conversacion-arrow {
+    transform: translateX(3px);
+    color: var(--primary-color);
+}
+
+.btn-link-header {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--primary-color);
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.btn-link-header:hover {
+    gap: 0.75rem;
+}
+
+.unread-badge {
+    background: var(--danger-color);
+    color: white;
+    padding: 0.2rem 0.5rem;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-left: 0.5rem;
+    animation: pulse 2s infinite;
+}
+
+/* Empty State */
+.empty-state-modern {
+    text-align: center;
+    padding: 2rem;
+}
+
+.empty-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 1rem;
+    background: var(--gray-light);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px dashed var(--gray-border);
+}
+
+.empty-icon i {
+    font-size: 2rem;
+    color: #94a3b8;
+}
+
+.empty-state-modern h4 {
+    margin: 0 0 0.5rem;
+    font-size: 1rem;
+    color: var(--dark-color);
+}
+
+.empty-state-modern p {
+    margin: 0 0 1rem;
+    color: #64748b;
+    font-size: 0.85rem;
+}
+
+.btn-primary-small {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--primary-color);
+    color: white;
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.btn-primary-small:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+}
+
+/* Animations */
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.05);
+        opacity: 0.9;
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .empresa-dashboard-modern {
+        padding: 1rem;
+    }
+    
+    .dashboard-grid-modern {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .dashboard-card.full-width {
+        grid-column: span 1;
+    }
+    
+    .dashboard-header-modern {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .header-actions {
+        width: 100%;
+    }
+    
+    .btn-outline-modern, .btn-primary-gradient {
+        flex: 1;
+        justify-content: center;
+    }
+    
+    .vacante-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .btn-view {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .postulacion-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .btn-review {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .conversacion-card {
+        flex-wrap: wrap;
+    }
+    
+    .conversacion-arrow {
+        display: none;
+    }
+    
+    .conversacion-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
+@media (max-width: 480px) {
+    .vacante-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .vacante-stats {
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    
+    .postulacion-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .postulacion-details {
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+}
+</style>
+{% endblock %}

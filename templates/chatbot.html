@@ -1,0 +1,786 @@
+<!-- templates/chatbot.html -->
+{% extends "base.html" %}
+
+{% block title %}Asistente Virtual TalentUPQ{% endblock %}
+
+{% block content %}
+<div class="chatbot-dashboard">
+    <div class="chatbot-card">
+        <div class="chatbot-header-modern">
+            <div class="header-left">
+                <div class="bot-avatar">
+                    <i class="fas fa-robot"></i>
+                    <span class="online-dot"></span>
+                </div>
+                <div class="bot-info">
+                    <h2>Asistente Virtual AI</h2>
+                    <p class="bot-status">
+                        <i class="fas fa-circle"></i> Conectado · 24/7
+                    </p>
+                </div>
+            </div>
+            <div class="header-right">
+                <button class="btn-clear" onclick="limpiarChat()" title="Limpiar conversación">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="chatbot-messages" id="chatMessages">
+            <div class="message bot-message">
+                <div class="message-avatar bot-avatar-small">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div class="message-content">
+                    <div class="message-text">
+                        <div class="welcome-message">
+                            <i class="fas fa-microchip"></i>
+                            <strong>Sistema Iniciado: Asistente IA v2.0</strong>
+                        </div>
+                        <p>Bienvenido al sistema de asistencia inteligente de TalentUPQ.</p>
+                        <div class="features-grid-chat">
+                            <div class="feature-chip">
+                                <i class="fas fa-search"></i> Análisis de vacantes
+                            </div>
+                            <div class="feature-chip">
+                                <i class="fas fa-chart-line"></i> Optimización CV
+                            </div>
+                            <div class="feature-chip">
+                                <i class="fas fa-brain"></i> IA predictiva
+                            </div>
+                            <div class="feature-chip">
+                                <i class="fas fa-bolt"></i> Respuesta instantánea
+                            </div>
+                        </div>
+                        <p class="mt-2">Sistema listo. ¿En qué puedo asistirle?</p>
+                    </div>
+                    <div class="message-time" id="welcomeTime"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chatbot-sugerencias">
+            <div class="sugerencias-header">
+                <i class="fas fa-microchip"></i>
+                <span>Comandos rápidos</span>
+            </div>
+            <div class="sugerencias-buttons">
+                {% for sugerencia in sugerencias %}
+                    <button class="sugerencia-btn" onclick="enviarSugerencia('{{ sugerencia }}')">
+                        <i class="fas fa-terminal"></i>
+                        {{ sugerencia }}
+                    </button>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="chatbot-input-modern">
+            <form id="chatForm" class="input-form">
+                <div class="input-wrapper">
+                    <i class="fas fa-code input-icon"></i>
+                    <input type="text" id="mensajeInput" class="chat-input" 
+                           placeholder="Ingrese su consulta..." autocomplete="off">
+                    <button type="submit" class="send-btn">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+                <div class="input-footer">
+                    <small>
+                        <i class="fas fa-shield-alt"></i>
+                        Encriptado · Respuesta inmediata
+                    </small>
+                    <small class="char-counter" id="charCounter">0/500</small>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Variables - Futurista Minimalista */
+:root {
+    --primary-color: #0ea5e9;
+    --primary-dark: #0284c7;
+    --primary-light: #38bdf8;
+    --primary-glow: rgba(14, 165, 233, 0.2);
+    --secondary-color: #2dd4bf;
+    --dark-color: #0f172a;
+    --dark-bg: #020617;
+    --gray-light: #f1f5f9;
+    --gray-border: #e2e8f0;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --danger-color: #ef4444;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --shadow-glow: 0 0 20px rgba(14, 165, 233, 0.15);
+    --transition: all 0.2s ease;
+}
+
+/* Dashboard Principal */
+.chatbot-dashboard {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 1.5rem;
+    min-height: calc(100vh - 100px);
+    display: flex;
+    align-items: center;
+}
+
+.chatbot-card {
+    background: white;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--gray-border);
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 120px);
+    min-height: 600px;
+}
+
+/* Header - Estilo Futurista */
+.chatbot-header-modern {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    color: white;
+    border-bottom: 1px solid rgba(14, 165, 233, 0.3);
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.bot-avatar {
+    position: relative;
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    box-shadow: 0 0 20px var(--primary-glow);
+}
+
+.online-dot {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 10px;
+    height: 10px;
+    background: var(--secondary-color);
+    border-radius: 50%;
+    border: 2px solid #1e293b;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.6;
+        transform: scale(0.9);
+    }
+}
+
+.bot-info h2 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+}
+
+.bot-info h2::before {
+    content: '⟫ ';
+    color: var(--primary-light);
+    font-weight: 400;
+}
+
+.bot-status {
+    margin: 0;
+    font-size: 0.7rem;
+    opacity: 0.8;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.bot-status i {
+    font-size: 0.5rem;
+    color: var(--secondary-color);
+}
+
+.btn-clear {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-sm);
+    padding: 0.5rem;
+    color: white;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-clear:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--primary-color);
+    transform: scale(1.05);
+}
+
+/* Messages Area */
+.chatbot-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.5rem;
+    background: var(--gray-light);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.message {
+    display: flex;
+    gap: 0.75rem;
+    animation: fadeInUp 0.3s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.bot-message {
+    justify-content: flex-start;
+}
+
+.user-message {
+    justify-content: flex-end;
+}
+
+.message-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.bot-avatar-small {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    box-shadow: 0 0 15px var(--primary-glow);
+}
+
+.user-message .message-avatar {
+    background: linear-gradient(135deg, #475569, #334155);
+    color: white;
+}
+
+.message-content {
+    max-width: 75%;
+}
+
+.message-text {
+    background: white;
+    padding: 0.85rem 1rem;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    line-height: 1.5;
+    font-size: 0.9rem;
+    color: var(--dark-color);
+}
+
+.bot-message .message-text {
+    border-bottom-left-radius: 4px;
+    border-left: 2px solid var(--primary-color);
+}
+
+.user-message .message-text {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    border-bottom-right-radius: 4px;
+}
+
+.welcome-message {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.95rem;
+}
+
+.welcome-message i {
+    font-size: 1.1rem;
+    color: var(--primary-color);
+}
+
+.features-grid-chat {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0.75rem 0;
+}
+
+.feature-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.8rem;
+    background: rgba(14, 165, 233, 0.08);
+    border: 1px solid rgba(14, 165, 233, 0.2);
+    border-radius: 20px;
+    font-size: 0.75rem;
+    color: var(--primary-dark);
+    font-weight: 500;
+}
+
+.message-time {
+    font-size: 0.65rem;
+    color: #94a3b8;
+    margin-top: 0.25rem;
+}
+
+.user-message .message-time {
+    text-align: right;
+}
+
+.mt-2 {
+    margin-top: 0.5rem;
+}
+
+/* Sugerencias */
+.chatbot-sugerencias {
+    padding: 1rem 1.5rem;
+    background: white;
+    border-top: 1px solid var(--gray-border);
+    border-bottom: 1px solid var(--gray-border);
+}
+
+.sugerencias-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.8rem;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.sugerencias-header i {
+    color: var(--primary-color);
+    font-size: 0.9rem;
+}
+
+.sugerencias-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+
+.sugerencia-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: transparent;
+    border: 1px solid var(--gray-border);
+    border-radius: 30px;
+    font-size: 0.8rem;
+    color: var(--dark-color);
+    cursor: pointer;
+    transition: var(--transition);
+    font-family: monospace;
+}
+
+.sugerencia-btn i {
+    font-size: 0.7rem;
+    color: var(--primary-color);
+}
+
+.sugerencia-btn:hover {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-glow);
+}
+
+.sugerencia-btn:hover i {
+    color: white;
+}
+
+/* Input Area - Estilo Futurista */
+.chatbot-input-modern {
+    padding: 1rem 1.5rem;
+    background: white;
+}
+
+.input-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-icon {
+    position: absolute;
+    left: 1rem;
+    color: var(--primary-color);
+    font-size: 1rem;
+    opacity: 0.7;
+}
+
+.chat-input {
+    width: 100%;
+    padding: 0.85rem 1rem 0.85rem 2.5rem;
+    border: 1px solid var(--gray-border);
+    border-radius: var(--radius-md);
+    font-size: 0.9rem;
+    transition: var(--transition);
+    background: var(--gray-light);
+    font-family: 'SF Mono', monospace;
+}
+
+.chat-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+    background: white;
+}
+
+.send-btn {
+    position: absolute;
+    right: 0.5rem;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 0.5rem 1rem;
+    color: white;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.send-btn:hover {
+    transform: scale(1.05);
+    box-shadow: var(--shadow-glow);
+}
+
+.input-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.7rem;
+    color: #94a3b8;
+    font-family: monospace;
+}
+
+.input-footer i {
+    margin-right: 0.25rem;
+    color: var(--primary-color);
+}
+
+.char-counter {
+    font-family: monospace;
+}
+
+/* Typing Indicator - Estilo Futurista */
+.typing-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.5rem 0;
+}
+
+.typing-indicator span {
+    width: 8px;
+    height: 8px;
+    background: var(--primary-color);
+    border-radius: 50%;
+    animation: typing 1.4s infinite ease-in-out;
+}
+
+.typing-indicator span:nth-child(1) { animation-delay: 0s; }
+.typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+.typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typing {
+    0%, 60%, 100% {
+        transform: translateY(0);
+        opacity: 0.5;
+    }
+    30% {
+        transform: translateY(-6px);
+        opacity: 1;
+    }
+}
+
+/* Scrollbar Personalizado */
+.chatbot-messages::-webkit-scrollbar {
+    width: 4px;
+}
+
+.chatbot-messages::-webkit-scrollbar-track {
+    background: var(--gray-border);
+}
+
+.chatbot-messages::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 4px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .chatbot-dashboard {
+        padding: 1rem;
+    }
+    
+    .chatbot-card {
+        height: calc(100vh - 80px);
+        min-height: 500px;
+    }
+    
+    .message-content {
+        max-width: 85%;
+    }
+    
+    .sugerencias-buttons {
+        flex-direction: column;
+    }
+    
+    .sugerencia-btn {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    
+    .features-grid-chat {
+        flex-direction: column;
+    }
+    
+    .feature-chip {
+        width: fit-content;
+    }
+    
+    .chatbot-header-modern {
+        padding: 0.875rem 1rem;
+    }
+    
+    .chatbot-messages {
+        padding: 1rem;
+    }
+    
+    .chatbot-sugerencias {
+        padding: 0.875rem 1rem;
+    }
+    
+    .chatbot-input-modern {
+        padding: 0.875rem 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .bot-info h2 {
+        font-size: 1rem;
+    }
+    
+    .message-text {
+        font-size: 0.85rem;
+    }
+    
+    .input-footer {
+        flex-direction: column;
+        gap: 0.25rem;
+        text-align: center;
+    }
+}
+</style>
+
+<script>
+const chatMessages = document.getElementById('chatMessages');
+const chatForm = document.getElementById('chatForm');
+const mensajeInput = document.getElementById('mensajeInput');
+const charCounter = document.getElementById('charCounter');
+const maxLength = 500;
+
+// Contador de caracteres
+mensajeInput.addEventListener('input', function() {
+    const length = this.value.length;
+    charCounter.textContent = `${length}/${maxLength}`;
+    
+    if (length > maxLength) {
+        charCounter.style.color = 'var(--danger-color)';
+        this.style.borderColor = 'var(--danger-color)';
+    } else {
+        charCounter.style.color = '';
+        this.style.borderColor = '';
+    }
+});
+
+// Función para agregar mensaje al chat
+function agregarMensaje(texto, esUsuario = false) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${esUsuario ? 'user-message' : 'bot-message'}`;
+    
+    const avatar = document.createElement('div');
+    avatar.className = 'message-avatar';
+    avatar.innerHTML = esUsuario ? '<i class="fas fa-user-astronaut"></i>' : '<i class="fas fa-microchip"></i>';
+    if (!esUsuario) avatar.classList.add('bot-avatar-small');
+    
+    const content = document.createElement('div');
+    content.className = 'message-content';
+    
+    const text = document.createElement('div');
+    text.className = 'message-text';
+    text.innerHTML = texto.replace(/\n/g, '<br>');
+    
+    const time = document.createElement('div');
+    time.className = 'message-time';
+    const now = new Date();
+    time.textContent = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    
+    content.appendChild(text);
+    content.appendChild(time);
+    messageDiv.appendChild(avatar);
+    messageDiv.appendChild(content);
+    
+    chatMessages.appendChild(messageDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Función para mostrar que el bot está escribiendo
+function mostrarEscribiendo() {
+    const escribiendoDiv = document.createElement('div');
+    escribiendoDiv.className = 'message bot-message';
+    escribiendoDiv.id = 'typingIndicator';
+    escribiendoDiv.innerHTML = `
+        <div class="message-avatar bot-avatar-small">
+            <i class="fas fa-microchip"></i>
+        </div>
+        <div class="message-content">
+            <div class="message-text">
+                <div class="typing-indicator">
+                    <span></span><span></span><span></span>
+                </div>
+            </div>
+        </div>
+    `;
+    chatMessages.appendChild(escribiendoDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function ocultarEscribiendo() {
+    const indicator = document.getElementById('typingIndicator');
+    if (indicator) indicator.remove();
+}
+
+// Limpiar chat
+function limpiarChat() {
+    if (confirm('⟫ ¿Limpiar historial de conversación?')) {
+        const messages = chatMessages.querySelectorAll('.message');
+        messages.forEach(msg => {
+            if (!msg.querySelector('.welcome-message')) {
+                msg.remove();
+            }
+        });
+        agregarMensaje('⟫ Historial limpiado. Sistema listo para nueva consulta.', false);
+    }
+}
+
+// Enviar mensaje
+async function enviarMensaje(mensaje) {
+    if (!mensaje.trim()) return;
+    if (mensaje.length > maxLength) {
+        agregarMensaje(`⟫ Error: Mensaje excede límite de ${maxLength} caracteres.`, false);
+        return;
+    }
+    
+    // Agregar mensaje del usuario
+    agregarMensaje(mensaje, true);
+    mensajeInput.value = '';
+    charCounter.textContent = `0/${maxLength}`;
+    
+    // Mostrar indicador de escritura
+    mostrarEscribiendo();
+    
+    try {
+        const response = await fetch('/chatbot', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ mensaje: mensaje })
+        });
+        
+        const data = await response.json();
+        
+        ocultarEscribiendo();
+        
+        if (data.success) {
+            agregarMensaje(data.respuesta, false);
+        } else {
+            agregarMensaje('⟫ Error: No se pudo procesar la solicitud. Intente nuevamente.', false);
+        }
+    } catch (error) {
+        ocultarEscribiendo();
+        console.error('Error:', error);
+        agregarMensaje('⟫ Error de conexión. Verifique su red e intente de nuevo.', false);
+    }
+}
+
+// Enviar sugerencia
+function enviarSugerencia(sugerencia) {
+    mensajeInput.value = sugerencia;
+    charCounter.textContent = `${sugerencia.length}/${maxLength}`;
+    enviarMensaje(sugerencia);
+}
+
+// Event listeners
+chatForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    enviarMensaje(mensajeInput.value);
+});
+
+// Enviar con Enter
+mensajeInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        enviarMensaje(mensajeInput.value);
+    }
+});
+
+// Establecer hora de bienvenida
+document.addEventListener('DOMContentLoaded', () => {
+    const welcomeTime = document.getElementById('welcomeTime');
+    if (welcomeTime) {
+        const now = new Date();
+        welcomeTime.textContent = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+    mensajeInput.focus();
+});
+</script>
+{% endblock %}

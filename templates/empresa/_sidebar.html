@@ -1,0 +1,40 @@
+<div class="dashboard-sidebar">
+    <div class="profile-card">
+        <img src="{% if empresa and empresa.logo %}{{ url_for('static', filename='uploads/' + empresa.logo) }}{% else %}{{ url_for('static', filename='images/default-company.png') }}{% endif %}" 
+             class="company-logo" alt="Logo empresa">
+        <h3>{% if empresa %}{{ empresa.nombre }}{% else %}Empresa{% endif %}</h3>
+        <p>{% if empresa and empresa.sitio_web %}{{ empresa.sitio_web }}{% endif %}</p>
+        
+        <div class="company-stats">
+            <div class="stat-item">
+                <i class="fas fa-briefcase"></i>
+                <span>{% if empresa %}{{ empresa.vacantes|length }}{% else %}0{% endif %} Vacantes</span>
+            </div>
+        </div>
+    </div>
+
+    <nav class="dashboard-nav">
+        <ul>
+            <li class="{% if request.endpoint == 'empresa_dashboard' %}active{% endif %}">
+                <a href="{{ url_for('empresa_dashboard') }}">
+                    <i class="fas fa-home"></i> Resumen
+                </a>
+            </li>
+            <li class="{% if request.endpoint == 'empresa_perfil' %}active{% endif %}">
+                <a href="{{ url_for('empresa_perfil') }}">
+                    <i class="fas fa-building"></i> Perfil
+                </a>
+            </li>
+            <li class="{% if request.endpoint == 'empresa_vacantes' %}active{% endif %}">
+                <a href="{{ url_for('empresa_vacantes') }}">
+                    <i class="fas fa-list"></i> Mis Vacantes
+                </a>
+            </li>
+            <li class="{% if request.endpoint == 'empresa_nueva_vacante' %}active{% endif %}">
+                <a href="{{ url_for('empresa_nueva_vacante') }}">
+                    <i class="fas fa-plus-circle"></i> Nueva Vacante
+                </a>
+            </li>
+        </ul>
+    </nav>
+</div>

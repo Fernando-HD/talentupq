@@ -1,0 +1,992 @@
+{% extends "base.html" %}
+
+{% block title %}Mi Perfil{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <!-- Menú Lateral Fijo -->
+    <div class="dashboard-sidebar">
+        <div class="profile-card">
+            <img src="{% if candidato.FotoPerfil %}{{ url_for('static', filename='uploads/' + candidato.FotoPerfil) }}{% else %}{{ url_for('static', filename='images/default-profile.png') }}{% endif %}" 
+                 class="profile-avatar" alt="Foto de perfil">
+            <h3>{{ candidato.Nombre }} {{ candidato.ApellidoPaterno }}</h3>
+            <p>{{ candidato.PuestoSolicitado or "Sin puesto especificado" }}</p>
+            
+            <div class="profile-progress">
+                {% set completed = 0 %}
+                {% if candidato.Nombre %} {% set completed = completed + 20 %} {% endif %}
+                {% if preparacion_academica %} {% set completed = completed + 20 %} {% endif %}
+                {% if experiencia_laboral %} {% set completed = completed + 20 %} {% endif %}
+                {% if habilidades %} {% set completed = completed + 20 %} {% endif %}
+                {% if referencias %} {% set completed = completed + 20 %} {% endif %}
+                
+                <small>Perfil {{ completed }}% completo</small>
+            </div>
+        </div>
+
+        <nav class="dashboard-nav">
+            <ul>
+                <li class="{% if request.endpoint == 'candidato_dashboard' %}active{% endif %}">
+                    <a href="{{ url_for('candidato_dashboard') }}">
+                        <i class="fas fa-home"></i> Resumen
+                    </a>
+                </li>
+                <li class="{% if request.endpoint == 'candidato_perfil' %}active{% endif %}">
+                    <a href="{{ url_for('candidato_perfil') }}">
+                        <i class="fas fa-user"></i> Datos Personales
+                    </a>
+                </li>
+                <li class="{% if request.endpoint == 'candidato_preparacion' %}active{% endif %}">
+                    <a href="{{ url_for('candidato_preparacion') }}">
+                        <i class="fas fa-graduation-cap"></i> Preparación
+                    </a>
+                </li>
+                <li class="{% if request.endpoint == 'candidato_experiencia' %}active{% endif %}">
+                    <a href="{{ url_for('candidato_experiencia') }}">
+                        <i class="fas fa-briefcase"></i> Experiencia
+                    </a>
+                </li>
+                <li class="{% if request.endpoint == 'candidato_habilidades' %}active{% endif %}">
+                    <a href="{{ url_for('candidato_habilidades') }}">
+                        <i class="fas fa-star"></i> Habilidades
+                    </a>
+                </li>
+                <li class="{% if request.endpoint == 'candidato_referencias' %}active{% endif %}">
+                    <a href="{{ url_for('candidato_referencias') }}">
+                        <i class="fas fa-users"></i> Referencias
+                    </a>
+                </li>
+                <li class="{% if request.endpoint == 'candidato_postulaciones' %}active{% endif %}">
+                    <a href="{{ url_for('candidato_postulaciones') }}">
+                        <i class="fas fa-file-alt"></i> Postulaciones
+                    </a>
+                </li>
+                <li class="{% if request.endpoint == 'mis_conversaciones' %}active{% endif %}">
+    <a href="{{ url_for('mis_conversaciones') }}">
+        <i class="fas fa-comments"></i> 
+        Mensajes
+        {% if no_leidos > 0 %}
+            <span class="badge badge-danger mensajes-badge">{{ no_leidos }}</span>
+        {% endif %}
+    </a>
+</li>
+
+            </ul>
+        </nav>
+    </div>
+    
+    <!-- Contenido Principal -->
+    <div class="dashboard-content">
+        <!-- Contenedor para las alertas dentro del contenido -->
+        <div class="alerts-container">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}" id="alert-{{ loop.index }}">
+                            <i class="fas 
+                                {% if category == 'success' %}fa-check-circle
+                                {% elif category == 'danger' %}fa-times-circle
+                                {% elif category == 'warning' %}fa-exclamation-circle
+                                {% else %}fa-info-circle{% endif %}"></i>
+                            <span>{{ message }}</span>
+                            <div class="alert-progress">
+                                <div class="alert-progress-bar"></div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+        
+        <div class="dashboard-header">
+            <h1 class="dashboard-title">Mi Perfil Profesional</h1>
+            <div class="header-actions">
+                <a href="{{ url_for('candidato_perfil') }}" class="btn btn-primary">
+                    <i class="fas fa-edit"></i> Editar Perfil
+                </a>
+                <a href="{{ url_for('candidato_vacantes') }}" class="btn btn-outline">
+                    <i class="fas fa-search"></i> Buscar Vacantes
+                </a>
+            </div>
+        </div>
+        
+        <div class="row">
+            <!-- Columna izquierda -->
+            <div class="col">
+                <!-- Resumen del perfil -->
+                <div class="card profile-summary">
+                    <div class="card-header">
+                        <h3>Mi Resumen Profesional</h3>
+                    </div>
+                    <div class="card-body">
+                        <p>{{ candidato.ResumenProfesional or "Agrega un resumen profesional para destacar tus habilidades y objetivos" }}</p>
+                        
+                        <div class="contact-info">
+                            <div class="info-item">
+                                <i class="fas fa-envelope"></i>
+                                <span>{{ candidato.Correo or "No especificado" }}</span>
+                            </div>
+                            <div class="info-item">
+                                <i class="fas fa-phone"></i>
+                                <span>{{ candidato.Telefono or "No especificado" }}</span>
+                            </div>
+                            <div class="info-item">
+                                <i class="fas fa-map-marker-alt"></i>
+                                <span>{{ candidato.Direccion or "No especificado" }}</span>
+                            </div>
+                            <div class="info-item">
+                                <i class="fas fa-birthday-cake"></i>
+                                <span>
+                                    {% if candidato.FechaNacimiento %}
+                                        {{ candidato.FechaNacimiento.strftime('%d/%m/%Y') }} ({{ edad }} años)
+                                    {% else %}
+                                        No especificado
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        {% if candidato.CV %}
+                        <a href="{{ url_for('static', filename='uploads/' + candidato.CV) }}" 
+                           class="btn btn-primary btn-block" download>
+                            <i class="fas fa-download"></i> Descargar CV
+                        </a>
+                        {% else %}
+                        <a href="{{ url_for('candidato_perfil') }}" class="btn btn-outline btn-block">
+                            <i class="fas fa-upload"></i> Subir CV
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Sección de habilidades -->
+                <div class="card skills-card">
+                    <div class="card-header">
+                        <h3>Mis Habilidades</h3>
+                        <a href="{{ url_for('candidato_habilidades') }}" class="btn btn-sm btn-outline">
+                            <i class="fas fa-edit"></i> Editar
+                        </a>
+                    </div>
+                    <div class="card-body">
+                        {% if habilidades and habilidades|length > 0 %}
+                        <div class="skills-list">
+                            {% for habilidad in habilidades %}
+                            <span class="skill-tag">{{ habilidad.Nombre }}</span>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <p class="empty-state">No has agregado habilidades aún.</p>
+                        <a href="{{ url_for('candidato_habilidades') }}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Agregar Habilidades
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Columna derecha -->
+            <div class="col">
+                <!-- Postulaciones recientes -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Mis Postulaciones Recientes</h3>
+                    </div>
+                    <div class="card-body">
+                        {% if postulaciones and postulaciones|length > 0 %}
+                        <ul class="postulaciones-list">
+                            {% for post in postulaciones %}
+                            <li>
+                                <div class="postulacion-header">
+                                    <h4>{{ post.Puesto }}</h4>
+                                    <span class="badge {% if post.Estatus == 'aceptado' %}badge-success{% elif post.Estatus == 'rechazado' %}badge-danger{% else %}badge-primary{% endif %}">
+                                        {{ post.Estatus|capitalize }}
+                                    </span>
+                                </div>
+                                <p class="empresa">{{ post.EmpresaNombre }}</p>
+                                <small>Postulado el {{ post.FechaPostulacion.strftime('%d/%m/%Y') }}</small>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        <a href="{{ url_for('candidato_postulaciones') }}" class="btn btn-outline btn-block">
+                            Ver todas las postulaciones
+                        </a>
+                        {% else %}
+                        <p class="empty-state">No te has postulado a ninguna vacante aún.</p>
+                        <a href="{{ url_for('candidato_vacantes') }}" class="btn btn-primary btn-block">
+                            <i class="fas fa-search"></i> Buscar vacantes
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Última experiencia -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Última Experiencia Laboral</h3>
+                        <a href="{{ url_for('candidato_experiencia') }}" class="btn btn-sm btn-outline">
+                            <i class="fas fa-edit"></i> Editar
+                        </a>
+                    </div>
+                    <div class="card-body">
+                        {% if experiencia_laboral and experiencia_laboral|length > 0 %}
+                        {% set ultima_exp = experiencia_laboral[0] %}
+                        <h4>{{ ultima_exp.Puesto or "Puesto no especificado" }}</h4>
+                        <p class="empresa">{{ ultima_exp.Empresa or "Empresa no especificada" }}</p>
+                        <p class="periodo">
+                            {% if ultima_exp.FechaIngreso %}
+                                {{ ultima_exp.FechaIngreso.strftime('%b %Y') }} - 
+                                {% if ultima_exp.FechaSalida %}
+                                    {{ ultima_exp.FechaSalida.strftime('%b %Y') }}
+                                {% else %}
+                                    Presente
+                                {% endif %}
+                            {% else %}
+                                Fechas no especificadas
+                            {% endif %}
+                        </p>
+                        <a href="{{ url_for('candidato_experiencia') }}" class="btn btn-outline btn-block">
+                            Ver toda mi experiencia
+                        </a>
+                        {% else %}
+                        <p class="empty-state">No has agregado experiencia laboral aún.</p>
+                        <a href="{{ url_for('candidato_experiencia') }}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Agregar Experiencia
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Ocultar las alertas del base.html para evitar duplicados
+    document.addEventListener('DOMContentLoaded', function() {
+        // Buscar todas las alertas que están fuera del dashboard-content y ocultarlas
+        const allAlerts = document.querySelectorAll('main.container > .alert');
+        allAlerts.forEach(alert => {
+            if (alert.parentElement === document.querySelector('main.container')) {
+                alert.style.display = 'none';
+            }
+        });
+    });
+</script>
+
+{% block styles %}
+<style>
+    /* --- SOBREESCRIBIR ESTILOS DE BASE.HTML PARA ALINEAR TODO --- */
+    /* Reset del container para alinear con las tarjetas */
+    .container {
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    
+    /* Ajustar el header superior para que tenga el mismo ancho que las tarjetas */
+    header {
+        background: white;
+        box-shadow: var(--shadow-sm);
+        position: sticky;
+        top: 0;
+        z-index: 99;
+    }
+    
+    header .container {
+        max-width: 1400px !important;
+        margin: 0 auto !important;
+        padding: 0 1.5rem !important;
+    }
+    
+    /* Alinear el navbar con las tarjetas */
+    .navbar {
+        max-width: 1400px !important;
+        margin: 0 auto !important;
+        padding: 0 !important;
+    }
+    
+    /* Para el main, permitir que el dashboard se muestre correctamente */
+    main.container {
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        position: relative;
+    }
+    
+    /* Ocultar las alertas del base.html que están fuera del dashboard */
+    main.container > .alert {
+        display: none !important;
+    }
+    
+    /* --- Variables CSS --- */
+    :root {
+        --primary-color: #2563eb;
+        --primary-dark: #1d4ed8;
+        --dark-color: #1e293b;
+        --gray-light: #f8fafc;
+        --gray-border: #e2e8f0;
+        --radius-sm: 6px;
+        --radius-md: 10px;
+        --radius-lg: 14px;
+        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+        --transition: all 0.2s ease;
+    }
+
+    /* --- Estilos de alertas dentro del dashboard --- */
+    .alerts-container {
+        margin-bottom: 1rem;
+    }
+    
+    .alert {
+        position: relative;
+        padding: 12px 16px;
+        margin-bottom: 12px;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        opacity: 0;
+        transform: translateY(-20px);
+        transition: opacity 0.5s ease, transform 0.5s ease;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .alert.show {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    
+    .alert.hide {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    
+    .alert-success {
+        color: #0f5132;
+        background-color: #d1e7dd;
+        border-color: #badbcc;
+    }
+    
+    .alert-danger {
+        color: #721c24;
+        background-color: #f8d7da;
+        border-color: #f5c6cb;
+    }
+    
+    .alert-warning {
+        color: #856404;
+        background-color: #fff3cd;
+        border-color: #ffeaa7;
+    }
+    
+    .alert-info {
+        color: #055160;
+        background-color: #cff4fc;
+        border-color: #b6effb;
+    }
+    
+    .alert i {
+        font-size: 1.1rem;
+    }
+    
+    .alert-progress {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        height: 3px;
+        background-color: rgba(0, 0, 0, 0.1);
+        width: 100%;
+        border-radius: 0 0 8px 8px;
+        overflow: hidden;
+    }
+    
+    .alert-progress-bar {
+        height: 100%;
+        width: 100%;
+        background-color: currentColor;
+        opacity: 0.5;
+        animation: progressBar 5s linear forwards;
+    }
+    
+    @keyframes progressBar {
+        from { width: 100%; }
+        to { width: 0%; }
+    }
+
+    /* --- Perfil --- */
+    .profile-card {
+        text-align: center;
+        padding: 1.5rem 1rem;
+    }
+
+    .profile-avatar {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        object-fit: cover;
+        margin: 0 auto 0.75rem;
+        border: 3px solid var(--primary-color);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .profile-card h3 {
+        margin: 0.5rem 0 0.25rem;
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+
+    .profile-card p {
+        color: #64748b;
+        font-size: 0.85rem;
+        margin-bottom: 1rem;
+    }
+
+    .profile-progress {
+        background: var(--gray-light);
+        border-radius: var(--radius-sm);
+        padding: 0.5rem;
+        font-size: 0.75rem;
+        color: var(--primary-color);
+        font-weight: 500;
+    }
+
+    /* --- Contenedor Principal --- */
+    .dashboard {
+        display: flex;
+        min-height: 100vh;
+        background: #f1f5f9;
+        margin: 0;
+        padding: 0;
+    }
+
+    /* --- Menú Lateral --- */
+    .dashboard-sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 260px;
+        background: white;
+        box-shadow: var(--shadow-md);
+        border-right: 1px solid var(--gray-border);
+        overflow-y: auto;
+        z-index: 100;
+        margin: 0;
+        padding: 0;
+    }
+    
+    .dashboard-sidebar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+    .dashboard-sidebar::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* --- Contenido Principal --- */
+    .dashboard-content {
+        margin-left: 260px;
+        flex: 1;
+        padding: 1rem 1.5rem;
+        width: calc(100% - 260px);
+        background: #f1f5f9;
+    }
+
+    /* --- Header del dashboard alineado con las tarjetas --- */
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding: 0;
+        width: 100%;
+        flex-wrap: wrap;
+        gap: 1rem;
+        background: transparent;
+        border-bottom: 2px solid var(--gray-border);
+    }
+
+    .dashboard-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--dark-color);
+        margin: 0;
+        background: linear-gradient(135deg, var(--dark-color) 0%, var(--primary-color) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .header-actions {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    /* --- Botones --- */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.6rem 1.25rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        border-radius: var(--radius-md);
+        transition: var(--transition);
+        cursor: pointer;
+        text-decoration: none;
+    }
+
+    .btn-primary {
+        background: var(--primary-color);
+        color: white;
+        border: none;
+    }
+
+    .btn-primary:hover {
+        background: var(--primary-dark);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .btn-outline {
+        background: transparent;
+        border: 1px solid var(--gray-border);
+        color: var(--dark-color);
+    }
+
+    .btn-outline:hover {
+        background: white;
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+        transform: translateY(-2px);
+    }
+
+    .btn-sm {
+        padding: 0.35rem 1rem;
+        font-size: 0.75rem;
+    }
+
+    .btn-block {
+        width: 100%;
+        justify-content: center;
+        margin-top: 0.75rem;
+    }
+
+    /* --- Tarjetas --- */
+    .card {
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        margin-bottom: 1.25rem;
+        transition: var(--transition);
+        border: 1px solid var(--gray-border);
+        max-width: 100%;
+    }
+
+    .card:hover {
+        box-shadow: var(--shadow-md);
+        transform: translateY(-2px);
+    }
+
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid var(--gray-border);
+    }
+
+    .card-header h3 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--dark-color);
+    }
+
+    .card-body {
+        padding: 1.25rem;
+    }
+
+    /* --- Grid alineado con el header superior --- */
+    .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.25rem;
+        margin: 0;
+        padding: 0;
+        max-width: 1400px;
+    }
+    
+    .col {
+        flex: 1;
+        min-width: 0;
+        max-width: calc(50% - 0.625rem);
+    }
+    
+    /* --- Contacto --- */
+    .contact-info {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 0.75rem;
+        margin: 1rem 0;
+    }
+
+    .info-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-size: 0.875rem;
+        color: #475569;
+        padding: 0.6rem;
+        background: var(--gray-light);
+        border-radius: var(--radius-md);
+        transition: var(--transition);
+    }
+
+    .info-item:hover {
+        background: white;
+        transform: translateX(5px);
+    }
+
+    .info-item i {
+        width: 20px;
+        color: var(--primary-color);
+    }
+
+    /* --- Habilidades --- */
+    .skills-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+    }
+
+    .skill-tag {
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+        color: white;
+        padding: 0.4rem 1rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        transition: var(--transition);
+    }
+
+    .skill-tag:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-sm);
+    }
+
+    /* --- Postulaciones --- */
+    .postulaciones-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .postulaciones-list li {
+        padding: 0.75rem 0;
+        border-bottom: 1px solid var(--gray-border);
+        transition: var(--transition);
+    }
+
+    .postulaciones-list li:hover {
+        padding-left: 0.5rem;
+        background: var(--gray-light);
+        border-radius: var(--radius-sm);
+    }
+
+    .postulaciones-list li:last-child {
+        border-bottom: none;
+    }
+
+    .postulacion-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+
+    .postulacion-header h4 {
+        margin: 0;
+        font-size: 0.95rem;
+        font-weight: 600;
+    }
+
+    .empresa {
+        font-size: 0.85rem;
+        color: #64748b;
+        margin: 0.25rem 0;
+    }
+
+    .badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 600;
+    }
+
+    .badge-primary {
+        background: #dbeafe;
+        color: var(--primary-color);
+    }
+
+    .badge-success {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+
+    .badge-danger {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .empty-state {
+        text-align: center;
+        color: #64748b;
+        font-size: 0.875rem;
+        margin: 1rem 0;
+    }
+
+    /* --- Navegación --- */
+    .dashboard-nav {
+        padding: 0 0.75rem;
+    }
+
+    .dashboard-nav ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .dashboard-nav li {
+        margin-bottom: 0.25rem;
+        position: relative;
+    }
+
+    .dashboard-nav a {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.7rem 1rem;
+        text-decoration: none;
+        color: var(--dark-color);
+        font-weight: 500;
+        font-size: 0.9rem;
+        border-radius: var(--radius-md);
+        transition: var(--transition);
+        background: transparent;
+    }
+
+    .dashboard-nav a i {
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(37, 99, 235, 0.1);
+        color: var(--primary-color);
+        border-radius: var(--radius-sm);
+        font-size: 0.9rem;
+        transition: var(--transition);
+    }
+
+    .dashboard-nav a:hover {
+        background: rgba(37, 99, 235, 0.05);
+        color: var(--primary-color);
+        transform: translateX(5px);
+    }
+
+    .dashboard-nav a:hover i {
+        background: rgba(37, 99, 235, 0.2);
+        transform: scale(1.1);
+    }
+
+    .dashboard-nav .active a {
+        background: rgba(37, 99, 235, 0.1);
+        color: var(--primary-color);
+        font-weight: 600;
+    }
+
+    .dashboard-nav .active a i {
+        background: var(--primary-color);
+        color: white;
+    }
+
+    .dashboard-nav .active::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        height: 60%;
+        width: 3px;
+        background: var(--primary-color);
+        border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    }
+
+    @keyframes slideIn {
+        from { opacity: 0; transform: translateX(-10px); }
+        to { opacity: 1; transform: translateX(0); }
+    }
+
+    .dashboard-nav li {
+        animation: slideIn 0.3s ease-out forwards;
+        opacity: 0;
+    }
+
+    .dashboard-nav li:nth-child(1) { animation-delay: 0.1s; }
+    .dashboard-nav li:nth-child(2) { animation-delay: 0.15s; }
+    .dashboard-nav li:nth-child(3) { animation-delay: 0.2s; }
+    .dashboard-nav li:nth-child(4) { animation-delay: 0.25s; }
+    .dashboard-nav li:nth-child(5) { animation-delay: 0.3s; }
+    .dashboard-nav li:nth-child(6) { animation-delay: 0.35s; }
+    .dashboard-nav li:nth-child(7) { animation-delay: 0.4s; }
+
+    /* --- Media Queries --- */
+    @media (max-width: 1024px) {
+        .col {
+            max-width: calc(50% - 0.625rem);
+        }
+        
+        .dashboard-header {
+            padding: 0;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .dashboard-sidebar {
+            width: 220px;
+        }
+        
+        .dashboard-content {
+            margin-left: 220px;
+            width: calc(100% - 220px);
+            padding: 1rem;
+        }
+        
+        .row {
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .col {
+            max-width: 100%;
+        }
+        
+        .dashboard-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+        }
+        
+        .header-actions {
+            width: 100%;
+        }
+        
+        .header-actions .btn {
+            flex: 1;
+            justify-content: center;
+        }
+        
+        .contact-info {
+            grid-template-columns: 1fr;
+        }
+        
+        .dashboard-title {
+            font-size: 1.5rem;
+        }
+        
+        header .container {
+            padding: 0 1rem !important;
+        }
+    }
+    
+    @media (max-width: 576px) {
+        .dashboard-sidebar {
+            width: 100%;
+            height: auto;
+            position: relative;
+            border-right: none;
+            border-bottom: 1px solid var(--gray-border);
+        }
+        
+        .dashboard-content {
+            margin-left: 0;
+            width: 100%;
+            padding: 1rem;
+        }
+        
+        .dashboard {
+            flex-direction: column;
+        }
+        
+        .dashboard-nav ul {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            padding: 0 0.75rem;
+        }
+        
+        .dashboard-nav li {
+            flex: 1;
+            min-width: calc(33.333% - 0.5rem);
+            margin-bottom: 0;
+        }
+        
+        .dashboard-nav a {
+            padding: 0.5rem 0.75rem;
+            justify-content: center;
+            font-size: 0.8rem;
+        }
+        
+        .dashboard-nav .active::before {
+            display: none;
+        }
+        
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+        }
+        
+        .dashboard-title {
+            font-size: 1.25rem;
+        }
+        
+        .dashboard-header {
+            padding: 0;
+        }
+        
+        header .container {
+            padding: 0 0.75rem !important;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .dashboard-nav li {
+            min-width: calc(50% - 0.5rem);
+        }
+        
+        .card-header {
+            flex-direction: column;
+            gap: 0.5rem;
+            align-items: flex-start;
+        }
+        
+        .header-actions {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .btn {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>
+{% endblock %}
+
+
+{% endblock %}

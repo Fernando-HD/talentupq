@@ -1,0 +1,764 @@
+{% extends "base.html" %}
+
+{% block title %}Preparación Académica{% endblock %}
+
+{% block content %}
+<div class="dashboard academic-dashboard">
+    <div class="academic-header">
+        <h1 class="academic-title">
+            <i class="fas fa-graduation-cap"></i> Preparación Académica
+        </h1>
+        <a href="{{ url_for('candidato_dashboard') }}" class="btn btn-outline">
+            <i class="fas fa-arrow-left"></i> Volver al Dashboard
+        </a>
+    </div>
+
+    <!-- Formulario para agregar/editar -->
+    <div class="academic-card form-card">
+        <div class="card-header-modern">
+            <div class="header-icon">
+                <i class="fas {% if editar_index is not none %}fa-edit{% else %}fa-plus-circle{% endif %}"></i>
+            </div>
+            <h3 class="card-title-modern">
+                {% if editar_index is not none %}Editar{% else %}Agregar{% endif %} Preparación Académica
+            </h3>
+        </div>
+        <div class="card-body-modern">
+            <form method="POST" class="academic-form-modern">
+                <input type="hidden" name="editar_index" value="{{ editar_index if editar_index is not none else '' }}">
+                
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-graduation-cap"></i>
+                            <span>Nivel de Estudios *</span>
+                        </label>
+                        <select id="grado" name="grado" class="field-control" required>
+                            <option value="">Seleccionar...</option>
+                            {% for grado in ['Primaria', 'Secundaria', 'Bachillerato', 'Licenciatura', 'Maestría', 'Doctorado'] %}
+                            <option value="{{ grado }}" 
+                                {% if preparacion_editar and preparacion_editar['Grado'] == grado %}selected{% endif %}>
+                                {{ grado }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-university"></i>
+                            <span>Institución *</span>
+                        </label>
+                        <input type="text" id="institucion" name="institucion" class="field-control"
+                               value="{{ preparacion_editar['Institucion'] if preparacion_editar else '' }}" 
+                               required maxlength="100" placeholder="Nombre de la institución educativa">
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-id-card"></i>
+                            <span>Cédula Profesional</span>
+                        </label>
+                        <input type="text" id="cedula" name="cedula" class="field-control"
+                               value="{{ preparacion_editar['Cedula'] if preparacion_editar else '' }}" 
+                               maxlength="50" placeholder="Número de cédula (si aplica)">
+                    </div>
+                    
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-chart-line"></i>
+                            <span>Estatus *</span>
+                        </label>
+                        <select id="estatus" name="estatus" class="field-control" required>
+                            <option value="">Seleccionar...</option>
+                            {% for estatus in ['Completo', 'Incompleto', 'En curso'] %}
+                            <option value="{{ estatus }}"
+                                {% if preparacion_editar and preparacion_editar['Estatus'] == estatus %}selected{% endif %}>
+                                {{ estatus }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-globe-americas"></i>
+                            <span>País *</span>
+                        </label>
+                        <input type="text" id="pais" name="pais" class="field-control"
+                               value="{{ preparacion_editar['Pais'] if preparacion_editar else '' }}" 
+                               required maxlength="50" placeholder="País donde estudiaste">
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-calendar-alt"></i>
+                            <span>Fecha de Inicio *</span>
+                        </label>
+                        <input type="date" id="fecha_inicio" name="fecha_inicio" class="field-control"
+                               value="{{ preparacion_editar['FechaInicio'].strftime('%Y-%m-%d') if preparacion_editar and preparacion_editar['FechaInicio'] else '' }}" 
+                               required>
+                    </div>
+                    
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-calendar-check"></i>
+                            <span>Fecha de Finalización</span>
+                        </label>
+                        <input type="date" id="fecha_fin" name="fecha_fin" class="field-control"
+                               value="{{ preparacion_editar['FechaFin'].strftime('%Y-%m-%d') if preparacion_editar and preparacion_editar['FechaFin'] else '' }}">
+                        <small class="field-hint">Dejar vacío si está en curso</small>
+                    </div>
+                </div>
+
+                <div class="form-actions-modern">
+                    <button type="submit" class="btn-primary-modern">
+                        <i class="fas fa-save"></i> {% if editar_index is not none %}Actualizar{% else %}Guardar{% endif %}
+                    </button>
+                    
+                    {% if editar_index is not none %}
+                    <a href="{{ url_for('candidato_preparacion') }}" class="btn-secondary-modern">
+                        <i class="fas fa-times"></i> Cancelar
+                    </a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Lista de estudios -->
+    <div class="academic-card list-card">
+        <div class="card-header-modern">
+            <div class="header-icon">
+                <i class="fas fa-book-open"></i>
+            </div>
+            <h3 class="card-title-modern">
+                Mis Estudios
+                <span class="count-badge">{{ preparaciones|length }}</span>
+            </h3>
+        </div>
+        <div class="card-body-modern">
+            {% if preparaciones %}
+                <div class="studies-grid">
+                    {% for prep in preparaciones %}
+                    <div class="study-card {% if loop.index0 == editar_index %}active{% endif %}">
+                        <div class="study-card-header">
+                            <div class="study-degree-icon">
+                                <i class="fas fa-graduation-cap"></i>
+                                <h4>{{ prep['Grado'] }}</h4>
+                            </div>
+                            <span class="status-badge status-{{ prep['Estatus']|lower|replace(' ', '-') }}">
+                                {{ prep['Estatus'] }}
+                            </span>
+                        </div>
+                        
+                        <div class="study-card-body">
+                            <div class="study-info">
+                                <div class="info-line">
+                                    <i class="fas fa-university"></i>
+                                    <strong>Institución:</strong>
+                                    <span>{{ prep['Institucion'] }}</span>
+                                </div>
+                                
+                                <div class="info-line">
+                                    <i class="fas fa-globe-americas"></i>
+                                    <strong>País:</strong>
+                                    <span>{{ prep['Pais'] }}</span>
+                                </div>
+                                
+                                {% if prep['Cedula'] %}
+                                <div class="info-line">
+                                    <i class="fas fa-id-card"></i>
+                                    <strong>Cédula:</strong>
+                                    <span>{{ prep['Cedula'] }}</span>
+                                </div>
+                                {% endif %}
+                                
+                                <div class="info-line">
+                                    <i class="fas fa-calendar-alt"></i>
+                                    <strong>Periodo:</strong>
+                                    <span>
+                                        {{ prep['FechaInicio'].strftime('%d/%m/%Y') }} - 
+                                        {% if prep['FechaFin'] %}{{ prep['FechaFin'].strftime('%d/%m/%Y') }}
+                                        {% else %}Presente{% endif %}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="study-card-footer">
+                            <a href="{{ url_for('candidato_preparacion', editar=loop.index0) }}" 
+                               class="btn-edit">
+                                <i class="fas fa-edit"></i> Editar
+                            </a>
+                            <form method="POST" action="{{ url_for('candidato_preparacion') }}"
+                                  onsubmit="return confirm('¿Está seguro de eliminar esta preparación académica?');" 
+                                  class="delete-form">
+                                <input type="hidden" name="eliminar" value="{{ loop.index0 }}">
+                                <button type="submit" class="btn-delete">
+                                    <i class="fas fa-trash"></i> Eliminar
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state-modern">
+                    <div class="empty-icon">
+                        <i class="fas fa-graduation-cap"></i>
+                    </div>
+                    <h4>No has agregado información académica aún</h4>
+                    <p>Comienza agregando tu primer registro académico utilizando el formulario superior.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+/* Variables */
+:root {
+    --primary-color: #2563eb;
+    --primary-dark: #1d4ed8;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --info-color: #3b82f6;
+    --danger-color: #ef4444;
+    --dark-color: #1e293b;
+    --gray-light: #f8fafc;
+    --gray-border: #e2e8f0;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --transition: all 0.3s ease;
+}
+
+/* Dashboard Principal */
+.academic-dashboard {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1.5rem;
+}
+
+.academic-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--gray-border);
+}
+
+.academic-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--dark-color);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.academic-title i {
+    color: var(--primary-color);
+    font-size: 1.85rem;
+}
+
+/* Tarjetas */
+.academic-card {
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--gray-border);
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+    transition: var(--transition);
+}
+
+.academic-card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.card-header-modern {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem 1.75rem;
+    background: linear-gradient(135deg, #fafcff 0%, #ffffff 100%);
+    border-bottom: 1px solid var(--gray-border);
+}
+
+.header-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(37, 99, 235, 0.1);
+    border-radius: var(--radius-sm);
+}
+
+.header-icon i {
+    font-size: 1.25rem;
+    color: var(--primary-color);
+}
+
+.card-title-modern {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--dark-color);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+}
+
+.count-badge {
+    background: var(--primary-color);
+    color: white;
+    padding: 0.25rem 0.6rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-left: 0.5rem;
+}
+
+.card-body-modern {
+    padding: 1.75rem;
+}
+
+/* Formulario */
+.academic-form-modern {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.field-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--dark-color);
+}
+
+.field-label i {
+    color: var(--primary-color);
+    width: 18px;
+}
+
+.field-control {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    border: 1px solid var(--gray-border);
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+    background: white;
+    font-family: inherit;
+}
+
+.field-control:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.field-control:disabled {
+    background: var(--gray-light);
+    color: #64748b;
+}
+
+select.field-control {
+    cursor: pointer;
+}
+
+.field-hint {
+    font-size: 0.7rem;
+    color: #64748b;
+    margin-top: 0.25rem;
+}
+
+/* Botones del formulario */
+.form-actions-modern {
+    display: flex;
+    gap: 1rem;
+    padding-top: 1rem;
+    margin-top: 0.5rem;
+    border-top: 1px solid var(--gray-border);
+}
+
+.btn-primary-modern {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-primary-modern:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-secondary-modern {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: white;
+    color: var(--dark-color);
+    border: 1px solid var(--gray-border);
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.btn-secondary-modern:hover {
+    background: var(--gray-light);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+/* Grid de estudios */
+.studies-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.study-card {
+    background: white;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--gray-border);
+    overflow: hidden;
+    transition: var(--transition);
+}
+
+.study-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.study-card.active {
+    border-left: 4px solid var(--primary-color);
+    background: rgba(37, 99, 235, 0.02);
+}
+
+.study-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    background: var(--gray-light);
+    border-bottom: 1px solid var(--gray-border);
+}
+
+.study-degree-icon {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.study-degree-icon i {
+    font-size: 1.25rem;
+    color: var(--primary-color);
+}
+
+.study-degree-icon h4 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--dark-color);
+}
+
+.status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.status-completo {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.status-en-curso {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.status-incompleto {
+    background: #fed7aa;
+    color: #92400e;
+}
+
+.study-card-body {
+    padding: 1rem 1.25rem;
+}
+
+.study-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.info-line {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: #475569;
+    flex-wrap: wrap;
+}
+
+.info-line i {
+    width: 18px;
+    color: var(--primary-color);
+    font-size: 0.8rem;
+}
+
+.info-line strong {
+    font-weight: 600;
+    color: var(--dark-color);
+    min-width: 80px;
+}
+
+.info-line span {
+    color: #475569;
+}
+
+/* Footer de la tarjeta con botones separados */
+.study-card-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    background: var(--gray-light);
+    border-top: 1px solid var(--gray-border);
+}
+
+.btn-edit, .btn-delete {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.25rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    transition: var(--transition);
+    cursor: pointer;
+    border: none;
+    min-width: 100px;
+}
+
+.btn-edit {
+    background: white;
+    color: var(--primary-color);
+    border: 1px solid var(--gray-border);
+}
+
+.btn-edit:hover {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-delete {
+    background: white;
+    color: var(--danger-color);
+    border: 1px solid var(--gray-border);
+}
+
+.btn-delete:hover {
+    background: var(--danger-color);
+    color: white;
+    border-color: var(--danger-color);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+.delete-form {
+    margin: 0;
+}
+
+/* Empty State */
+.empty-state-modern {
+    text-align: center;
+    padding: 3rem 2rem;
+    background: var(--gray-light);
+    border-radius: var(--radius-md);
+    border: 1px dashed var(--gray-border);
+}
+
+.empty-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border-radius: 50%;
+    border: 2px dashed var(--gray-border);
+}
+
+.empty-icon i {
+    font-size: 2.5rem;
+    color: #94a3b8;
+}
+
+.empty-state-modern h4 {
+    margin: 0 0 0.5rem;
+    font-size: 1.1rem;
+    color: var(--dark-color);
+}
+
+.empty-state-modern p {
+    margin: 0;
+    color: #64748b;
+    font-size: 0.85rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .academic-dashboard {
+        padding: 1rem;
+    }
+    
+    .academic-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .academic-title {
+        font-size: 1.5rem;
+    }
+    
+    .form-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .card-header-modern {
+        padding: 1rem 1.25rem;
+    }
+    
+    .card-body-modern {
+        padding: 1.25rem;
+    }
+    
+    .form-actions-modern {
+        flex-direction: column;
+    }
+    
+    .btn-primary-modern, .btn-secondary-modern {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .study-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+    
+    .study-card-footer {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .btn-edit, .btn-delete {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .info-line {
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    
+    .info-line strong {
+        min-width: auto;
+    }
+}
+
+@media (max-width: 480px) {
+    .card-header-modern {
+        padding: 0.875rem 1rem;
+    }
+    
+    .card-body-modern {
+        padding: 1rem;
+    }
+    
+    .study-degree-icon h4 {
+        font-size: 0.9rem;
+    }
+    
+    .btn-edit, .btn-delete {
+        min-width: auto;
+        padding: 0.5rem 1rem;
+    }
+}
+</style>
+
+<script>
+// Cerrar mensajes flash
+document.querySelectorAll('.close').forEach(button => {
+    button.addEventListener('click', (e) => {
+        e.target.closest('.alert').remove();
+    });
+});
+
+// Validación de fechas
+document.querySelector('form').addEventListener('submit', function(e) {
+    const fechaInicio = document.getElementById('fecha_inicio');
+    const fechaFin = document.getElementById('fecha_fin');
+    
+    if (fechaFin.value && fechaInicio.value > fechaFin.value) {
+        alert('La fecha de fin no puede ser anterior a la fecha de inicio');
+        e.preventDefault();
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,661 @@
+<!-- templates/admin/editar_usuario.html -->
+{% extends "base.html" %}
+
+{% block title %}Editar Usuario{% endblock %}
+
+{% block content %}
+<div class="admin-dashboard">
+    <div class="admin-header">
+        <div class="header-left">
+            <div class="header-icon">
+                <i class="fas fa-user-edit"></i>
+            </div>
+            <div>
+                <h1>Editar Usuario</h1>
+                <p class="header-subtitle">Modifica la información del usuario</p>
+            </div>
+        </div>
+        <a href="{{ url_for('admin_usuarios') }}" class="btn-back">
+            <i class="fas fa-arrow-left"></i>
+            <span>Volver a usuarios</span>
+        </a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                    <div class="flash-message flash-{{ category }}">
+                        <i class="fas {% if category == 'success' %}fa-check-circle{% elif category == 'error' %}fa-exclamation-circle{% else %}fa-info-circle{% endif %}"></i>
+                        <span>{{ message }}</span>
+                        <button class="flash-close" onclick="this.parentElement.remove()">&times;</button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <div class="admin-card">
+        <div class="card-header-modern">
+            <div class="header-icon-small">
+                <i class="fas fa-user"></i>
+            </div>
+            <h3>Información del Usuario</h3>
+            <span class="card-badge">ID: {{ usuario.UsuarioID }}</span>
+        </div>
+
+        <form method="POST" class="admin-form-modern">
+            <div class="form-field">
+                <label class="field-label">
+                    <i class="fas fa-envelope"></i>
+                    <span>Correo Electrónico</span>
+                </label>
+                <input type="email" id="email" name="email" class="field-control" 
+                       value="{{ usuario.Email }}" required>
+                <small class="field-hint">El correo será utilizado para el inicio de sesión</small>
+            </div>
+
+            <div class="form-field">
+                <label class="field-label">
+                    <i class="fas fa-user-tag"></i>
+                    <span>Tipo de Usuario</span>
+                </label>
+                <select id="tipo_usuario" name="tipo_usuario" class="field-control" required>
+                    <option value="candidato" {% if usuario.TipoUsuario == 'candidato' %}selected{% endif %}>
+                        <i class="fas fa-user-tie"></i> Candidato
+                    </option>
+                    <option value="empresa" {% if usuario.TipoUsuario == 'empresa' %}selected{% endif %}>
+                        <i class="fas fa-building"></i> Empresa
+                    </option>
+                    <option value="admin" {% if usuario.TipoUsuario == 'admin' %}selected{% endif %}>
+                        <i class="fas fa-shield-alt"></i> Administrador
+                    </option>
+                </select>
+                <small class="field-hint">Define el rol y permisos del usuario</small>
+            </div>
+
+            <div class="form-field checkbox-field">
+                <label class="checkbox-modern">
+                    <input type="checkbox" id="activo" name="activo" value="1" 
+                           {% if usuario.Activo %}checked{% endif %}>
+                    <span class="checkbox-custom"></span>
+                    <span class="checkbox-label">
+                        <i class="fas fa-check-circle"></i>
+                        Usuario Activo
+                    </span>
+                </label>
+                <small class="field-hint">Los usuarios inactivos no podrán iniciar sesión</small>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn-primary-modern">
+                    <i class="fas fa-save"></i>
+                    <span>Guardar Cambios</span>
+                </button>
+                <a href="{{ url_for('admin_usuarios') }}" class="btn-secondary-modern">
+                    <i class="fas fa-times"></i>
+                    <span>Cancelar</span>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Información adicional del usuario -->
+    <div class="info-card">
+        <div class="card-header-modern">
+            <div class="header-icon-small">
+                <i class="fas fa-info-circle"></i>
+            </div>
+            <h3>Información Adicional</h3>
+        </div>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">ID de Usuario:</span>
+                <span class="info-value">{{ usuario.UsuarioID }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Fecha de Registro:</span>
+                <span class="info-value">{{ usuario.FechaRegistro.strftime('%d/%m/%Y %H:%M') if usuario.FechaRegistro else 'No disponible' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Estado Actual:</span>
+                <span class="info-value">
+                    <span class="status-badge {% if usuario.Activo %}status-active{% else %}status-inactive{% endif %}">
+                        <i class="fas {% if usuario.Activo %}fa-circle{% else %}fa-circle{% endif %}"></i>
+                        {{ 'Activo' if usuario.Activo else 'Inactivo' }}
+                    </span>
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Tipo de Perfil:</span>
+                <span class="info-value">
+                    <span class="role-badge role-{{ usuario.TipoUsuario }}">
+                        <i class="fas {% if usuario.TipoUsuario == 'candidato' %}fa-user-tie{% elif usuario.TipoUsuario == 'empresa' %}fa-building{% else %}fa-shield-alt{% endif %}"></i>
+                        {{ usuario.TipoUsuario|capitalize }}
+                    </span>
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Variables */
+:root {
+    --primary-color: #2563eb;
+    --primary-dark: #1d4ed8;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --danger-color: #ef4444;
+    --dark-color: #1e293b;
+    --gray-light: #f8fafc;
+    --gray-border: #e2e8f0;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --transition: all 0.3s ease;
+}
+
+/* Dashboard Principal */
+.admin-dashboard {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 1.5rem;
+}
+
+/* Header */
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--gray-border);
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.header-icon {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+}
+
+.header-icon i {
+    font-size: 1.5rem;
+    color: white;
+}
+
+.admin-header h1 {
+    margin: 0;
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--dark-color);
+}
+
+.header-subtitle {
+    margin: 0.25rem 0 0;
+    color: #64748b;
+    font-size: 0.85rem;
+}
+
+.btn-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.25rem;
+    background: white;
+    color: var(--dark-color);
+    border: 1px solid var(--gray-border);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.btn-back:hover {
+    background: var(--gray-light);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    transform: translateX(-3px);
+}
+
+/* Flash Messages */
+.flash-messages {
+    margin-bottom: 1.5rem;
+}
+
+.flash-message {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    border-radius: var(--radius-md);
+    margin-bottom: 0.75rem;
+    animation: slideIn 0.3s ease-out;
+    position: relative;
+}
+
+.flash-success {
+    background: #ecfdf5;
+    border-left: 4px solid var(--success-color);
+    color: #065f46;
+}
+
+.flash-error {
+    background: #fef2f2;
+    border-left: 4px solid var(--danger-color);
+    color: #991b1b;
+}
+
+.flash-info {
+    background: #eff6ff;
+    border-left: 4px solid var(--primary-color);
+    color: #1e40af;
+}
+
+.flash-message i {
+    font-size: 1.1rem;
+}
+
+.flash-close {
+    margin-left: auto;
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0.7;
+    transition: var(--transition);
+}
+
+.flash-close:hover {
+    opacity: 1;
+}
+
+/* Tarjeta Principal */
+.admin-card {
+    background: white;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--gray-border);
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
+}
+
+.admin-card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.card-header-modern {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    background: var(--gray-light);
+    border-bottom: 1px solid var(--gray-border);
+}
+
+.header-icon-small {
+    width: 32px;
+    height: 32px;
+    background: rgba(37, 99, 235, 0.1);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.header-icon-small i {
+    font-size: 1rem;
+    color: var(--primary-color);
+}
+
+.card-header-modern h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--dark-color);
+    flex: 1;
+}
+
+.card-badge {
+    background: var(--primary-color);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+/* Formulario */
+.admin-form-modern {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.field-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--dark-color);
+}
+
+.field-label i {
+    color: var(--primary-color);
+    width: 18px;
+}
+
+.field-control {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    border: 1px solid var(--gray-border);
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+    background: white;
+    font-family: inherit;
+}
+
+.field-control:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+select.field-control {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+}
+
+.field-hint {
+    font-size: 0.7rem;
+    color: #64748b;
+}
+
+/* Checkbox moderno */
+.checkbox-field {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.checkbox-modern {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+}
+
+.checkbox-modern input {
+    display: none;
+}
+
+.checkbox-custom {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--gray-border);
+    border-radius: 4px;
+    position: relative;
+    transition: var(--transition);
+}
+
+.checkbox-modern input:checked + .checkbox-custom {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.checkbox-modern input:checked + .checkbox-custom::after {
+    content: "✓";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 12px;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--dark-color);
+}
+
+.checkbox-label i {
+    color: var(--primary-color);
+}
+
+/* Botones */
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--gray-border);
+    margin-top: 0.5rem;
+}
+
+.btn-primary-modern {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-primary-modern:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-secondary-modern {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: white;
+    color: var(--dark-color);
+    border: 1px solid var(--gray-border);
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.btn-secondary-modern:hover {
+    background: var(--gray-light);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+/* Tarjeta de información adicional */
+.info-card {
+    background: white;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--gray-border);
+    overflow: hidden;
+}
+
+.info-grid {
+    padding: 1.5rem;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--gray-border);
+}
+
+.info-item:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    font-size: 0.8rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.info-value {
+    font-size: 0.85rem;
+    color: var(--dark-color);
+    font-weight: 500;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 30px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.status-active {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.status-inactive {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.role-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 30px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.role-candidato {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.role-empresa {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.role-admin {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+/* Animaciones */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .admin-dashboard {
+        padding: 1rem;
+    }
+    
+    .admin-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .btn-back {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .info-grid {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .btn-primary-modern, .btn-secondary-modern {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .card-header-modern {
+        padding: 0.875rem 1rem;
+        flex-wrap: wrap;
+    }
+    
+    .admin-form-modern {
+        padding: 1.25rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .header-left {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .info-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+    }
+    
+    .checkbox-field {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+</style>
+{% endblock %}

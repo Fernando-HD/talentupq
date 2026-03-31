@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # Base de Datos SQL Server
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: talentupq_sqlserver
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=${DB_PASSWORD}
+      - MSSQL_PID=Express
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    networks:
+      - talentupq_network
+    restart: unless-stopped
+    healthcheck:
+      test: /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P ${DB_PASSWORD} -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  # API Flask
+  flask_app:
+    build: .
+    container_name: talentupq_flask
+    environment:
+      - DB_HOST=sqlserver
+      - DB_PORT=1433
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - SECRET_KEY=${SECRET_KEY}
+      - MAIL_USERNAME=${MAIL_USERNAME}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
+      - FLASK_ENV=production
+    ports:
+      - "5000:5000"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    networks:
+      - talentupq_network
+    restart: unless-stopped
+    volumes:
+      - uploads_data:/app/static/uploads
+
+  # Cliente React
+  react_app:
+    build: ./frontend-react
+    container_name: talentupq_react
+    ports:
+      - "3000:3000"
+    networks:
+      - talentupq_network
+    restart: unless-stopped
+
+volumes:
+  sqlserver_data:
+  uploads_data:
+
+networks:
+  talentupq_network:
+    driver: bridge

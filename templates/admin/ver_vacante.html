@@ -1,0 +1,572 @@
+<!-- templates/admin/ver_vacante.html -->
+{% extends "base.html" %}
+
+{% block title %}Detalles de Vacante - Admin{% endblock %}
+
+{% block content %}
+<style>
+    :root {
+        --primary-color: #4361ee;
+        --primary-dark: #3a56d4;
+        --success-color: #10b981;
+        --danger-color: #ef4444;
+        --warning-color: #f59e0b;
+        --info-color: #3b82f6;
+        --gray-50: #f9fafb;
+        --gray-100: #f3f4f6;
+        --gray-200: #e5e7eb;
+        --gray-300: #d1d5db;
+        --gray-600: #6b7280;
+        --gray-700: #374151;
+        --gray-800: #1f2937;
+        --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+        --radius-md: 0.5rem;
+        --radius-lg: 0.75rem;
+        --radius-xl: 1rem;
+    }
+    
+    .vacante-detail-container {
+        max-width: 1200px;
+        margin: 2rem auto;
+        padding: 0 1.5rem;
+    }
+    
+    /* Header Styles */
+    .vacante-detail-header {
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 2px solid var(--gray-200);
+        position: relative;
+    }
+    
+    .vacante-detail-header h1 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: var(--gray-800);
+        margin-bottom: 1rem;
+        background: linear-gradient(135deg, var(--gray-800) 0%, var(--primary-color) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .vacante-meta {
+        display: flex;
+        gap: 1.5rem;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-top: 0.5rem;
+    }
+    
+    .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--gray-600);
+        font-size: 0.875rem;
+    }
+    
+    .meta-item i {
+        font-size: 1rem;
+        color: var(--primary-color);
+    }
+    
+    .company-name {
+        font-weight: 600;
+        color: var(--gray-700);
+        background: var(--gray-100);
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+    }
+    
+    .status-badge {
+        padding: 0.375rem 1rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .status-badge::before {
+        content: "●";
+        font-size: 0.75rem;
+    }
+    
+    .status-badge.en_revision {
+        background-color: #fef3c7;
+        color: #92400e;
+    }
+    
+    .status-badge.aprobada {
+        background-color: #d1fae5;
+        color: #065f46;
+    }
+    
+    .status-badge.rechazada {
+        background-color: #fee2e2;
+        color: #991b1b;
+    }
+    
+    .status-badge.cerrada {
+        background-color: var(--gray-200);
+        color: var(--gray-600);
+    }
+    
+    /* Main Content Card */
+    .vacante-detail-content {
+        background: white;
+        border-radius: var(--radius-xl);
+        box-shadow: var(--shadow-lg);
+        overflow: hidden;
+        margin-bottom: 2rem;
+    }
+    
+    .detail-section {
+        padding: 2rem;
+        border-bottom: 1px solid var(--gray-200);
+    }
+    
+    .detail-section:last-child {
+        border-bottom: none;
+    }
+    
+    .detail-section h2 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--gray-800);
+        margin-bottom: 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .detail-section h2 i {
+        color: var(--primary-color);
+        font-size: 1.25rem;
+    }
+    
+    .detail-section p {
+        color: var(--gray-700);
+        line-height: 1.6;
+        margin: 0;
+    }
+    
+    /* Requirements Grid */
+    .requirements-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.25rem;
+    }
+    
+    .requirement-card {
+        background: var(--gray-50);
+        border-radius: var(--radius-md);
+        padding: 1.25rem;
+        transition: all 0.2s ease;
+        border: 1px solid var(--gray-200);
+    }
+    
+    .requirement-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+        border-color: var(--primary-color);
+    }
+    
+    .requirement-card h3 {
+        font-size: 0.875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--primary-color);
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .requirement-card h3 i {
+        font-size: 1rem;
+    }
+    
+    .requirement-card ul {
+        margin: 0;
+        padding-left: 1.25rem;
+    }
+    
+    .requirement-card li {
+        margin-bottom: 0.5rem;
+        color: var(--gray-700);
+        font-size: 0.875rem;
+    }
+    
+    .requirement-card p {
+        font-size: 0.875rem;
+        color: var(--gray-700);
+        margin: 0;
+    }
+    
+    /* Additional Info Grid */
+    .additional-info {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 1rem;
+    }
+    
+    .info-item {
+        background: var(--gray-50);
+        padding: 0.875rem;
+        border-radius: var(--radius-md);
+        border-left: 3px solid var(--primary-color);
+    }
+    
+    .info-item strong {
+        display: block;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--gray-600);
+        margin-bottom: 0.25rem;
+    }
+    
+    .info-item span {
+        color: var(--gray-800);
+        font-weight: 500;
+        font-size: 0.875rem;
+    }
+    
+    /* Admin Comments */
+    .admin-comments {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        border-left: 4px solid var(--warning-color);
+    }
+    
+    .admin-comments h2 i {
+        color: var(--warning-color);
+    }
+    
+    .admin-comments p {
+        background: white;
+        padding: 1rem;
+        border-radius: var(--radius-md);
+        margin: 0;
+        color: var(--gray-800);
+        border-left: 3px solid var(--warning-color);
+    }
+    
+    /* Actions Section */
+    .vacante-actions {
+        background: white;
+        border-radius: var(--radius-xl);
+        box-shadow: var(--shadow-lg);
+        padding: 1.5rem;
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 1.5rem;
+        flex-wrap: wrap;
+        align-items: flex-start;
+    }
+    
+    .approve-form, .reject-form {
+        flex: 1;
+        min-width: 250px;
+    }
+    
+    .btn {
+        padding: 0.75rem 1.5rem;
+        border-radius: var(--radius-md);
+        font-size: 0.875rem;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        border: none;
+        width: 100%;
+    }
+    
+    .btn-approve {
+        background: linear-gradient(135deg, var(--success-color), #059669);
+        color: white;
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .btn-approve:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
+    }
+    
+    .btn-reject {
+        background: linear-gradient(135deg, var(--danger-color), #dc2626);
+        color: white;
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .btn-reject:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
+    }
+    
+    .reject-comments {
+        margin-top: 1rem;
+    }
+    
+    .reject-comments textarea {
+        width: 100%;
+        padding: 0.75rem;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--gray-300);
+        font-family: inherit;
+        font-size: 0.875rem;
+        resize: vertical;
+        transition: all 0.2s ease;
+    }
+    
+    .reject-comments textarea:focus {
+        outline: none;
+        border-color: var(--danger-color);
+        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+    }
+    
+    .reject-comments textarea::placeholder {
+        color: var(--gray-400);
+    }
+    
+    /* Empty State */
+    .empty-state {
+        color: var(--gray-500);
+        font-style: italic;
+        font-size: 0.875rem;
+    }
+    
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .vacante-detail-container {
+            padding: 0 1rem;
+            margin: 1rem auto;
+        }
+        
+        .vacante-detail-header h1 {
+            font-size: 1.75rem;
+        }
+        
+        .detail-section {
+            padding: 1.5rem;
+        }
+        
+        .requirements-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .additional-info {
+            grid-template-columns: 1fr;
+        }
+        
+        .action-buttons {
+            flex-direction: column;
+        }
+        
+        .approve-form, .reject-form {
+            width: 100%;
+        }
+    }
+    
+    /* Animations */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .vacante-detail-container {
+        animation: fadeInUp 0.4s ease-out;
+    }
+    
+    .requirement-card, .info-item {
+        animation: fadeInUp 0.4s ease-out;
+        animation-fill-mode: backwards;
+    }
+    
+    .requirement-card:nth-child(1) { animation-delay: 0.05s; }
+    .requirement-card:nth-child(2) { animation-delay: 0.1s; }
+    .requirement-card:nth-child(3) { animation-delay: 0.15s; }
+    .requirement-card:nth-child(4) { animation-delay: 0.2s; }
+    .requirement-card:nth-child(5) { animation-delay: 0.25s; }
+</style>
+
+<div class="vacante-detail-container">
+    <div class="vacante-detail-header">
+        <h1>{{ vacante['Puesto'] }}</h1>
+        <div class="vacante-meta">
+            <div class="meta-item">
+                <i class="fas fa-building"></i>
+                <span class="company-name">{{ empresa.nombre }}</span>
+            </div>
+            <div class="meta-item">
+                <i class="fas fa-calendar-alt"></i>
+                <span>{{ vacante['FechaPublicacion'].split('T')[0] if vacante['FechaPublicacion'] else 'Fecha no disponible' }}</span>
+            </div>
+            <div class="meta-item">
+                <i class="fas fa-tag"></i>
+                <span class="status-badge {{ vacante['Estatus'] }}">
+                    {{ vacante['Estatus']|replace('_', ' ')|title }}
+                </span>
+            </div>
+            <div class="meta-item">
+                <i class="fas fa-users"></i>
+                <span>{{ vacante['PlazasDisponibles'] }}/{{ vacante['Plazas'] }} plazas disponibles</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="vacante-detail-content">
+        <div class="detail-section">
+            <h2>
+                <i class="fas fa-file-alt"></i>
+                Descripción del Puesto
+            </h2>
+            <p>{{ vacante['Resumen'] }}</p>
+        </div>
+        
+        <div class="detail-section">
+            <h2>
+                <i class="fas fa-check-circle"></i>
+                Requisitos
+            </h2>
+            <div class="requirements-grid">
+                <div class="requirement-card">
+                    <h3>
+                        <i class="fas fa-star"></i>
+                        Habilidades Requeridas
+                    </h3>
+                    <ul>
+                        {% for habilidad in habilidades_requeridas %}
+                        <li>{{ habilidad }}</li>
+                        {% else %}
+                        <li class="empty-state">No se especificaron habilidades requeridas</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                
+                <div class="requirement-card">
+                    <h3>
+                        <i class="fas fa-plus-circle"></i>
+                        Habilidades Opcionales
+                    </h3>
+                    <ul>
+                        {% for habilidad in habilidades_opcionales %}
+                        <li>{{ habilidad }}</li>
+                        {% else %}
+                        <li class="empty-state">No se especificaron habilidades opcionales</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                
+                <div class="requirement-card">
+                    <h3>
+                        <i class="fas fa-graduation-cap"></i>
+                        Grado de Estudios
+                    </h3>
+                    <p>{{ vacante['GradoEstudios'] }}</p>
+                </div>
+                
+                <div class="requirement-card">
+                    <h3>
+                        <i class="fas fa-briefcase"></i>
+                        Experiencia Requerida
+                    </h3>
+                    <p>{{ vacante['ExperienciaRequerida'] }}</p>
+                </div>
+                
+                <div class="requirement-card">
+                    <h3>
+                        <i class="fas fa-file-signature"></i>
+                        Tipo de Contrato
+                    </h3>
+                    <p>{{ vacante['TipoContrato'] }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="detail-section">
+            <h2>
+                <i class="fas fa-info-circle"></i>
+                Información Adicional
+            </h2>
+            <div class="additional-info">
+                <div class="info-item">
+                    <strong>Modalidad</strong>
+                    <span>{{ vacante['Modalidad'] }}</span>
+                </div>
+                <div class="info-item">
+                    <strong>Ubicación</strong>
+                    <span>{{ vacante['Ubicacion'] if vacante['Ubicacion'] else 'No especificada' }}</span>
+                </div>
+                <div class="info-item">
+                    <strong>Salario</strong>
+                    <span>{{ vacante['Salario'] if vacante['Salario'] else 'No especificado' }}</span>
+                </div>
+                <div class="info-item">
+                    <strong>Beneficios</strong>
+                    <span>{{ vacante['Beneficios'] if vacante['Beneficios'] else 'No especificados' }}</span>
+                </div>
+                {% if vacante['FechaCierre'] %}
+                <div class="info-item">
+                    <strong>Fecha de cierre</strong>
+                    <span>{{ vacante['FechaCierre'] }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if vacante['ComentariosAdmin'] %}
+        <div class="detail-section admin-comments">
+            <h2>
+                <i class="fas fa-comment-dots"></i>
+                Comentarios del Administrador
+            </h2>
+            <p>{{ vacante['ComentariosAdmin'] }}</p>
+        </div>
+        {% endif %}
+    </div>
+    
+    {% if vacante['Estatus'] == 'en_revision' %}
+    <div class="vacante-actions">
+        <div class="action-buttons">
+            <form action="{{ url_for('admin_aprobar_vacante', vacante_id=vacante['VacanteID']) }}" method="POST" class="approve-form">
+                <button type="submit" class="btn btn-approve">
+                    <i class="fas fa-check-circle"></i>
+                    Aprobar Vacante
+                </button>
+            </form>
+            
+            <form action="{{ url_for('admin_rechazar_vacante', vacante_id=vacante['VacanteID']) }}" method="POST" class="reject-form">
+                <button type="submit" class="btn btn-reject">
+                    <i class="fas fa-times-circle"></i>
+                    Rechazar Vacante
+                </button>
+                <div class="reject-comments">
+                    <textarea name="comentarios" required minlength="10" 
+                              placeholder="Motivo del rechazo (mínimo 10 caracteres)"></textarea>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,856 @@
+{% extends "base.html" %}
+
+{% block title %}Referencias Profesionales{% endblock %}
+
+{% block content %}
+<div class="dashboard references-dashboard">
+    <div class="references-header">
+        <h1 class="references-title">
+            <i class="fas fa-user-tie"></i> Referencias Profesionales
+        </h1>
+        <a href="{{ url_for('candidato_dashboard') }}" class="btn btn-outline">
+            <i class="fas fa-arrow-left"></i> Volver al Dashboard
+        </a>
+    </div>
+
+    <!-- Formulario para agregar/editar -->
+    <div class="references-card form-card">
+        <div class="card-header-modern">
+            <div class="header-icon">
+                <i class="fas {% if editar_index is not none %}fa-edit{% else %}fa-plus-circle{% endif %}"></i>
+            </div>
+            <h3 class="card-title-modern">
+                {% if editar_index is not none %}Editar{% else %}Agregar{% endif %} Referencia Profesional
+            </h3>
+        </div>
+        <div class="card-body-modern">
+            <form method="POST" enctype="multipart/form-data" class="reference-form-modern">
+                <input type="hidden" name="editar_index" value="{{ editar_index if editar_index is not none else '' }}">
+                
+                {% if referencia_editar and referencia_editar['Documento'] %}
+                <input type="hidden" name="documento_actual" value="{{ referencia_editar['Documento'] }}">
+                {% endif %}
+
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-user"></i>
+                            <span>Nombre Completo *</span>
+                        </label>
+                        <input type="text" id="nombre" name="nombre" class="field-control"
+                               value="{{ referencia_editar['Nombre'] if referencia_editar else '' }}" 
+                               required placeholder="Nombre completo de la referencia">
+                    </div>
+                    
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-briefcase"></i>
+                            <span>Ocupación *</span>
+                        </label>
+                        <input type="text" id="ocupacion" name="ocupacion" class="field-control"
+                               value="{{ referencia_editar['Ocupacion'] if referencia_editar else '' }}" 
+                               required placeholder="Cargo o profesión">
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-phone-alt"></i>
+                            <span>Teléfono *</span>
+                        </label>
+                        <input type="tel" id="telefono" name="telefono" class="field-control"
+                               value="{{ referencia_editar['Telefono'] if referencia_editar else '' }}" 
+                               required placeholder="Número de contacto">
+                    </div>
+                    
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-clock"></i>
+                            <span>Años de conocerlo *</span>
+                        </label>
+                        <input type="number" id="anos_conocer" name="anos_conocer" class="field-control"
+                               value="{{ referencia_editar['AnosConocer'] if referencia_editar else '' }}" 
+                               required min="1" placeholder="Ej: 3">
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label class="field-label">
+                        <i class="fas fa-building"></i>
+                        <span>Empresa donde trabaja</span>
+                    </label>
+                    <input type="text" id="empresa" name="empresa" class="field-control"
+                           value="{{ referencia_editar['Empresa'] if referencia_editar and referencia_editar['Empresa'] else '' }}"
+                           placeholder="Nombre de la empresa">
+                </div>
+
+                <div class="form-field">
+                    <label class="field-label">
+                        <i class="fas fa-file-pdf"></i>
+                        <span>Documento de Referencia</span>
+                    </label>
+                    
+                    {% if referencia_editar and referencia_editar['Documento'] %}
+                    <div class="current-document">
+                        <i class="fas fa-file-pdf"></i>
+                        <span>Documento actual: {{ referencia_editar['Documento'].split('_')[-1] if referencia_editar['Documento'] else 'documento.pdf' }}</span>
+                        <a href="{{ url_for('static', filename='uploads/' + referencia_editar['Documento']) }}" 
+                           target="_blank" class="btn-view">
+                            <i class="fas fa-eye"></i> Ver
+                        </a>
+                    </div>
+                    <small class="field-hint">Subir un nuevo archivo reemplazará el documento actual</small>
+                    {% endif %}
+                    
+                    <div class="file-upload-area">
+                        <label for="documento" class="file-upload-label">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <span>{{ 'Seleccionar nuevo archivo' if referencia_editar and referencia_editar['Documento'] else 'Seleccionar archivo PDF' }}</span>
+                            <input type="file" id="documento" name="documento" accept=".pdf" class="file-input">
+                        </label>
+                        <div id="file-name" class="file-name"></div>
+                    </div>
+                    <small class="field-hint">Formatos aceptados: PDF (Tamaño máximo: 5MB)</small>
+                </div>
+
+                <div class="form-actions-modern">
+                    <button type="submit" class="btn-primary-modern">
+                        <i class="fas fa-save"></i> {% if editar_index is not none %}Actualizar{% else %}Guardar{% endif %}
+                    </button>
+                    
+                    {% if editar_index is not none %}
+                    <a href="{{ url_for('candidato_referencias') }}" class="btn-secondary-modern">
+                        <i class="fas fa-times"></i> Cancelar
+                    </a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Lista de referencias -->
+    <div class="references-card list-card">
+        <div class="card-header-modern">
+            <div class="header-icon">
+                <i class="fas fa-users"></i>
+            </div>
+            <h3 class="card-title-modern">
+                Mis Referencias
+                <span class="count-badge">{{ referencias|length }}</span>
+            </h3>
+        </div>
+        <div class="card-body-modern">
+            {% if referencias %}
+                <div class="references-grid">
+                    {% for ref in referencias %}
+                    <div class="reference-item {% if loop.index0 == editar_index %}active{% endif %}">
+                        <div class="reference-item-header">
+                            <div class="person-info">
+                                <div class="person-icon">
+                                    <i class="fas fa-user-circle"></i>
+                                </div>
+                                <div class="person-details">
+                                    <h4>{{ ref['Nombre'] }}</h4>
+                                    <span class="occupation">{{ ref['Ocupacion'] }}</span>
+                                </div>
+                            </div>
+                            <div class="years-badge">
+                                <i class="fas fa-calendar-alt"></i>
+                                <span>{{ ref['AnosConocer'] }} años</span>
+                            </div>
+                        </div>
+                        
+                        <div class="reference-item-body">
+                            <div class="contact-info">
+                                <div class="contact-item">
+                                    <i class="fas fa-phone-alt"></i>
+                                    <span>{{ ref['Telefono'] }}</span>
+                                </div>
+                                {% if ref['Empresa'] %}
+                                <div class="contact-item">
+                                    <i class="fas fa-building"></i>
+                                    <span>{{ ref['Empresa'] }}</span>
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            {% if ref['Documento'] %}
+                            <div class="document-link">
+                                <i class="fas fa-file-pdf"></i>
+                                <a href="{{ url_for('static', filename='uploads/' + ref['Documento']) }}" 
+                                   target="_blank">
+                                    Ver documento de referencia
+                                    <i class="fas fa-external-link-alt"></i>
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="reference-item-footer">
+                            <a href="{{ url_for('candidato_referencias', editar=loop.index0) }}" 
+                               class="btn-edit">
+                                <i class="fas fa-edit"></i> Editar
+                            </a>
+                            <form method="POST" action="{{ url_for('candidato_referencias') }}"
+                                  onsubmit="return confirm('¿Está seguro de eliminar esta referencia profesional?');" 
+                                  class="delete-form">
+                                <input type="hidden" name="eliminar" value="{{ loop.index0 }}">
+                                <button type="submit" class="btn-delete">
+                                    <i class="fas fa-trash"></i> Eliminar
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state-modern">
+                    <div class="empty-icon">
+                        <i class="fas fa-user-tie"></i>
+                    </div>
+                    <h4>No hay referencias registradas</h4>
+                    <p>Agrega tu primera referencia profesional utilizando el formulario superior.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+/* Variables */
+:root {
+    --primary-color: #2563eb;
+    --primary-dark: #1d4ed8;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --danger-color: #ef4444;
+    --dark-color: #1e293b;
+    --gray-light: #f8fafc;
+    --gray-border: #e2e8f0;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --transition: all 0.3s ease;
+}
+
+/* Dashboard Principal */
+.references-dashboard {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 1.5rem;
+}
+
+.references-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--gray-border);
+}
+
+.references-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--dark-color);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.references-title i {
+    color: var(--primary-color);
+    font-size: 1.85rem;
+}
+
+/* Tarjetas */
+.references-card {
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--gray-border);
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+    transition: var(--transition);
+}
+
+.references-card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.card-header-modern {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem 1.75rem;
+    background: linear-gradient(135deg, #fafcff 0%, #ffffff 100%);
+    border-bottom: 1px solid var(--gray-border);
+}
+
+.header-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(37, 99, 235, 0.1);
+    border-radius: var(--radius-sm);
+}
+
+.header-icon i {
+    font-size: 1.25rem;
+    color: var(--primary-color);
+}
+
+.card-title-modern {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--dark-color);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+}
+
+.count-badge {
+    background: var(--primary-color);
+    color: white;
+    padding: 0.25rem 0.6rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-left: 0.5rem;
+}
+
+.card-body-modern {
+    padding: 1.75rem;
+}
+
+/* Formulario */
+.reference-form-modern {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.field-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--dark-color);
+}
+
+.field-label i {
+    color: var(--primary-color);
+    width: 18px;
+}
+
+.field-control {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    border: 1px solid var(--gray-border);
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+    background: white;
+    font-family: inherit;
+}
+
+.field-control:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.field-hint {
+    font-size: 0.7rem;
+    color: #64748b;
+    margin-top: 0.25rem;
+}
+
+/* Documento actual */
+.current-document {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: #ecfdf5;
+    border-radius: var(--radius-sm);
+    margin-bottom: 0.75rem;
+    border: 1px solid #a7f3d0;
+}
+
+.current-document i {
+    color: #10b981;
+    font-size: 1rem;
+}
+
+.current-document span {
+    flex: 1;
+    font-size: 0.85rem;
+    color: var(--dark-color);
+}
+
+.btn-view {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.75rem;
+    background: white;
+    color: var(--primary-color);
+    border: 1px solid var(--gray-border);
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.btn-view:hover {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+/* File Upload */
+.file-upload-area {
+    margin-top: 0.25rem;
+}
+
+.file-upload-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    background: var(--gray-light);
+    border: 1px dashed var(--gray-border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 0.85rem;
+    color: var(--dark-color);
+}
+
+.file-upload-label:hover {
+    border-color: var(--primary-color);
+    background: white;
+}
+
+.file-upload-label i {
+    font-size: 1rem;
+    color: var(--primary-color);
+}
+
+.file-input {
+    display: none;
+}
+
+.file-name {
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--primary-color);
+}
+
+/* Botones del formulario */
+.form-actions-modern {
+    display: flex;
+    gap: 1rem;
+    padding-top: 1rem;
+    margin-top: 0.5rem;
+    border-top: 1px solid var(--gray-border);
+}
+
+.btn-primary-modern {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-primary-modern:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-secondary-modern {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: white;
+    color: var(--dark-color);
+    border: 1px solid var(--gray-border);
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.btn-secondary-modern:hover {
+    background: var(--gray-light);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+/* Grid de referencias */
+.references-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.reference-item {
+    background: white;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--gray-border);
+    overflow: hidden;
+    transition: var(--transition);
+}
+
+.reference-item:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.reference-item.active {
+    border-left: 4px solid var(--primary-color);
+    background: rgba(37, 99, 235, 0.02);
+}
+
+.reference-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    background: var(--gray-light);
+    border-bottom: 1px solid var(--gray-border);
+}
+
+.person-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.person-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(37, 99, 235, 0.1);
+    border-radius: 50%;
+}
+
+.person-icon i {
+    font-size: 1.5rem;
+    color: var(--primary-color);
+}
+
+.person-details h4 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--dark-color);
+}
+
+.person-details .occupation {
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+.years-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.75rem;
+    background: white;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    color: var(--dark-color);
+    border: 1px solid var(--gray-border);
+}
+
+.reference-item-body {
+    padding: 1rem 1.25rem;
+}
+
+.contact-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.contact-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: #475569;
+}
+
+.contact-item i {
+    color: var(--primary-color);
+    width: 18px;
+}
+
+.document-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: var(--gray-light);
+    border-radius: var(--radius-sm);
+}
+
+.document-link i {
+    color: #ef4444;
+    font-size: 0.9rem;
+}
+
+.document-link a {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.document-link a:hover {
+    text-decoration: underline;
+}
+
+.reference-item-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    padding: 0.75rem 1.25rem;
+    background: var(--gray-light);
+    border-top: 1px solid var(--gray-border);
+}
+
+.btn-edit, .btn-delete {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.25rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    transition: var(--transition);
+    cursor: pointer;
+    border: none;
+    min-width: 100px;
+}
+
+.btn-edit {
+    background: white;
+    color: var(--primary-color);
+    border: 1px solid var(--gray-border);
+}
+
+.btn-edit:hover {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-delete {
+    background: white;
+    color: var(--danger-color);
+    border: 1px solid var(--gray-border);
+}
+
+.btn-delete:hover {
+    background: var(--danger-color);
+    color: white;
+    border-color: var(--danger-color);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+.delete-form {
+    margin: 0;
+}
+
+/* Empty State */
+.empty-state-modern {
+    text-align: center;
+    padding: 3rem 2rem;
+    background: var(--gray-light);
+    border-radius: var(--radius-md);
+    border: 1px dashed var(--gray-border);
+}
+
+.empty-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border-radius: 50%;
+    border: 2px dashed var(--gray-border);
+}
+
+.empty-icon i {
+    font-size: 2.5rem;
+    color: #94a3b8;
+}
+
+.empty-state-modern h4 {
+    margin: 0 0 0.5rem;
+    font-size: 1.1rem;
+    color: var(--dark-color);
+}
+
+.empty-state-modern p {
+    margin: 0;
+    color: #64748b;
+    font-size: 0.85rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .references-dashboard {
+        padding: 1rem;
+    }
+    
+    .references-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .references-title {
+        font-size: 1.5rem;
+    }
+    
+    .form-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .card-header-modern {
+        padding: 1rem 1.25rem;
+    }
+    
+    .card-body-modern {
+        padding: 1.25rem;
+    }
+    
+    .form-actions-modern {
+        flex-direction: column;
+    }
+    
+    .btn-primary-modern, .btn-secondary-modern {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .reference-item-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .reference-item-footer {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .btn-edit, .btn-delete {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .contact-info {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .card-header-modern {
+        padding: 0.875rem 1rem;
+    }
+    
+    .card-body-modern {
+        padding: 1rem;
+    }
+    
+    .person-info {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .person-details h4 {
+        font-size: 0.95rem;
+    }
+}
+</style>
+
+<script>
+// Actualizar nombre del archivo seleccionado
+document.querySelector('#documento').addEventListener('change', function(e) {
+    var fileName = this.files[0] ? this.files[0].name : '';
+    var fileNameDisplay = document.getElementById('file-name');
+    if (fileNameDisplay) {
+        fileNameDisplay.textContent = fileName ? 'Archivo seleccionado: ' + fileName : '';
+        fileNameDisplay.style.color = fileName ? '#10b981' : '';
+    }
+    var label = document.querySelector('.file-upload-label span');
+    if (label && fileName) {
+        label.textContent = 'Archivo seleccionado';
+    } else if (label) {
+        label.textContent = 'Seleccionar archivo PDF';
+    }
+});
+
+// Cerrar mensajes flash
+document.querySelectorAll('.close').forEach(button => {
+    button.addEventListener('click', function() {
+        this.parentElement.style.opacity = '0';
+        setTimeout(() => {
+            this.parentElement.remove();
+        }, 300);
+    });
+});
+</script>
+{% endblock %}

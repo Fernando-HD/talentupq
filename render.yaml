@@ -1,0 +1,31 @@
+services:
+  # API Flask
+  - name: talentupq-api
+    type: web
+    dockerfilePath: Dockerfile
+    envVars:
+      - key: DB_HOST
+        value: sqlserver
+      - key: DB_PORT
+        value: "1433"
+      - key: DB_NAME
+        value: BolsaTrabajoUPQ
+      - key: DB_USER
+        value: sa
+      - key: DB_PASSWORD
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+    healthCheckPath: /api/v1/vacantes
+
+  # Cliente React
+  - name: talentupq-client
+    type: web
+    dockerfilePath: frontend-react/Dockerfile
+    envVars:
+      - key: REACT_APP_API_URL
+        value: https://talentupq-api.onrender.com/api/v1

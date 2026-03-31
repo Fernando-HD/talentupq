@@ -1,0 +1,82 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Entorno virtual
+bin/
+include/
+lib/
+pyvenv.cfg
+lib64/
+share/
+
+# Archivos de base de datos
+*.db
+*.sqlite
+*.sqlite3
+
+# Archivos del sistema
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.swp
+*.swo
+
+# Archivos de entorno
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+
+# Uploads (subidas de usuarios)
+static/uploads/
+*.pdf
+*.jpg
+*.jpeg
+*.png
+
+# IDE
+.vscode/
+.idea/
+*.sublime-*
+
+# Archivos temporales
+*.tmp
+*.bak
+*.backup
+
+# NLTK
+nltk_data/
+
+# ReportLab
+*.pdf
+
+# OCC
+OCC\ 2.sql
+occ.sql
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# React
+frontend-react/node_modules/
+frontend-react/build/
+frontend-react/.env

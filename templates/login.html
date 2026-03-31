@@ -1,0 +1,1176 @@
+{% extends "base.html" %}
+
+{% block title %}Iniciar Sesión{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-background">
+        <div class="floating-shape shape-1"></div>
+        <div class="floating-shape shape-2"></div>
+        <div class="floating-shape shape-3"></div>
+        <div class="particles-container" id="particles-js"></div>
+    </div>
+    
+    <div class="auth-card animate-on-scroll">
+        <div class="auth-header">
+            <div class="auth-icon">
+                <i class="fas fa-sign-in-alt"></i>
+            </div>
+            <h2>Iniciar Sesión</h2>
+            <p>Ingresa tus credenciales para acceder</p>
+        </div>
+        
+        <form method="POST" action="{{ url_for('login') }}" class="auth-form">
+            <div class="form-group">
+                <div class="input-container">
+                    <i class="fas fa-envelope input-icon"></i>
+                    <input type="email" id="email" name="email" class="form-control" required placeholder=" ">
+                    <label for="email" class="form-label">Correo Electrónico</label>
+                    <div class="form-underline"></div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <div class="input-container">
+                    <i class="fas fa-lock input-icon"></i>
+                    <input type="password" id="password" name="password" class="form-control" required placeholder=" ">
+                    <label for="password" class="form-label">Contraseña</label>
+                    <button type="button" class="password-toggle" onclick="togglePassword()">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <div class="form-underline"></div>
+                </div>
+            </div>
+            
+            <div class="form-options">
+    <label class="checkbox-container">
+        <input type="checkbox" id="remember" name="remember">
+        <span class="checkmark"></span>
+        Recordar sesión
+    </label>
+    <a href="{{ url_for('forgot_password') }}" class="forgot-password">¿Olvidaste tu contraseña?</a>
+</div>
+            
+            <div class="form-group">
+                <button type="submit" class="btn btn-primary btn-block login-btn">
+                    <span class="btn-text">Iniciar Sesión</span>
+                    <div class="btn-loader">
+                        <div class="loader-dot"></div>
+                        <div class="loader-dot"></div>
+                        <div class="loader-dot"></div>
+                    </div>
+                    <i class="fas fa-arrow-right btn-icon"></i>
+                </button>
+            </div>
+            
+            <div class="social-login">
+                <div class="divider">
+                    <span>o ingresa con</span>
+                </div>
+                <div class="social-buttons">
+                    <button type="button" class="social-btn google-btn">
+                        <i class="fab fa-google"></i>
+                        Google
+                    </button>
+                    <button type="button" class="social-btn linkedin-btn">
+                        <i class="fab fa-linkedin"></i>
+                        LinkedIn
+                    </button>
+                </div>
+            </div>
+            
+            <div class="auth-footer">
+                <p>¿No tienes una cuenta? <a href="{{ url_for('registro') }}" class="auth-link">Regístrate aquí</a></p>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .auth-container {
+        position: relative;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 20px;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        overflow: hidden;
+    }
+    
+    .auth-background {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+    }
+    
+    .floating-shape {
+        position: absolute;
+        border-radius: 50%;
+        opacity: 0.08;
+        animation: float 20s infinite ease-in-out;
+    }
+    
+    .shape-1 {
+        width: 150px;
+        height: 150px;
+        background: linear-gradient(135deg, #3498db, #2ecc71);
+        top: 10%;
+        left: 5%;
+        animation-delay: 0s;
+    }
+    
+    .shape-2 {
+        width: 100px;
+        height: 100px;
+        background: linear-gradient(135deg, #2ecc71, #3498db);
+        top: 70%;
+        right: 10%;
+        animation-delay: 7s;
+    }
+    
+    .shape-3 {
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(135deg, #3498db, #9b59b6);
+        bottom: 20%;
+        left: 15%;
+        animation-delay: 14s;
+    }
+    
+    .particles-container {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+    }
+    
+    .auth-card {
+        background: #fff;
+        padding: 3rem;
+        border-radius: 20px;
+        box-shadow: 0 25px 80px rgba(0, 0, 0, 0.12);
+        width: 100%;
+        max-width: 450px;
+        position: relative;
+        z-index: 2;
+        border: 1px solid #f1f3f4;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        transform: translateY(0);
+    }
+    
+    .auth-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 35px 100px rgba(0, 0, 0, 0.18);
+    }
+    
+    .auth-header {
+        text-align: center;
+        margin-bottom: 2.5rem;
+    }
+    
+    .auth-icon {
+        width: 80px;
+        height: 80px;
+        margin: 0 auto 1.5rem;
+        background: linear-gradient(135deg, #3498db, #2ecc71);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 2rem;
+        box-shadow: 0 10px 30px rgba(52, 152, 219, 0.3);
+        animation: iconPulse 2s infinite ease-in-out;
+    }
+    
+    .auth-header h2 {
+        font-size: 2.2rem;
+        margin-bottom: 0.5rem;
+        color: #2c3e50;
+        font-weight: 700;
+        background: linear-gradient(135deg, #2c3e50, #3498db);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .auth-header p {
+        color: #5a6c7d;
+        font-size: 1.1rem;
+    }
+    
+    .auth-form {
+        width: 100%;
+    }
+    
+    .form-group {
+        margin-bottom: 2rem;
+    }
+    
+    .input-container {
+        position: relative;
+    }
+    
+    .input-icon {
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #3498db;
+        font-size: 1.1rem;
+        transition: all 0.3s ease;
+        z-index: 2;
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 14px 14px 14px 35px;
+        border: none;
+        background: transparent;
+        border-bottom: 2px solid #e1e5e9;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        color: #2c3e50;
+        font-weight: 500;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-bottom-color: transparent;
+        padding-left: 40px;
+    }
+    
+    .form-control:focus + .form-label,
+    .form-control:not(:placeholder-shown) + .form-label {
+        top: -20px;
+        left: 35px;
+        font-size: 0.8rem;
+        color: #3498db;
+        font-weight: 600;
+    }
+    
+    .form-label {
+        position: absolute;
+        top: 50%;
+        left: 35px;
+        transform: translateY(-50%);
+        color: #5a6c7d;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        pointer-events: none;
+        z-index: 0;
+    }
+    
+    .form-underline {
+        position: absolute;
+        bottom: 0;
+        left: 35px;
+        width: calc(100% - 35px);
+        height: 2px;
+        background: linear-gradient(to right, #3498db, #2ecc71);
+        transform: scaleX(0);
+        transition: transform 0.4s ease;
+        transform-origin: left;
+    }
+    
+    .form-control:focus ~ .form-underline {
+        transform: scaleX(1);
+    }
+    
+    .password-toggle {
+        position: absolute;
+        right: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: #5a6c7d;
+        cursor: pointer;
+        padding: 10px;
+        transition: all 0.3s ease;
+        border-radius: 50%;
+        z-index: 2;
+    }
+    
+    .password-toggle:hover {
+        color: #3498db;
+        background: rgba(52, 152, 219, 0.1);
+    }
+    
+    .form-options {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .checkbox-container {
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+        font-size: 0.9rem;
+        color: #5a6c7d;
+        transition: color 0.3s ease;
+    }
+    
+    .checkbox-container:hover {
+        color: #3498db;
+    }
+    
+    .checkbox-container input {
+        display: none;
+    }
+    
+    .checkmark {
+        width: 18px;
+        height: 18px;
+        border: 2px solid #e1e5e9;
+        border-radius: 4px;
+        margin-right: 8px;
+        position: relative;
+        transition: all 0.3s ease;
+    }
+    
+    .checkbox-container input:checked + .checkmark {
+        background: #3498db;
+        border-color: #3498db;
+    }
+    
+    .checkbox-container input:checked + .checkmark::after {
+        content: '✓';
+        position: absolute;
+        color: white;
+        font-size: 12px;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+    
+    .forgot-password {
+        color: #3498db;
+        text-decoration: none;
+        font-size: 0.9rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        position: relative;
+    }
+    
+    .forgot-password::after {
+        content: '';
+        position: absolute;
+        bottom: -2px;
+        left: 0;
+        width: 0;
+        height: 1px;
+        background: #3498db;
+        transition: width 0.3s ease;
+    }
+    
+    .forgot-password:hover {
+        color: #2980b9;
+    }
+    
+    .forgot-password:hover::after {
+        width: 100%;
+    }
+    
+    .login-btn {
+        width: 100%;
+        padding: 16px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(135deg, #3498db, #2ecc71);
+        border: none;
+        color: white;
+        box-shadow: 0 8px 25px rgba(52, 152, 219, 0.3);
+    }
+    
+    .login-btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+        transition: left 0.6s ease;
+    }
+    
+    .login-btn:hover::before {
+        left: 100%;
+    }
+    
+    .login-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 15px 40px rgba(52, 152, 219, 0.4);
+    }
+    
+    .login-btn:active {
+        transform: translateY(-1px);
+    }
+    
+    .btn-icon {
+        transition: transform 0.3s ease;
+    }
+    
+    .login-btn:hover .btn-icon {
+        transform: translateX(8px);
+    }
+    
+    .btn-loader {
+        display: none;
+        gap: 4px;
+    }
+    
+    .loader-dot {
+        width: 6px;
+        height: 6px;
+        background: white;
+        border-radius: 50%;
+        animation: loaderBounce 1.4s infinite ease-in-out both;
+    }
+    
+    .loader-dot:nth-child(1) { animation-delay: -0.32s; }
+    .loader-dot:nth-child(2) { animation-delay: -0.16s; }
+    
+    .social-login {
+        margin: 2.5rem 0;
+    }
+    
+    .divider {
+        text-align: center;
+        position: relative;
+        margin-bottom: 1.5rem;
+    }
+    
+    .divider::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: #e1e5e9;
+    }
+    
+    .divider span {
+        background: #fff;
+        padding: 0 1rem;
+        color: #5a6c7d;
+        font-size: 0.9rem;
+        position: relative;
+    }
+    
+    .social-buttons {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+    }
+    
+    .social-btn {
+        flex: 1;
+        padding: 12px;
+        border: 2px solid #e1e5e9;
+        border-radius: 10px;
+        background: white;
+        color: #5a6c7d;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .social-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    }
+    
+    .google-btn:hover {
+        border-color: #db4437;
+        color: #db4437;
+    }
+    
+    .linkedin-btn:hover {
+        border-color: #0077b5;
+        color: #0077b5;
+    }
+    
+    .auth-footer {
+        text-align: center;
+        margin-top: 2rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid #e1e5e9;
+    }
+    
+    .auth-footer p {
+        color: #5a6c7d;
+        margin: 0;
+    }
+    
+    .auth-link {
+        color: #3498db;
+        text-decoration: none;
+        font-weight: 600;
+        transition: color 0.3s ease;
+        position: relative;
+    }
+    
+    .auth-link::after {
+        content: '';
+        position: absolute;
+        bottom: -2px;
+        left: 0;
+        width: 0;
+        height: 2px;
+        background: #3498db;
+        transition: width 0.3s ease;
+    }
+    
+    .auth-link:hover {
+        color: #2980b9;
+    }
+    
+    .auth-link:hover::after {
+        width: 100%;
+    }
+    
+    /* Animations */
+    @keyframes float {
+        0%, 100% {
+            transform: translateY(0) rotate(0deg);
+        }
+        50% {
+            transform: translateY(-20px) rotate(5deg);
+        }
+    }
+    
+    @keyframes iconPulse {
+        0%, 100% {
+            transform: scale(1);
+        }
+        50% {
+            transform: scale(1.05);
+        }
+    }
+    
+    @keyframes loaderBounce {
+        0%, 80%, 100% {
+            transform: scale(0);
+        }
+        40% {
+            transform: scale(1);
+        }
+    }
+    
+    /* Loading state */
+    .loading .btn-text,
+    .loading .btn-icon {
+        opacity: 0;
+    }
+    
+    .loading .btn-loader {
+        display: flex;
+    }
+    
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .auth-card {
+            padding: 2rem 1.5rem;
+        }
+        
+        .auth-header h2 {
+            font-size: 1.8rem;
+        }
+        
+        .auth-icon {
+            width: 70px;
+            height: 70px;
+            font-size: 1.8rem;
+        }
+        
+        .form-options {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 15px;
+        }
+        
+        .social-buttons {
+            flex-direction: column;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .auth-container {
+            padding: 20px 15px;
+        }
+        
+        .auth-card {
+            padding: 1.5rem;
+            border-radius: 16px;
+        }
+    }
+</style>
+
+<script>
+    function togglePassword() {
+        const passwordInput = document.getElementById('password');
+        const toggleIcon = document.querySelector('.password-toggle i');
+        
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            toggleIcon.classList.remove('fa-eye');
+            toggleIcon.classList.add('fa-eye-slash');
+        } else {
+            passwordInput.type = 'password';
+            toggleIcon.classList.remove('fa-eye-slash');
+            toggleIcon.classList.add('fa-eye');
+        }
+    }
+    
+    // Form submission animation
+    document.addEventListener('DOMContentLoaded', function() {
+        const loginForm = document.querySelector('.auth-form');
+        const loginBtn = document.querySelector('.login-btn');
+        
+        loginForm.addEventListener('submit', function(e) {
+            // Simulate loading state
+            loginBtn.classList.add('loading');
+            
+            // Let the form submit normally after animation
+            setTimeout(() => {
+                loginBtn.classList.remove('loading');
+            }, 2000);
+        });
+        
+        // Add floating label functionality
+        const formInputs = document.querySelectorAll('.form-control');
+        
+        formInputs.forEach(input => {
+            input.addEventListener('focus', function() {
+                this.parentElement.classList.add('focused');
+            });
+            
+            input.addEventListener('blur', function() {
+                if (this.value === '') {
+                    this.parentElement.classList.remove('focused');
+                }
+            });
+            
+            // Check if input has value on page load
+            if (input.value !== '') {
+                input.parentElement.classList.add('focused');
+            }
+        });
+        
+        // Social login buttons animation
+        const socialButtons = document.querySelectorAll('.social-btn');
+        socialButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                this.style.transform = 'translateY(0)';
+                setTimeout(() => {
+                    this.style.transform = 'translateY(-2px)';
+                }, 100);
+            });
+        });
+        
+        // Simple particle effect
+        createParticles();
+    });
+    
+    function createParticles() {
+        const container = document.querySelector('.particles-container');
+        const particleCount = 15;
+        
+        for (let i = 0; i < particleCount; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.cssText = `
+                position: absolute;
+                width: 4px;
+                height: 4px;
+                background: rgba(52, 152, 219, 0.3);
+                border-radius: 50%;
+                left: ${Math.random() * 100}%;
+                top: ${Math.random() * 100}%;
+                animation: particleFloat ${10 + Math.random() * 20}s infinite linear;
+                animation-delay: ${Math.random() * 5}s;
+            `;
+            container.appendChild(particle);
+        }
+        
+        // Add particle animation to styles
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes particleFloat {
+                0% {
+                    transform: translateY(100vh) rotate(0deg);
+                    opacity: 0;
+                }
+                10% {
+                    opacity: 1;
+                }
+                90% {
+                    opacity: 1;
+                }
+                100% {
+                    transform: translateY(-100px) rotate(360deg);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+</script>
+
+
+<!-- Agrega esto al final de tu login.html, antes del cierre del block content -->
+<div id="adminLoginModal" class="admin-modal hidden">
+    <div class="admin-modal-content animate__animated animate__zoomIn">
+        <span class="admin-close-btn">&times;</span>
+        
+        <div class="admin-logo">
+            <svg class="admin-crown" viewBox="0 0 24 24">
+                <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/>
+            </svg>
+            <h2>Admin Portal</h2>
+        </div>
+        <form id="adminLoginForm" method="POST" action="/admin/login" class="admin-form">
+            <div class="admin-input-group">
+                <input type="email" id="adminEmail" name="email" required>
+                <label for="adminEmail">Correo Administrador</label>
+                <div class="admin-underline"></div>
+            </div>
+            
+            <div class="admin-input-group">
+                <input type="password" id="adminPassword" name="password" required>
+                <label for="adminPassword">Contraseña</label>
+                <div class="admin-underline"></div>
+            </div>
+            
+            <button type="submit" class="admin-submit-btn">
+                <span>Acceder</span>
+                <svg viewBox="0 0 13 10">
+                    <path d="M1,5 L11,5"></path>
+                    <polyline points="8 1 12 5 8 9"></polyline>
+                </svg>
+            </button>
+            
+            <p class="admin-note">Solo para personal autorizado</p>
+        </form>
+    </div>
+</div>
+
+<style>
+    /* Estilos mejorados para el modal de administrador */
+.admin-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 20, 40, 0.95);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(8px);
+    transition: all 0.3s ease;
+}
+
+.admin-modal.show {
+    display: flex;
+    animation: fadeIn 0.3s ease-out forwards;
+}
+
+.admin-modal-content {
+    background: linear-gradient(135deg, #0a1a3a, #1a3a6a, #2a5a9a);
+    padding: 2.5rem;
+    border-radius: 15px;
+    width: 380px;
+    box-shadow: 0 15px 35px rgba(0, 50, 100, 0.6);
+    position: relative;
+    color: white;
+    transform: scale(0.95);
+    opacity: 0;
+    animation: modalEntrance 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    border: 1px solid rgba(100, 180, 255, 0.3);
+    overflow: hidden;
+}
+
+.admin-modal-content::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(
+        to bottom right,
+        rgba(100, 200, 255, 0.1) 0%,
+        rgba(100, 200, 255, 0) 50%,
+        rgba(100, 200, 255, 0.1) 100%
+    );
+    transform: rotate(30deg);
+    animation: shine 8s infinite linear;
+}
+
+.admin-close-btn {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    font-size: 1.8rem;
+    cursor: pointer;
+    transition: all 0.3s;
+    color: rgba(200, 230, 255, 0.8);
+    background: rgba(0, 40, 80, 0.3);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    z-index: 10;
+}
+
+.admin-close-btn:hover {
+    transform: rotate(90deg) scale(1.1);
+    color: #fff;
+    background: rgba(0, 80, 160, 0.5);
+    box-shadow: 0 0 15px rgba(100, 200, 255, 0.6);
+}
+
+.admin-logo {
+    text-align: center;
+    margin-bottom: 2.5rem;
+    transform: translateY(-20px);
+    opacity: 0;
+    animation: fadeInUp 0.5s ease-out 0.4s forwards;
+}
+
+.admin-crown {
+    width: 60px;
+    height: 60px;
+    fill: #4fc3f7;
+    filter: drop-shadow(0 0 15px rgba(79, 195, 247, 0.8));
+    animation: pulse 2s infinite, float 3s ease-in-out infinite;
+}
+
+.admin-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.8rem;
+    transform: translateY(20px);
+    opacity: 0;
+    animation: fadeInUp 0.5s ease-out 0.6s forwards;
+}
+
+.admin-input-group {
+    position: relative;
+    margin-bottom: 1.5rem;
+}
+
+.admin-input-group input {
+    width: 100%;
+    padding: 14px 0;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid rgba(100, 180, 255, 0.4);
+    color: white;
+    font-size: 1.05rem;
+    outline: none;
+    transition: all 0.4s;
+}
+
+.admin-input-group input:focus {
+    border-bottom-color: #4fc3f7;
+    box-shadow: 0 2px 0 rgba(79, 195, 247, 0.4);
+}
+
+.admin-input-group label {
+    position: absolute;
+    top: 14px;
+    left: 0;
+    color: rgba(180, 220, 255, 0.8);
+    pointer-events: none;
+    transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    font-size: 1rem;
+}
+
+.admin-input-group input:focus + label,
+.admin-input-group input:valid + label {
+    top: -18px;
+    font-size: 0.8rem;
+    color: #4fc3f7;
+    text-shadow: 0 1px 5px rgba(79, 195, 247, 0.5);
+}
+
+.admin-underline {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #4fc3f7, #64b5f6);
+    transition: width 0.4s ease-out;
+    box-shadow: 0 0 10px rgba(79, 195, 247, 0.5);
+}
+
+.admin-input-group input:focus ~ .admin-underline {
+    width: 100%;
+}
+
+.admin-submit-btn {
+    background: linear-gradient(135deg, rgba(0, 80, 160, 0.6), rgba(0, 60, 120, 0.8));
+    color: white;
+    border: none;
+    padding: 16px;
+    border-radius: 30px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    font-weight: bold;
+    font-size: 1rem;
+    transition: all 0.4s;
+    overflow: hidden;
+    position: relative;
+    margin-top: 20px;
+    box-shadow: 0 5px 20px rgba(0, 60, 120, 0.4);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    letter-spacing: 0.5px;
+}
+
+.admin-submit-btn:hover {
+    background: linear-gradient(135deg, rgba(79, 195, 247, 0.5), rgba(0, 80, 160, 0.7));
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 10px 30px rgba(0, 100, 200, 0.5);
+}
+
+.admin-submit-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 3px 15px rgba(0, 100, 200, 0.5);
+}
+
+.admin-submit-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(79, 195, 247, 0.3), transparent);
+    transition: 0.5s;
+}
+
+.admin-submit-btn:hover::before {
+    left: 100%;
+}
+
+.admin-submit-btn svg {
+    width: 18px;
+    height: 18px;
+    stroke: #4fc3f7;
+    stroke-width: 2;
+    transition: all 0.4s;
+}
+
+.admin-submit-btn:hover svg {
+    transform: translateX(5px) rotate(360deg);
+}
+
+.admin-note {
+    text-align: center;
+    font-size: 0.85rem;
+    opacity: 0.7;
+    margin-top: 2rem;
+    color: rgba(180, 220, 255, 0.7);
+    transform: translateY(10px);
+    opacity: 0;
+    animation: fadeInUp 0.5s ease-out 0.8s forwards;
+}
+
+/* Animaciones */
+@keyframes pulse {
+    0% { transform: scale(1); filter: drop-shadow(0 0 5px rgba(79, 195, 247, 0.7)); }
+    50% { transform: scale(1.1); filter: drop-shadow(0 0 20px rgba(79, 195, 247, 1)); }
+    100% { transform: scale(1); filter: drop-shadow(0 0 5px rgba(79, 195, 247, 0.7)); }
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes modalEntrance {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes shine {
+    0% { transform: rotate(30deg) translate(-30%, -30%); }
+    100% { transform: rotate(30deg) translate(30%, 30%); }
+}
+
+/* Efecto de éxito al loguearse */
+.success-animation {
+    animation: successAnimation 1.5s ease-out forwards;
+}
+
+@keyframes successAnimation {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.1); opacity: 0.9; }
+    100% { transform: scale(0.9); opacity: 0; }
+}
+
+.hidden {
+    display: none !important;
+}
+</style>
+
+<script>
+    // Detector de combinación de teclas para acceso admin mejorado
+    document.addEventListener('DOMContentLoaded', function() {
+        let inputSequence = [];
+        const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+        const modKey = isMac ? 'Meta' : 'Control';
+        const secretSequence = [modKey, 'a', 'b', 'c'];
+        
+        document.addEventListener('keydown', function(e) {
+            // Agregar la tecla presionada al array
+            inputSequence.push(e.key);
+            
+            // Mantener solo los últimos N elementos (longitud de la secuencia secreta)
+            if (inputSequence.length > secretSequence.length) {
+                inputSequence.shift();
+            }
+            
+            // Verificar si coincide con la secuencia secreta
+            if (arraysEqual(inputSequence, secretSequence)) {
+                // Mostrar el modal con animación
+                const modal = document.getElementById('adminLoginModal');
+                modal.classList.remove('hidden');
+                modal.classList.add('show');
+                
+                // Resetear la secuencia
+                inputSequence = [];
+                
+                // Enfocar el primer campo de entrada
+                setTimeout(() => {
+                    document.getElementById('adminEmail').focus();
+                }, 300);
+            }
+        });
+        
+        // Función para comparar arrays
+        function arraysEqual(a, b) {
+            if (a.length !== b.length) return false;
+            for (let i = 0; i < a.length; i++) {
+                if (a[i] !== b[i]) return false;
+            }
+            return true;
+        }
+        // Manejar el envío del formulario de admin
+document.getElementById('adminLoginForm').addEventListener('submit', function(e) {
+    const email = document.getElementById('adminEmail').value;
+    const password = document.getElementById('adminPassword').value;
+    const modal = document.getElementById('adminLoginModal');
+    const modalContent = modal.querySelector('.admin-modal-content');
+    
+    // Solo validación del lado del cliente para efectos visuales
+    if (email === 'Admin@upq.edu.mx' && password === 'Admin1234') {
+        // Efecto visual de éxito
+        modalContent.classList.add('animate__animated', 'animate__fadeOutUp');
+        // Dejar que el formulario se envíe normalmente
+    } else {
+        // Prevenir el envío solo si las credenciales son incorrectas
+        e.preventDefault();
+        
+        // Efecto de error
+        modalContent.classList.add('animate__animated', 'animate__shakeX');
+        
+        // Restablecer después de la animación
+        setTimeout(() => {
+            modalContent.classList.remove('animate__animated', 'animate__shakeX');
+            document.getElementById('adminPassword').value = '';
+        }, 1000);
+        
+        // Mostrar mensaje de error
+        const errorNote = document.createElement('p');
+        errorNote.className = 'admin-error-note';
+        errorNote.textContent = 'Credenciales incorrectas';
+        errorNote.style.color = '#ff6b6b';
+        errorNote.style.textAlign = 'center';
+        errorNote.style.marginTop = '10px';
+        errorNote.style.animation = 'fadeIn 0.3s ease-out';
+        
+        // Eliminar mensaje anterior si existe
+        const existingError = document.querySelector('.admin-error-note');
+        if (existingError) existingError.remove();
+        
+        // Insertar después del botón de submit
+        const submitBtn = document.querySelector('.admin-submit-btn');
+        submitBtn.parentNode.insertBefore(errorNote, submitBtn.nextSibling);
+    }
+});
+        
+        // Cerrar modal al hacer clic en la X
+        document.querySelector('.admin-close-btn').addEventListener('click', function() {
+            const modal = document.getElementById('adminLoginModal');
+            modal.classList.remove('show');
+            modal.classList.add('hidden');
+            
+            // Resetear formulario
+            document.getElementById('adminLoginForm').reset();
+            
+            // Resetear secuencia
+            inputSequence = [];
+        });
+        
+        // Cerrar modal al hacer clic fuera del contenido
+        document.getElementById('adminLoginModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.classList.remove('show');
+                this.classList.add('hidden');
+                
+                // Resetear formulario
+                document.getElementById('adminLoginForm').reset();
+                
+                // Resetear secuencia
+                inputSequence = [];
+            }
+        });
+    });
+</script>
+
+{% endblock %}

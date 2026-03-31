@@ -1,0 +1,689 @@
+<!-- templates/admin/crear_usuario.html -->
+{% extends "base.html" %}
+
+{% block title %}Crear Nuevo Usuario{% endblock %}
+
+{% block content %}
+<div class="admin-dashboard">
+    <div class="admin-header">
+        <div class="header-left">
+            <div class="header-icon">
+                <i class="fas fa-user-plus"></i>
+            </div>
+            <div>
+                <h1>Crear Nuevo Usuario</h1>
+                <p class="header-subtitle">Registra un nuevo usuario en el sistema</p>
+            </div>
+        </div>
+        <a href="{{ url_for('admin_usuarios') }}" class="btn-back">
+            <i class="fas fa-arrow-left"></i>
+            <span>Volver a usuarios</span>
+        </a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                    <div class="flash-message flash-{{ category }}">
+                        <i class="fas {% if category == 'success' %}fa-check-circle{% elif category == 'error' %}fa-exclamation-circle{% else %}fa-info-circle{% endif %}"></i>
+                        <span>{{ message }}</span>
+                        <button class="flash-close" onclick="this.parentElement.remove()">&times;</button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <div class="admin-card">
+        <div class="card-header-modern">
+            <div class="header-icon-small">
+                <i class="fas fa-user-plus"></i>
+            </div>
+            <h3>Información del Usuario</h3>
+            <span class="card-badge">Nuevo registro</span>
+        </div>
+
+        <form method="POST" class="admin-form-modern">
+            <div class="form-field">
+                <label class="field-label">
+                    <i class="fas fa-envelope"></i>
+                    <span>Correo Electrónico</span>
+                </label>
+                <input type="email" id="email" name="email" class="field-control" required 
+                       placeholder="ejemplo@correo.com">
+                <small class="field-hint">Este será el correo de inicio de sesión del usuario</small>
+            </div>
+
+            <div class="form-field">
+                <label class="field-label">
+                    <i class="fas fa-lock"></i>
+                    <span>Contraseña</span>
+                </label>
+                <div class="password-wrapper">
+                    <input type="password" id="password" name="password" class="field-control" required 
+                           placeholder="Mínimo 8 caracteres">
+                    <button type="button" class="password-toggle" onclick="togglePassword()">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+                <small class="field-hint">La contraseña debe tener al menos 8 caracteres</small>
+                <div class="password-strength" id="passwordStrength"></div>
+            </div>
+
+            <div class="form-field">
+                <label class="field-label">
+                    <i class="fas fa-user-tag"></i>
+                    <span>Tipo de Usuario</span>
+                </label>
+                <select id="tipo_usuario" name="tipo_usuario" class="field-control" required>
+                    <option value="candidato">
+                        <i class="fas fa-user-tie"></i> Candidato
+                    </option>
+                    <option value="empresa">
+                        <i class="fas fa-building"></i> Empresa
+                    </option>
+                    <option value="admin">
+                        <i class="fas fa-shield-alt"></i> Administrador
+                    </option>
+                </select>
+                <small class="field-hint">
+                    <i class="fas fa-info-circle"></i>
+                    Candidato: Busca empleo | Empresa: Publica vacantes | Admin: Gestiona el sistema
+                </small>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn-primary-modern">
+                    <i class="fas fa-save"></i>
+                    <span>Guardar Usuario</span>
+                </button>
+                <a href="{{ url_for('admin_usuarios') }}" class="btn-secondary-modern">
+                    <i class="fas fa-times"></i>
+                    <span>Cancelar</span>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Tarjeta informativa -->
+    <div class="info-card">
+        <div class="card-header-modern">
+            <div class="header-icon-small">
+                <i class="fas fa-info-circle"></i>
+            </div>
+            <h3>Información Importante</h3>
+        </div>
+        <div class="info-content">
+            <div class="info-tip">
+                <i class="fas fa-check-circle"></i>
+                <div>
+                    <strong>¿Qué pasa después de crear un usuario?</strong>
+                    <p>El usuario recibirá un correo de bienvenida con sus credenciales para acceder al sistema.</p>
+                </div>
+            </div>
+            <div class="info-tip">
+                <i class="fas fa-shield-alt"></i>
+                <div>
+                    <strong>Recomendaciones de seguridad</strong>
+                    <p>Utiliza contraseñas seguras que combinen letras mayúsculas, minúsculas, números y símbolos.</p>
+                </div>
+            </div>
+            <div class="info-tip">
+                <i class="fas fa-sync-alt"></i>
+                <div>
+                    <strong>Edición posterior</strong>
+                    <p>Puedes editar o desactivar al usuario desde la lista de usuarios después de crearlo.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Variables */
+:root {
+    --primary-color: #2563eb;
+    --primary-dark: #1d4ed8;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --danger-color: #ef4444;
+    --dark-color: #1e293b;
+    --gray-light: #f8fafc;
+    --gray-border: #e2e8f0;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --transition: all 0.3s ease;
+}
+
+/* Dashboard Principal */
+.admin-dashboard {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 1.5rem;
+}
+
+/* Header */
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--gray-border);
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.header-icon {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+}
+
+.header-icon i {
+    font-size: 1.5rem;
+    color: white;
+}
+
+.admin-header h1 {
+    margin: 0;
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--dark-color);
+}
+
+.header-subtitle {
+    margin: 0.25rem 0 0;
+    color: #64748b;
+    font-size: 0.85rem;
+}
+
+.btn-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.25rem;
+    background: white;
+    color: var(--dark-color);
+    border: 1px solid var(--gray-border);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.btn-back:hover {
+    background: var(--gray-light);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    transform: translateX(-3px);
+}
+
+/* Flash Messages */
+.flash-messages {
+    margin-bottom: 1.5rem;
+}
+
+.flash-message {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    border-radius: var(--radius-md);
+    margin-bottom: 0.75rem;
+    animation: slideIn 0.3s ease-out;
+    position: relative;
+}
+
+.flash-success {
+    background: #ecfdf5;
+    border-left: 4px solid var(--success-color);
+    color: #065f46;
+}
+
+.flash-error {
+    background: #fef2f2;
+    border-left: 4px solid var(--danger-color);
+    color: #991b1b;
+}
+
+.flash-info {
+    background: #eff6ff;
+    border-left: 4px solid var(--primary-color);
+    color: #1e40af;
+}
+
+.flash-message i {
+    font-size: 1.1rem;
+}
+
+.flash-close {
+    margin-left: auto;
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0.7;
+    transition: var(--transition);
+}
+
+.flash-close:hover {
+    opacity: 1;
+}
+
+/* Tarjeta Principal */
+.admin-card {
+    background: white;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--gray-border);
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
+}
+
+.admin-card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.card-header-modern {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    background: var(--gray-light);
+    border-bottom: 1px solid var(--gray-border);
+}
+
+.header-icon-small {
+    width: 32px;
+    height: 32px;
+    background: rgba(37, 99, 235, 0.1);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.header-icon-small i {
+    font-size: 1rem;
+    color: var(--primary-color);
+}
+
+.card-header-modern h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--dark-color);
+    flex: 1;
+}
+
+.card-badge {
+    background: var(--primary-color);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+/* Formulario */
+.admin-form-modern {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.field-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--dark-color);
+}
+
+.field-label i {
+    color: var(--primary-color);
+    width: 18px;
+}
+
+.field-control {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    border: 1px solid var(--gray-border);
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+    background: white;
+    font-family: inherit;
+}
+
+.field-control:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+select.field-control {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+}
+
+.field-hint {
+    font-size: 0.7rem;
+    color: #64748b;
+}
+
+.field-hint i {
+    margin-right: 0.25rem;
+}
+
+/* Password Wrapper */
+.password-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-wrapper .field-control {
+    padding-right: 2.5rem;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 0.5rem;
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 0.5rem;
+    transition: var(--transition);
+    border-radius: var(--radius-sm);
+}
+
+.password-toggle:hover {
+    color: var(--primary-color);
+    background: rgba(37, 99, 235, 0.05);
+}
+
+/* Password Strength */
+.password-strength {
+    margin-top: 0.25rem;
+    font-size: 0.7rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.strength-weak {
+    color: var(--danger-color);
+}
+
+.strength-medium {
+    color: var(--warning-color);
+}
+
+.strength-strong {
+    color: var(--success-color);
+}
+
+/* Botones */
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--gray-border);
+    margin-top: 0.5rem;
+}
+
+.btn-primary-modern {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-primary-modern:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-secondary-modern {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: white;
+    color: var(--dark-color);
+    border: 1px solid var(--gray-border);
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.btn-secondary-modern:hover {
+    background: var(--gray-light);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+/* Tarjeta Informativa */
+.info-card {
+    background: white;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--gray-border);
+    overflow: hidden;
+}
+
+.info-content {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.info-tip {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: var(--gray-light);
+    border-radius: var(--radius-md);
+    transition: var(--transition);
+}
+
+.info-tip:hover {
+    background: white;
+    box-shadow: var(--shadow-sm);
+}
+
+.info-tip i {
+    font-size: 1.1rem;
+    color: var(--primary-color);
+    margin-top: 0.1rem;
+}
+
+.info-tip strong {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--dark-color);
+    margin-bottom: 0.25rem;
+}
+
+.info-tip p {
+    margin: 0;
+    font-size: 0.75rem;
+    color: #64748b;
+    line-height: 1.4;
+}
+
+/* Animaciones */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .admin-dashboard {
+        padding: 1rem;
+    }
+    
+    .admin-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .btn-back {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .btn-primary-modern, .btn-secondary-modern {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .card-header-modern {
+        padding: 0.875rem 1rem;
+        flex-wrap: wrap;
+    }
+    
+    .admin-form-modern {
+        padding: 1.25rem;
+    }
+    
+    .info-tip {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .info-tip i {
+        margin: 0 auto;
+    }
+}
+
+@media (max-width: 480px) {
+    .header-left {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .field-label {
+        font-size: 0.8rem;
+    }
+}
+</style>
+
+<script>
+// Toggle password visibility
+function togglePassword() {
+    const passwordInput = document.getElementById('password');
+    const toggleIcon = document.querySelector('.password-toggle i');
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleIcon.classList.remove('fa-eye');
+        toggleIcon.classList.add('fa-eye-slash');
+    } else {
+        passwordInput.type = 'password';
+        toggleIcon.classList.remove('fa-eye-slash');
+        toggleIcon.classList.add('fa-eye');
+    }
+}
+
+// Password strength indicator
+document.addEventListener('DOMContentLoaded', function() {
+    const passwordInput = document.getElementById('password');
+    const strengthDiv = document.getElementById('passwordStrength');
+    
+    if (passwordInput && strengthDiv) {
+        passwordInput.addEventListener('input', function() {
+            const password = this.value;
+            const strength = checkPasswordStrength(password);
+            
+            if (password.length === 0) {
+                strengthDiv.innerHTML = '';
+                return;
+            }
+            
+            let strengthText = '';
+            let strengthClass = '';
+            
+            if (strength < 3) {
+                strengthText = 'Contraseña débil';
+                strengthClass = 'strength-weak';
+            } else if (strength < 5) {
+                strengthText = 'Contraseña media';
+                strengthClass = 'strength-medium';
+            } else {
+                strengthText = 'Contraseña fuerte';
+                strengthClass = 'strength-strong';
+            }
+            
+            strengthDiv.innerHTML = `<i class="fas fa-shield-alt"></i> ${strengthText}`;
+            strengthDiv.className = `password-strength ${strengthClass}`;
+        });
+    }
+});
+
+function checkPasswordStrength(password) {
+    let strength = 0;
+    
+    if (password.length >= 8) strength++;
+    if (password.match(/[a-z]+/)) strength++;
+    if (password.match(/[A-Z]+/)) strength++;
+    if (password.match(/[0-9]+/)) strength++;
+    if (password.match(/[$@#&!]+/)) strength++;
+    
+    return strength;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,906 @@
+<!-- templates/admin/crear_vacante.html -->
+{% extends "base.html" %}
+
+{% block title %}Crear Nueva Vacante{% endblock %}
+
+{% block content %}
+<div class="admin-dashboard">
+    <div class="admin-header">
+        <div class="header-left">
+            <div class="header-icon">
+                <i class="fas fa-plus-circle"></i>
+            </div>
+            <div>
+                <h1>Crear Nueva Vacante</h1>
+                <p class="header-subtitle">Registra una nueva oportunidad laboral</p>
+            </div>
+        </div>
+        <a href="{{ url_for('admin_vacantes') }}" class="btn-back">
+            <i class="fas fa-arrow-left"></i>
+            <span>Volver a vacantes</span>
+        </a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                    <div class="flash-message flash-{{ category }}">
+                        <i class="fas {% if category == 'success' %}fa-check-circle{% elif category == 'error' %}fa-exclamation-circle{% else %}fa-info-circle{% endif %}"></i>
+                        <span>{{ message }}</span>
+                        <button class="flash-close" onclick="this.parentElement.remove()">&times;</button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <div class="admin-card">
+        <div class="card-header-modern">
+            <div class="header-icon-small">
+                <i class="fas fa-briefcase"></i>
+            </div>
+            <h3>Información de la Vacante</h3>
+            <span class="card-badge">Nuevo registro</span>
+        </div>
+
+        <form method="POST" class="admin-form-modern">
+            <!-- Sección 1: Información básica -->
+            <div class="form-section">
+                <div class="section-header-mini">
+                    <i class="fas fa-info-circle"></i>
+                    <h4>Información Básica</h4>
+                </div>
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-building"></i>
+                            <span>Empresa ID *</span>
+                        </label>
+                        <input type="number" id="empresa_id" name="empresa_id" class="field-control" required 
+                               placeholder="Ej: 123">
+                        <small class="field-hint">ID de la empresa que publica la vacante</small>
+                    </div>
+
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-tag"></i>
+                            <span>Puesto *</span>
+                        </label>
+                        <input type="text" id="puesto" name="puesto" class="field-control" required 
+                               placeholder="Ej: Ingeniero de Software Senior">
+                    </div>
+
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-graduation-cap"></i>
+                            <span>Grado de Estudios *</span>
+                        </label>
+                        <select id="grado_estudios" name="grado_estudios" class="field-control" required>
+                            <option value="">Seleccionar...</option>
+                            <option value="Secundaria">Secundaria</option>
+                            <option value="Bachillerato">Bachillerato</option>
+                            <option value="Licenciatura">Licenciatura</option>
+                            <option value="Maestría">Maestría</option>
+                            <option value="Doctorado">Doctorado</option>
+                            <option value="Técnico">Técnico</option>
+                        </select>
+                    </div>
+
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-users"></i>
+                            <span>Plazas *</span>
+                        </label>
+                        <input type="number" id="plazas" name="plazas" class="field-control" value="1" required 
+                               min="1" placeholder="Número de vacantes">
+                    </div>
+
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Plazas Disponibles *</span>
+                        </label>
+                        <input type="number" id="plazas_disponibles" name="plazas_disponibles" class="field-control" 
+                               value="1" required min="0" placeholder="Plazas disponibles">
+                    </div>
+
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-chart-line"></i>
+                            <span>Experiencia Requerida *</span>
+                        </label>
+                        <select id="experiencia_requerida" name="experiencia_requerida" class="field-control" required>
+                            <option value="">Seleccionar...</option>
+                            <option value="Sin experiencia">Sin experiencia</option>
+                            <option value="1-3 años">1-3 años</option>
+                            <option value="3-5 años">3-5 años</option>
+                            <option value="5+ años">5+ años</option>
+                        </select>
+                    </div>
+
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-flag"></i>
+                            <span>Estatus *</span>
+                        </label>
+                        <select id="estatus" name="estatus" class="field-control" required>
+                            <option value="en_revision">En revisión</option>
+                            <option value="aprobada">Aprobada</option>
+                            <option value="rechazada">Rechazada</option>
+                            <option value="cerrada">Cerrada</option>
+                        </select>
+                        <small class="field-hint">Estatus inicial de la vacante</small>
+                    </div>
+                </div>
+
+                <div class="form-field full-width">
+                    <label class="field-label">
+                        <i class="fas fa-align-left"></i>
+                        <span>Descripción del Puesto *</span>
+                    </label>
+                    <textarea id="resumen" name="resumen" class="field-control" rows="5" required 
+                              placeholder="Describe las responsabilidades, requisitos y actividades del puesto..."></textarea>
+                    <small class="field-hint">Máximo 1000 caracteres</small>
+                    <div class="char-counter" id="charCounterResumen">0/1000</div>
+                </div>
+            </div>
+
+            <!-- Sección 2: Información de contrato -->
+            <div class="form-section">
+                <div class="section-header-mini">
+                    <i class="fas fa-file-contract"></i>
+                    <h4>Información del Contrato</h4>
+                </div>
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-file-signature"></i>
+                            <span>Tipo de Contrato *</span>
+                        </label>
+                        <select id="tipo_contrato" name="tipo_contrato" class="field-control" required>
+                            <option value="">Seleccionar...</option>
+                            <option value="Tiempo completo">Tiempo completo</option>
+                            <option value="Medio tiempo">Medio tiempo</option>
+                            <option value="Por proyecto">Por proyecto</option>
+                            <option value="Prácticas">Prácticas</option>
+                            <option value="Freelance">Freelance</option>
+                        </select>
+                    </div>
+
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-laptop-house"></i>
+                            <span>Modalidad *</span>
+                        </label>
+                        <select id="modalidad" name="modalidad" class="field-control" required>
+                            <option value="">Seleccionar...</option>
+                            <option value="Presencial">Presencial</option>
+                            <option value="Remoto">Remoto</option>
+                            <option value="Híbrido">Híbrido</option>
+                        </select>
+                    </div>
+
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-money-bill-wave"></i>
+                            <span>Salario</span>
+                        </label>
+                        <div class="currency-input">
+                            <span class="currency-symbol">$</span>
+                            <input type="text" id="salario" name="salario" class="field-control currency-field" 
+                                   placeholder="Ej: 25,000 - 30,000">
+                        </div>
+                        <small class="field-hint">Rango salarial mensual (opcional)</small>
+                    </div>
+
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span>Ubicación</span>
+                        </label>
+                        <input type="text" id="ubicacion" name="ubicacion" class="field-control" 
+                               placeholder="Ciudad, estado, país">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección 3: Beneficios y fechas -->
+            <div class="form-section">
+                <div class="section-header-mini">
+                    <i class="fas fa-gift"></i>
+                    <h4>Beneficios y Fechas</h4>
+                </div>
+                <div class="form-grid">
+                    <div class="form-field full-width">
+                        <label class="field-label">
+                            <i class="fas fa-star"></i>
+                            <span>Beneficios</span>
+                        </label>
+                        <textarea id="beneficios" name="beneficios" class="field-control" rows="3" 
+                                  placeholder="Ej: Seguro médico, vales de despensa, fondo de ahorro, bonos, etc."></textarea>
+                        <small class="field-hint">Enumera los beneficios que ofrece la empresa</small>
+                    </div>
+
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-calendar-alt"></i>
+                            <span>Fecha de Cierre</span>
+                        </label>
+                        <input type="date" id="fecha_cierre" name="fecha_cierre" class="field-control">
+                        <small class="field-hint">Dejar en blanco si no hay fecha límite</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección 4: Comentarios de administrador -->
+            <div class="form-section">
+                <div class="section-header-mini">
+                    <i class="fas fa-comment-alt"></i>
+                    <h4>Comentarios del Administrador</h4>
+                </div>
+                <div class="form-field full-width">
+                    <label class="field-label">
+                        <i class="fas fa-sticky-note"></i>
+                        <span>Comentarios (Opcional)</span>
+                    </label>
+                    <textarea id="comentarios_admin" name="comentarios_admin" class="field-control" rows="3" 
+                              placeholder="Notas internas o comentarios sobre la vacante..."></textarea>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn-primary-modern">
+                    <i class="fas fa-save"></i>
+                    <span>Crear Vacante</span>
+                </button>
+                <button type="reset" class="btn-secondary-modern" onclick="resetForm()">
+                    <i class="fas fa-undo"></i>
+                    <span>Limpiar Formulario</span>
+                </button>
+                <a href="{{ url_for('admin_vacantes') }}" class="btn-secondary-modern">
+                    <i class="fas fa-times"></i>
+                    <span>Cancelar</span>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Tarjeta informativa -->
+    <div class="info-card">
+        <div class="card-header-modern">
+            <div class="header-icon-small">
+                <i class="fas fa-info-circle"></i>
+            </div>
+            <h3>Información Importante</h3>
+        </div>
+        <div class="info-content">
+            <div class="info-tip">
+                <i class="fas fa-building"></i>
+                <div>
+                    <strong>Empresa ID</strong>
+                    <p>El ID de la empresa debe existir previamente en el sistema. Verifica que la empresa esté registrada.</p>
+                </div>
+            </div>
+            <div class="info-tip">
+                <i class="fas fa-check-circle"></i>
+                <div>
+                    <strong>Plazas disponibles</strong>
+                    <p>Las plazas disponibles no pueden ser mayores que el total de plazas. Si se excede, se ajustará automáticamente.</p>
+                </div>
+            </div>
+            <div class="info-tip">
+                <i class="fas fa-calendar-alt"></i>
+                <div>
+                    <strong>Fecha de cierre</strong>
+                    <p>Si se establece una fecha de cierre, la vacante se cerrará automáticamente después de esa fecha.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Variables */
+:root {
+    --primary-color: #2563eb;
+    --primary-dark: #1d4ed8;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --danger-color: #ef4444;
+    --dark-color: #1e293b;
+    --gray-light: #f8fafc;
+    --gray-border: #e2e8f0;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --transition: all 0.3s ease;
+}
+
+/* Dashboard Principal */
+.admin-dashboard {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 1.5rem;
+}
+
+/* Header */
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--gray-border);
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.header-icon {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+}
+
+.header-icon i {
+    font-size: 1.5rem;
+    color: white;
+}
+
+.admin-header h1 {
+    margin: 0;
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--dark-color);
+}
+
+.header-subtitle {
+    margin: 0.25rem 0 0;
+    color: #64748b;
+    font-size: 0.85rem;
+}
+
+.btn-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.25rem;
+    background: white;
+    color: var(--dark-color);
+    border: 1px solid var(--gray-border);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.btn-back:hover {
+    background: var(--gray-light);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    transform: translateX(-3px);
+}
+
+/* Flash Messages */
+.flash-messages {
+    margin-bottom: 1.5rem;
+}
+
+.flash-message {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    border-radius: var(--radius-md);
+    margin-bottom: 0.75rem;
+    animation: slideIn 0.3s ease-out;
+    position: relative;
+}
+
+.flash-success {
+    background: #ecfdf5;
+    border-left: 4px solid var(--success-color);
+    color: #065f46;
+}
+
+.flash-error {
+    background: #fef2f2;
+    border-left: 4px solid var(--danger-color);
+    color: #991b1b;
+}
+
+.flash-info {
+    background: #eff6ff;
+    border-left: 4px solid var(--primary-color);
+    color: #1e40af;
+}
+
+.flash-message i {
+    font-size: 1.1rem;
+}
+
+.flash-close {
+    margin-left: auto;
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0.7;
+    transition: var(--transition);
+}
+
+.flash-close:hover {
+    opacity: 1;
+}
+
+/* Tarjeta Principal */
+.admin-card {
+    background: white;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--gray-border);
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
+}
+
+.admin-card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.card-header-modern {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    background: var(--gray-light);
+    border-bottom: 1px solid var(--gray-border);
+}
+
+.header-icon-small {
+    width: 32px;
+    height: 32px;
+    background: rgba(37, 99, 235, 0.1);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.header-icon-small i {
+    font-size: 1rem;
+    color: var(--primary-color);
+}
+
+.card-header-modern h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--dark-color);
+    flex: 1;
+}
+
+.card-badge {
+    background: var(--primary-color);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+/* Formulario */
+.admin-form-modern {
+    padding: 1.5rem;
+}
+
+.form-section {
+    background: var(--gray-light);
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--gray-border);
+}
+
+.section-header-mini {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--gray-border);
+}
+
+.section-header-mini i {
+    font-size: 1rem;
+    color: var(--primary-color);
+}
+
+.section-header-mini h4 {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--dark-color);
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-field.full-width {
+    grid-column: span 2;
+}
+
+.field-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--dark-color);
+}
+
+.field-label i {
+    color: var(--primary-color);
+    width: 16px;
+    font-size: 0.8rem;
+}
+
+.field-control {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    border: 1px solid var(--gray-border);
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+    background: white;
+    font-family: inherit;
+    width: 100%;
+}
+
+.field-control:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+textarea.field-control {
+    resize: vertical;
+    font-family: inherit;
+}
+
+select.field-control {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+}
+
+.field-hint {
+    font-size: 0.7rem;
+    color: #64748b;
+}
+
+/* Currency Input */
+.currency-input {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.currency-symbol {
+    position: absolute;
+    left: 12px;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.currency-field {
+    padding-left: 28px;
+}
+
+/* Char Counter */
+.char-counter {
+    font-size: 0.7rem;
+    color: #94a3b8;
+    text-align: right;
+    margin-top: 0.25rem;
+    font-family: monospace;
+}
+
+.char-counter.warning {
+    color: var(--warning-color);
+}
+
+.char-counter.danger {
+    color: var(--danger-color);
+}
+
+/* Botones */
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--gray-border);
+    margin-top: 1rem;
+    flex-wrap: wrap;
+}
+
+.btn-primary-modern {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-primary-modern:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-secondary-modern {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: white;
+    color: var(--dark-color);
+    border: 1px solid var(--gray-border);
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: var(--transition);
+    cursor: pointer;
+}
+
+.btn-secondary-modern:hover {
+    background: var(--gray-light);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+/* Tarjeta Informativa */
+.info-card {
+    background: white;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--gray-border);
+    overflow: hidden;
+}
+
+.info-content {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.info-tip {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: var(--gray-light);
+    border-radius: var(--radius-md);
+    transition: var(--transition);
+}
+
+.info-tip:hover {
+    background: white;
+    box-shadow: var(--shadow-sm);
+}
+
+.info-tip i {
+    font-size: 1.1rem;
+    color: var(--primary-color);
+    margin-top: 0.1rem;
+}
+
+.info-tip strong {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--dark-color);
+    margin-bottom: 0.25rem;
+}
+
+.info-tip p {
+    margin: 0;
+    font-size: 0.75rem;
+    color: #64748b;
+    line-height: 1.4;
+}
+
+/* Animaciones */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .admin-dashboard {
+        padding: 1rem;
+    }
+    
+    .admin-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .btn-back {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .form-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .form-field.full-width {
+        grid-column: span 1;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .btn-primary-modern, .btn-secondary-modern {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .info-tip {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .info-tip i {
+        margin: 0 auto;
+    }
+}
+
+@media (max-width: 480px) {
+    .header-left {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .card-header-modern {
+        padding: 0.875rem 1rem;
+        flex-wrap: wrap;
+    }
+    
+    .admin-form-modern {
+        padding: 1rem;
+    }
+    
+    .form-section {
+        padding: 1rem;
+    }
+    
+    .field-label {
+        font-size: 0.75rem;
+    }
+}
+</style>
+
+<script>
+// Contador de caracteres para resumen
+const resumen = document.getElementById('resumen');
+const charCounterResumen = document.getElementById('charCounterResumen');
+const maxLengthResumen = 1000;
+
+if (resumen && charCounterResumen) {
+    resumen.addEventListener('input', function() {
+        const length = this.value.length;
+        charCounterResumen.textContent = `${length}/${maxLengthResumen}`;
+        
+        if (length > maxLengthResumen) {
+            charCounterResumen.classList.add('danger');
+            this.style.borderColor = 'var(--danger-color)';
+        } else if (length > maxLengthResumen * 0.9) {
+            charCounterResumen.classList.add('warning');
+            charCounterResumen.classList.remove('danger');
+            this.style.borderColor = 'var(--warning-color)';
+        } else {
+            charCounterResumen.classList.remove('warning', 'danger');
+            this.style.borderColor = '';
+        }
+    });
+}
+
+// Validar que plazas disponibles no exceda plazas totales
+const plazas = document.getElementById('plazas');
+const plazasDisponibles = document.getElementById('plazas_disponibles');
+
+if (plazas && plazasDisponibles) {
+    plazas.addEventListener('change', function() {
+        if (parseInt(plazasDisponibles.value) > parseInt(this.value)) {
+            plazasDisponibles.value = this.value;
+            alert('Las plazas disponibles no pueden exceder el total de plazas. Se ha ajustado automáticamente.');
+        }
+    });
+    
+    plazasDisponibles.addEventListener('change', function() {
+        if (parseInt(this.value) > parseInt(plazas.value)) {
+            this.value = plazas.value;
+            alert('Las plazas disponibles no pueden exceder el total de plazas. Se ha ajustado automáticamente.');
+        }
+    });
+}
+
+// Formatear salario como moneda
+const salario = document.getElementById('salario');
+if (salario) {
+    salario.addEventListener('blur', function() {
+        let value = this.value.replace(/[^0-9,-]/g, '');
+        if (value) {
+            // Formatear números separados por guión
+            const parts = value.split('-');
+            const formatted = parts.map(p => {
+                const num = parseInt(p.replace(/,/g, ''));
+                if (!isNaN(num)) {
+                    return num.toLocaleString('es-MX');
+                }
+                return p;
+            }).join(' - ');
+            this.value = formatted;
+        }
+    });
+}
+
+// Limpiar formulario
+function resetForm() {
+    if (confirm('¿Estás seguro de que quieres limpiar todos los campos del formulario?')) {
+        document.querySelector('form').reset();
+        
+        // Resetear contadores
+        if (charCounterResumen) charCounterResumen.textContent = `0/${maxLengthResumen}`;
+        if (resumen) resumen.style.borderColor = '';
+        
+        // Resetear valores por defecto
+        plazas.value = '1';
+        plazasDisponibles.value = '1';
+    }
+}
+</script>
+{% endblock %}

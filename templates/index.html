@@ -1,0 +1,795 @@
+{% extends "base.html" %}
+
+{% block title %}Inicio{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <div class="hero-background">
+        <div class="floating-shape shape-1"></div>
+        <div class="floating-shape shape-2"></div>
+        <div class="floating-shape shape-3"></div>
+        <div class="floating-shape shape-4"></div>
+    </div>
+    <div class="hero-content">
+        <div class="hero-badge animate-on-scroll">
+            <i class="fas fa-rocket"></i>
+            <span>Plataforma líder en empleo</span>
+        </div>
+        <h1 class="animate-on-scroll">Encuentra el trabajo <span class="gradient-text">de tus sueños</span></h1>
+        <p class="animate-on-scroll delay-1">Conectamos a los mejores talentos con las empresas más innovadoras de la región</p>
+        <div class="hero-buttons animate-on-scroll delay-2">
+            <a href="{{ url_for('registro') }}" class="btn-primary-gradient">
+                <i class="fas fa-user-plus"></i>
+                <span>Crear cuenta gratuita</span>
+            </a>
+            <a href="{{ url_for('login') }}" class="btn-outline-modern">
+                <i class="fas fa-sign-in-alt"></i>
+                <span>Iniciar sesión</span>
+            </a>
+        </div>
+        <div class="hero-stats">
+            <div class="hero-stat">
+                <span class="stat-number-hero" data-count="500">0</span>
+                <span class="stat-label-hero">+ Empresas</span>
+            </div>
+            <div class="hero-stat-divider"></div>
+            <div class="hero-stat">
+                <span class="stat-number-hero" data-count="2500">0</span>
+                <span class="stat-label-hero">+ Candidatos</span>
+            </div>
+            <div class="hero-stat-divider"></div>
+            <div class="hero-stat">
+                <span class="stat-number-hero" data-count="98">0</span>
+                <span class="stat-label-hero">% Satisfacción</span>
+            </div>
+        </div>
+    </div>
+    <div class="scroll-indicator">
+        <div class="scroll-arrow"></div>
+        <span>Desliza para descubrir</span>
+    </div>
+</section>
+
+<section class="features">
+    <div class="section-header">
+        <div class="section-badge">¿Cómo funciona?</div>
+        <h2 class="animate-on-scroll">Una plataforma diseñada para <span class="gradient-text">conectar talento</span> con oportunidades</h2>
+        <p class="animate-on-scroll delay-1">TalentUPQ es el puente entre profesionales destacados y empresas que buscan lo mejor</p>
+    </div>
+    <div class="features-grid">
+        <div class="feature-card animate-on-scroll">
+            <div class="feature-icon">
+                <i class="fas fa-user-tie"></i>
+            </div>
+            <h3>Para Candidatos</h3>
+            <p>Crea tu perfil profesional, destaca tus habilidades y encuentra oportunidades acordes a tus metas.</p>
+            <div class="feature-underline"></div>
+            <div class="feature-link">
+                <a href="{{ url_for('registro') }}">Regístrate como candidato <i class="fas fa-arrow-right"></i></a>
+            </div>
+        </div>
+        <div class="feature-card animate-on-scroll delay-1">
+            <div class="feature-icon">
+                <i class="fas fa-building"></i>
+            </div>
+            <h3>Para Empresas</h3>
+            <p>Publica vacantes, gestiona postulaciones y encuentra al talento que tu empresa necesita.</p>
+            <div class="feature-underline"></div>
+            <div class="feature-link">
+                <a href="{{ url_for('registro') }}?tipo=empresa">Regístrate como empresa <i class="fas fa-arrow-right"></i></a>
+            </div>
+        </div>
+        <div class="feature-card animate-on-scroll delay-2">
+            <div class="feature-icon">
+                <i class="fas fa-graduation-cap"></i>
+            </div>
+            <h3>Para la UPQ</h3>
+            <p>Nuestros egresados acceden a las mejores oportunidades laborales del mercado.</p>
+            <div class="feature-underline"></div>
+            <div class="feature-link">
+                <a href="{{ url_for('login') }}">Conoce más <i class="fas fa-arrow-right"></i></a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="benefits">
+    <div class="benefits-container">
+        <div class="benefits-content animate-on-scroll">
+            <div class="benefits-badge">Ventajas exclusivas</div>
+            <h2>¿Por qué elegir <span class="gradient-text">TalentUPQ</span>?</h2>
+            <p>Descubre los beneficios que nos hacen la plataforma preferida por profesionales y empresas</p>
+        </div>
+        <div class="benefits-grid">
+            <div class="benefit-item animate-on-scroll">
+                <div class="benefit-icon">
+                    <i class="fas fa-bolt"></i>
+                </div>
+                <div class="benefit-info">
+                    <h4>Proceso rápido</h4>
+                    <p>Postulaciones ágiles y seguimiento en tiempo real</p>
+                </div>
+            </div>
+            <div class="benefit-item animate-on-scroll delay-1">
+                <div class="benefit-icon">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <div class="benefit-info">
+                    <h4>Seguridad garantizada</h4>
+                    <p>Tus datos están protegidos con los más altos estándares</p>
+                </div>
+            </div>
+            <div class="benefit-item animate-on-scroll delay-2">
+                <div class="benefit-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="benefit-info">
+                    <h4>Match inteligente</h4>
+                    <p>Algoritmo que conecta talento con oportunidades ideales</p>
+                </div>
+            </div>
+            <div class="benefit-item animate-on-scroll delay-3">
+                <div class="benefit-icon">
+                    <i class="fas fa-headset"></i>
+                </div>
+                <div class="benefit-info">
+                    <h4>Soporte dedicado</h4>
+                    <p>Equipo siempre disponible para ayudarte</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="cta">
+    <div class="cta-container animate-on-scroll">
+        <div class="cta-content">
+            <h2>¿Listo para comenzar tu <span class="gradient-text">nuevo camino</span> profesional?</h2>
+            <p>Únete a miles de profesionales que ya encontraron su oportunidad ideal</p>
+            <div class="cta-buttons">
+                <a href="{{ url_for('registro') }}" class="btn-primary-gradient btn-large">
+                    <i class="fas fa-user-plus"></i>
+                    <span>Crear cuenta ahora</span>
+                </a>
+                <a href="{{ url_for('login') }}" class="btn-outline-light">
+                    <i class="fas fa-sign-in-alt"></i>
+                    <span>Iniciar sesión</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    /* Variables y estilos base */
+    :root {
+        --primary-color: #2563eb;
+        --primary-dark: #1d4ed8;
+        --primary-light: #60a5fa;
+        --secondary-color: #10b981;
+        --dark-color: #1e293b;
+        --gray-light: #f8fafc;
+        --gray-border: #e2e8f0;
+        --gradient-start: #2563eb;
+        --gradient-end: #10b981;
+        --radius-sm: 8px;
+        --radius-md: 12px;
+        --radius-lg: 20px;
+        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        --transition: all 0.3s ease;
+    }
+
+    /* Hero Section */
+    .hero {
+        position: relative;
+        min-height: 90vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        overflow: hidden;
+        background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);
+    }
+    
+    .hero-background {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+    }
+    
+    .floating-shape {
+        position: absolute;
+        border-radius: 50%;
+        opacity: 0.08;
+        animation: float 20s infinite ease-in-out;
+    }
+    
+    .shape-1 {
+        width: 300px;
+        height: 300px;
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        top: -100px;
+        left: -100px;
+        animation-delay: 0s;
+    }
+    
+    .shape-2 {
+        width: 250px;
+        height: 250px;
+        background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
+        top: 60%;
+        right: -80px;
+        animation-delay: 5s;
+    }
+    
+    .shape-3 {
+        width: 200px;
+        height: 200px;
+        background: linear-gradient(135deg, #8b5cf6, var(--primary-color));
+        bottom: 20%;
+        left: 20%;
+        animation-delay: 10s;
+    }
+    
+    .shape-4 {
+        width: 150px;
+        height: 150px;
+        background: linear-gradient(135deg, #f59e0b, var(--secondary-color));
+        top: 20%;
+        right: 15%;
+        animation-delay: 15s;
+    }
+    
+    .hero-content {
+        position: relative;
+        z-index: 1;
+        max-width: 900px;
+        padding: 0 20px;
+    }
+    
+    .hero-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: rgba(37, 99, 235, 0.1);
+        padding: 0.5rem 1rem;
+        border-radius: 50px;
+        margin-bottom: 1.5rem;
+        font-size: 0.85rem;
+        color: var(--primary-color);
+    }
+    
+    .hero-badge i {
+        font-size: 0.9rem;
+    }
+    
+    .hero h1 {
+        font-size: 3.8rem;
+        margin-bottom: 1.5rem;
+        font-weight: 800;
+        color: var(--dark-color);
+        line-height: 1.2;
+    }
+    
+    .gradient-text {
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .hero p {
+        font-size: 1.3rem;
+        margin-bottom: 2rem;
+        color: #64748b;
+        max-width: 600px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    
+    .hero-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-bottom: 3rem;
+    }
+    
+    .btn-primary-gradient {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.9rem 2rem;
+        background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+        color: white;
+        border-radius: var(--radius-md);
+        font-weight: 600;
+        text-decoration: none;
+        transition: var(--transition);
+        border: none;
+        cursor: pointer;
+    }
+    
+    .btn-primary-gradient:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-lg);
+    }
+    
+    .btn-outline-modern {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.9rem 2rem;
+        background: transparent;
+        color: var(--dark-color);
+        border: 2px solid var(--gray-border);
+        border-radius: var(--radius-md);
+        font-weight: 600;
+        text-decoration: none;
+        transition: var(--transition);
+    }
+    
+    .btn-outline-modern:hover {
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+        transform: translateY(-2px);
+    }
+    
+    .btn-outline-light {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.9rem 2rem;
+        background: transparent;
+        color: white;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-radius: var(--radius-md);
+        font-weight: 600;
+        text-decoration: none;
+        transition: var(--transition);
+    }
+    
+    .btn-outline-light:hover {
+        border-color: white;
+        transform: translateY(-2px);
+    }
+    
+    .btn-large {
+        padding: 1rem 2.5rem;
+        font-size: 1rem;
+    }
+    
+    .hero-stats {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 2rem;
+        padding-top: 2rem;
+        border-top: 1px solid var(--gray-border);
+    }
+    
+    .hero-stat {
+        text-align: center;
+    }
+    
+    .stat-number-hero {
+        display: block;
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--primary-color);
+    }
+    
+    .stat-label-hero {
+        font-size: 0.85rem;
+        color: #64748b;
+    }
+    
+    .hero-stat-divider {
+        width: 1px;
+        height: 40px;
+        background: var(--gray-border);
+    }
+    
+    /* Scroll Indicator */
+    .scroll-indicator {
+        position: absolute;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1;
+        text-align: center;
+    }
+    
+    .scroll-indicator span {
+        display: block;
+        font-size: 0.75rem;
+        color: #94a3b8;
+        margin-top: 0.5rem;
+    }
+    
+    .scroll-arrow {
+        width: 30px;
+        height: 30px;
+        border-right: 2px solid var(--primary-color);
+        border-bottom: 2px solid var(--primary-color);
+        transform: rotate(45deg);
+        margin: 0 auto;
+        animation: bounce 2s infinite;
+    }
+    
+    /* Features Section */
+    .features {
+        padding: 100px 0;
+        background-color: white;
+    }
+    
+    .section-header {
+        text-align: center;
+        margin-bottom: 4rem;
+        max-width: 800px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    
+    .section-badge {
+        display: inline-block;
+        padding: 0.4rem 1rem;
+        background: rgba(37, 99, 235, 0.1);
+        color: var(--primary-color);
+        border-radius: 50px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        margin-bottom: 1rem;
+    }
+    
+    .section-header h2 {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+        color: var(--dark-color);
+    }
+    
+    .section-header p {
+        font-size: 1.1rem;
+        color: #64748b;
+    }
+    
+    .features-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 2rem;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 20px;
+    }
+    
+    .feature-card {
+        background: white;
+        padding: 2.5rem 2rem;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        text-align: center;
+        transition: var(--transition);
+        border: 1px solid var(--gray-border);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .feature-card:hover {
+        transform: translateY(-8px);
+        box-shadow: var(--shadow-lg);
+        border-color: transparent;
+    }
+    
+    .feature-icon {
+        width: 80px;
+        height: 80px;
+        margin: 0 auto 1.5rem;
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 2rem;
+    }
+    
+    .feature-card h3 {
+        font-size: 1.4rem;
+        margin-bottom: 1rem;
+        color: var(--dark-color);
+    }
+    
+    .feature-card p {
+        color: #64748b;
+        line-height: 1.6;
+    }
+    
+    .feature-underline {
+        width: 50px;
+        height: 3px;
+        background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+        margin: 1.5rem auto 1rem;
+        border-radius: 2px;
+        transition: width 0.3s ease;
+    }
+    
+    .feature-card:hover .feature-underline {
+        width: 80px;
+    }
+    
+    .feature-link {
+        margin-top: 1rem;
+    }
+    
+    .feature-link a {
+        color: var(--primary-color);
+        text-decoration: none;
+        font-size: 0.85rem;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: var(--transition);
+    }
+    
+    .feature-link a:hover {
+        gap: 0.8rem;
+    }
+    
+    /* Benefits Section */
+    .benefits {
+        padding: 80px 0;
+        background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);
+    }
+    
+    .benefits-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 20px;
+    }
+    
+    .benefits-content {
+        text-align: center;
+        margin-bottom: 3rem;
+    }
+    
+    .benefits-badge {
+        display: inline-block;
+        padding: 0.4rem 1rem;
+        background: rgba(37, 99, 235, 0.1);
+        color: var(--primary-color);
+        border-radius: 50px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        margin-bottom: 1rem;
+    }
+    
+    .benefits-content h2 {
+        font-size: 2.2rem;
+        margin-bottom: 1rem;
+        color: var(--dark-color);
+    }
+    
+    .benefits-content p {
+        color: #64748b;
+        font-size: 1rem;
+    }
+    
+    .benefits-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 2rem;
+    }
+    
+    .benefit-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.5rem;
+        background: white;
+        border-radius: var(--radius-md);
+        transition: var(--transition);
+        border: 1px solid var(--gray-border);
+    }
+    
+    .benefit-item:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-md);
+        border-color: transparent;
+    }
+    
+    .benefit-icon {
+        width: 50px;
+        height: 50px;
+        background: rgba(37, 99, 235, 0.1);
+        border-radius: var(--radius-sm);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .benefit-icon i {
+        font-size: 1.5rem;
+        color: var(--primary-color);
+    }
+    
+    .benefit-info h4 {
+        margin: 0 0 0.25rem;
+        font-size: 1rem;
+        color: var(--dark-color);
+    }
+    
+    .benefit-info p {
+        margin: 0;
+        font-size: 0.85rem;
+        color: #64748b;
+    }
+    
+    /* CTA Section */
+    .cta {
+        padding: 80px 0;
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .cta::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+    
+    .cta-container {
+        max-width: 800px;
+        margin: 0 auto;
+        text-align: center;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .cta-content h2 {
+        font-size: 2.2rem;
+        margin-bottom: 1rem;
+        color: white;
+    }
+    
+    .cta-content p {
+        font-size: 1.1rem;
+        margin-bottom: 2rem;
+        color: rgba(255, 255, 255, 0.9);
+    }
+    
+    .cta-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    
+    /* Animations */
+    @keyframes float {
+        0%, 100% {
+            transform: translateY(0) rotate(0deg);
+        }
+        50% {
+            transform: translateY(-20px) rotate(5deg);
+        }
+    }
+    
+    @keyframes bounce {
+        0%, 20%, 50%, 80%, 100% {
+            transform: translateY(0) rotate(45deg);
+        }
+        40% {
+            transform: translateY(-10px) rotate(45deg);
+        }
+        60% {
+            transform: translateY(-5px) rotate(45deg);
+        }
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .hero h1 {
+            font-size: 2.5rem;
+        }
+        
+        .hero p {
+            font-size: 1.1rem;
+        }
+        
+        .hero-buttons {
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .hero-buttons .btn-primary-gradient,
+        .hero-buttons .btn-outline-modern {
+            width: 100%;
+            justify-content: center;
+        }
+        
+        .hero-stats {
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .hero-stat-divider {
+            display: none;
+        }
+        
+        .features-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .section-header h2 {
+            font-size: 2rem;
+        }
+        
+        .benefits-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .cta-content h2 {
+            font-size: 1.8rem;
+        }
+        
+        .cta-buttons {
+            flex-direction: column;
+        }
+        
+        .cta-buttons .btn-primary-gradient,
+        .cta-buttons .btn-outline-light {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>
+
+<script>
+    // Counter animation for stats
+    function animateCounters() {
+        const counters = document.querySelectorAll('.stat-number-hero');
+        const speed = 200;
+        
+        counters.forEach(counter => {
+            const target = +counter.getAttribute('data-count');
+            const count = +counter.innerText;
+            const increment = target / speed;
+            
+            if (count < target) {
+                counter.innerText = Math.ceil(count + increment);
+                setTimeout(() => animateCounters(), 1);
+            } else {
+                counter.innerText = target + (target === 98 ? '%' : '+');
+            }
+        });
+    }
+    
+    // Initialize counters when they come into view
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                animateCounters();
+                observer.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.5 });
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        const statsSection = document.querySelector('.hero-stats');
+        if (statsSection) {
+            observer.observe(statsSection);
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,865 @@
+{% extends "base.html" %}
+
+{% block title %}Experiencia Laboral{% endblock %}
+
+{% block content %}
+<div class="dashboard experience-dashboard">
+    <div class="experience-header">
+        <h1 class="experience-title">
+            <i class="fas fa-briefcase"></i> Experiencia Laboral
+        </h1>
+        <a href="{{ url_for('candidato_dashboard') }}" class="btn btn-outline">
+            <i class="fas fa-arrow-left"></i> Volver al Dashboard
+        </a>
+    </div>
+
+    <!-- Formulario para agregar/editar -->
+    <div class="experience-card form-card">
+        <div class="card-header-modern">
+            <div class="header-icon">
+                <i class="fas {% if editar_index is not none %}fa-edit{% else %}fa-plus-circle{% endif %}"></i>
+            </div>
+            <h3 class="card-title-modern">
+                {% if editar_index is not none %}Editar{% else %}Agregar{% endif %} Experiencia Laboral
+            </h3>
+        </div>
+        <div class="card-body-modern">
+            <form method="POST" class="experience-form-modern">
+                <input type="hidden" name="editar_index" value="{{ editar_index if editar_index is not none else '' }}">
+                
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-building"></i>
+                            <span>Empresa *</span>
+                        </label>
+                        <input type="text" id="empresa" name="empresa" class="field-control"
+                               value="{{ experiencia_editar['Empresa'] if experiencia_editar else '' }}" 
+                               required placeholder="Nombre de la empresa">
+                    </div>
+                    
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-user-tie"></i>
+                            <span>Puesto *</span>
+                        </label>
+                        <input type="text" id="puesto" name="puesto" class="field-control"
+                               value="{{ experiencia_editar['Puesto'] if experiencia_editar else '' }}" 
+                               required placeholder="Tu puesto o cargo">
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-calendar-alt"></i>
+                            <span>Fecha de Ingreso *</span>
+                        </label>
+                        <input type="date" id="fecha_ingreso" name="fecha_ingreso" class="field-control"
+                               value="{{ experiencia_editar['FechaIngreso'].strftime('%Y-%m-%d') if experiencia_editar and experiencia_editar['FechaIngreso'] else '' }}" 
+                               required>
+                    </div>
+                    
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-calendar-check"></i>
+                            <span>Fecha de Salida</span>
+                        </label>
+                        <input type="date" id="fecha_salida" name="fecha_salida" class="field-control"
+                               value="{{ experiencia_editar['FechaSalida'].strftime('%Y-%m-%d') if experiencia_editar and experiencia_editar['FechaSalida'] else '' }}">
+                        <small class="field-hint">Dejar vacío si es tu trabajo actual</small>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span>Domicilio</span>
+                        </label>
+                        <input type="text" id="domicilio" name="domicilio" class="field-control"
+                               value="{{ experiencia_editar['Domicilio'] if experiencia_editar else '' }}"
+                               placeholder="Dirección de la empresa">
+                    </div>
+                    
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-phone-alt"></i>
+                            <span>Teléfono</span>
+                        </label>
+                        <input type="tel" id="telefono" name="telefono" class="field-control"
+                               value="{{ experiencia_editar['Telefono'] if experiencia_editar else '' }}"
+                               placeholder="Teléfono de contacto">
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-dollar-sign"></i>
+                            <span>Sueldo Inicial</span>
+                        </label>
+                        <div class="currency-input">
+                            <span class="currency-symbol">$</span>
+                            <input type="number" id="sueldo_inicial" name="sueldo_inicial" 
+                                   class="field-control currency-field" step="0.01" min="0"
+                                   value="{{ experiencia_editar['SueldoInicial'] if experiencia_editar else '' }}"
+                                   placeholder="0.00">
+                        </div>
+                    </div>
+                    
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-dollar-sign"></i>
+                            <span>Sueldo Final</span>
+                        </label>
+                        <div class="currency-input">
+                            <span class="currency-symbol">$</span>
+                            <input type="number" id="sueldo_final" name="sueldo_final" 
+                                   class="field-control currency-field" step="0.01" min="0"
+                                   value="{{ experiencia_editar['SueldoFinal'] if experiencia_editar else '' }}"
+                                   placeholder="0.00">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-field full-width">
+                    <label class="field-label">
+                        <i class="fas fa-tasks"></i>
+                        <span>Funciones *</span>
+                    </label>
+                    <textarea id="funciones" name="funciones" class="field-control" rows="4" 
+                              required placeholder="Describe tus principales responsabilidades y logros...">{{ experiencia_editar['Funciones'] if experiencia_editar else '' }}</textarea>
+                    <small class="field-hint">Detalla las actividades y responsabilidades que tuviste en este puesto</small>
+                </div>
+
+                <div class="form-field full-width">
+                    <label class="field-label">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Motivo de Separación</span>
+                    </label>
+                    <input type="text" id="motivo_separacion" name="motivo_separacion" class="field-control"
+                           value="{{ experiencia_editar['MotivoSeparacion'] if experiencia_editar else '' }}"
+                           placeholder="¿Por qué dejaste este trabajo?">
+                </div>
+
+                <div class="form-actions-modern">
+                    <button type="submit" class="btn-primary-modern">
+                        <i class="fas fa-save"></i> {% if editar_index is not none %}Actualizar{% else %}Guardar{% endif %}
+                    </button>
+                    
+                    {% if editar_index is not none %}
+                    <a href="{{ url_for('candidato_experiencia') }}" class="btn-secondary-modern">
+                        <i class="fas fa-times"></i> Cancelar
+                    </a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Lista de experiencias -->
+    <div class="experience-card list-card">
+        <div class="card-header-modern">
+            <div class="header-icon">
+                <i class="fas fa-history"></i>
+            </div>
+            <h3 class="card-title-modern">
+                Mi Historial Laboral
+                <span class="count-badge">{{ experiencias|length }}</span>
+            </h3>
+        </div>
+        <div class="card-body-modern">
+            {% if experiencias %}
+                <div class="experiences-grid">
+                    {% for exp in experiencias %}
+                    <div class="experience-item {% if loop.index0 == editar_index %}active{% endif %}">
+                        <div class="experience-item-header">
+                            <div class="company-info">
+                                <i class="fas fa-building"></i>
+                                <div>
+                                    <h4>{{ exp['Empresa'] }}</h4>
+                                    <span class="position">{{ exp['Puesto'] }}</span>
+                                </div>
+                            </div>
+                            <span class="period-badge">
+                                <i class="fas fa-calendar-alt"></i>
+                                {{ exp['FechaIngreso'].strftime('%b %Y') }} - 
+                                {% if exp['FechaSalida'] %}{{ exp['FechaSalida'].strftime('%b %Y') }}
+                                {% else %}Presente{% endif %}
+                            </span>
+                        </div>
+                        
+                        <div class="experience-item-body">
+                            {% if exp['Domicilio'] or exp['Telefono'] %}
+                            <div class="info-group">
+                                {% if exp['Domicilio'] %}
+                                <div class="info-tag">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                    <span>{{ exp['Domicilio'] }}</span>
+                                </div>
+                                {% endif %}
+                                {% if exp['Telefono'] %}
+                                <div class="info-tag">
+                                    <i class="fas fa-phone-alt"></i>
+                                    <span>{{ exp['Telefono'] }}</span>
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                            
+                            {% if exp['SueldoInicial'] or exp['SueldoFinal'] %}
+                            <div class="salary-info">
+                                <i class="fas fa-money-bill-wave"></i>
+                                <span>
+                                    ${{ "%.2f"|format(exp['SueldoInicial']) if exp['SueldoInicial'] else '0.00' }} - 
+                                    ${{ "%.2f"|format(exp['SueldoFinal']) if exp['SueldoFinal'] else '0.00' }}
+                                </span>
+                            </div>
+                            {% endif %}
+                            
+                            <div class="functions-section">
+                                <div class="functions-header">
+                                    <i class="fas fa-tasks"></i>
+                                    <strong>Funciones realizadas:</strong>
+                                </div>
+                                <p>{{ exp['Funciones'] }}</p>
+                            </div>
+                            
+                            {% if exp['MotivoSeparacion'] %}
+                            <div class="separation-reason">
+                                <i class="fas fa-sign-out-alt"></i>
+                                <strong>Motivo de separación:</strong>
+                                <span>{{ exp['MotivoSeparacion'] }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="experience-item-footer">
+                            <a href="{{ url_for('candidato_experiencia', editar=loop.index0) }}" 
+                               class="btn-edit">
+                                <i class="fas fa-edit"></i> Editar
+                            </a>
+                            <form method="POST" action="{{ url_for('candidato_experiencia') }}"
+                                  onsubmit="return confirm('¿Está seguro de eliminar esta experiencia laboral?');" 
+                                  class="delete-form">
+                                <input type="hidden" name="eliminar" value="{{ loop.index0 }}">
+                                <button type="submit" class="btn-delete">
+                                    <i class="fas fa-trash"></i> Eliminar
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state-modern">
+                    <div class="empty-icon">
+                        <i class="fas fa-briefcase"></i>
+                    </div>
+                    <h4>No hay experiencias laborales registradas</h4>
+                    <p>Comienza agregando tu primera experiencia laboral utilizando el formulario superior.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+/* Variables */
+:root {
+    --primary-color: #2563eb;
+    --primary-dark: #1d4ed8;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --danger-color: #ef4444;
+    --dark-color: #1e293b;
+    --gray-light: #f8fafc;
+    --gray-border: #e2e8f0;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --transition: all 0.3s ease;
+}
+
+/* Dashboard Principal */
+.experience-dashboard {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1.5rem;
+}
+
+.experience-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--gray-border);
+}
+
+.experience-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--dark-color);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.experience-title i {
+    color: var(--primary-color);
+    font-size: 1.85rem;
+}
+
+/* Tarjetas */
+.experience-card {
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--gray-border);
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+    transition: var(--transition);
+}
+
+.experience-card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.card-header-modern {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem 1.75rem;
+    background: linear-gradient(135deg, #fafcff 0%, #ffffff 100%);
+    border-bottom: 1px solid var(--gray-border);
+}
+
+.header-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(37, 99, 235, 0.1);
+    border-radius: var(--radius-sm);
+}
+
+.header-icon i {
+    font-size: 1.25rem;
+    color: var(--primary-color);
+}
+
+.card-title-modern {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--dark-color);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+}
+
+.count-badge {
+    background: var(--primary-color);
+    color: white;
+    padding: 0.25rem 0.6rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-left: 0.5rem;
+}
+
+.card-body-modern {
+    padding: 1.75rem;
+}
+
+/* Formulario */
+.experience-form-modern {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-field.full-width {
+    grid-column: span 2;
+}
+
+.field-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--dark-color);
+}
+
+.field-label i {
+    color: var(--primary-color);
+    width: 18px;
+}
+
+.field-control {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    border: 1px solid var(--gray-border);
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+    background: white;
+    font-family: inherit;
+}
+
+.field-control:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+textarea.field-control {
+    resize: vertical;
+    font-family: inherit;
+}
+
+.field-hint {
+    font-size: 0.7rem;
+    color: #64748b;
+    margin-top: 0.25rem;
+}
+
+/* Currency Input */
+.currency-input {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.currency-symbol {
+    position: absolute;
+    left: 12px;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.currency-field {
+    padding-left: 28px;
+}
+
+/* Botones del formulario */
+.form-actions-modern {
+    display: flex;
+    gap: 1rem;
+    padding-top: 1rem;
+    margin-top: 0.5rem;
+    border-top: 1px solid var(--gray-border);
+}
+
+.btn-primary-modern {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-primary-modern:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-secondary-modern {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: white;
+    color: var(--dark-color);
+    border: 1px solid var(--gray-border);
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.btn-secondary-modern:hover {
+    background: var(--gray-light);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+/* Grid de experiencias */
+.experiences-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.experience-item {
+    background: white;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--gray-border);
+    overflow: hidden;
+    transition: var(--transition);
+}
+
+.experience-item:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.experience-item.active {
+    border-left: 4px solid var(--primary-color);
+    background: rgba(37, 99, 235, 0.02);
+}
+
+.experience-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    background: var(--gray-light);
+    border-bottom: 1px solid var(--gray-border);
+}
+
+.company-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.company-info i {
+    font-size: 1.25rem;
+    color: var(--primary-color);
+}
+
+.company-info h4 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--dark-color);
+}
+
+.company-info .position {
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+.period-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.75rem;
+    background: white;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    color: var(--dark-color);
+    border: 1px solid var(--gray-border);
+}
+
+.experience-item-body {
+    padding: 1rem 1.25rem;
+}
+
+.info-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.info-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: #475569;
+    background: var(--gray-light);
+    padding: 0.35rem 0.75rem;
+    border-radius: var(--radius-sm);
+}
+
+.info-tag i {
+    color: var(--primary-color);
+    font-size: 0.8rem;
+}
+
+.salary-info {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: #065f46;
+    background: #d1fae5;
+    padding: 0.35rem 0.75rem;
+    border-radius: var(--radius-sm);
+    margin-bottom: 0.75rem;
+}
+
+.functions-section {
+    margin-top: 0.75rem;
+}
+
+.functions-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.85rem;
+}
+
+.functions-header i {
+    color: var(--primary-color);
+}
+
+.functions-section p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #475569;
+    line-height: 1.5;
+}
+
+.separation-reason {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--gray-border);
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+.separation-reason i {
+    color: var(--warning-color);
+}
+
+.experience-item-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    padding: 0.75rem 1.25rem;
+    background: var(--gray-light);
+    border-top: 1px solid var(--gray-border);
+}
+
+.btn-edit, .btn-delete {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.25rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    transition: var(--transition);
+    cursor: pointer;
+    border: none;
+    min-width: 100px;
+}
+
+.btn-edit {
+    background: white;
+    color: var(--primary-color);
+    border: 1px solid var(--gray-border);
+}
+
+.btn-edit:hover {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-delete {
+    background: white;
+    color: var(--danger-color);
+    border: 1px solid var(--gray-border);
+}
+
+.btn-delete:hover {
+    background: var(--danger-color);
+    color: white;
+    border-color: var(--danger-color);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+.delete-form {
+    margin: 0;
+}
+
+/* Empty State */
+.empty-state-modern {
+    text-align: center;
+    padding: 3rem 2rem;
+    background: var(--gray-light);
+    border-radius: var(--radius-md);
+    border: 1px dashed var(--gray-border);
+}
+
+.empty-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border-radius: 50%;
+    border: 2px dashed var(--gray-border);
+}
+
+.empty-icon i {
+    font-size: 2.5rem;
+    color: #94a3b8;
+}
+
+.empty-state-modern h4 {
+    margin: 0 0 0.5rem;
+    font-size: 1.1rem;
+    color: var(--dark-color);
+}
+
+.empty-state-modern p {
+    margin: 0;
+    color: #64748b;
+    font-size: 0.85rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .experience-dashboard {
+        padding: 1rem;
+    }
+    
+    .experience-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .experience-title {
+        font-size: 1.5rem;
+    }
+    
+    .form-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .form-field.full-width {
+        grid-column: span 1;
+    }
+    
+    .card-header-modern {
+        padding: 1rem 1.25rem;
+    }
+    
+    .card-body-modern {
+        padding: 1.25rem;
+    }
+    
+    .form-actions-modern {
+        flex-direction: column;
+    }
+    
+    .btn-primary-modern, .btn-secondary-modern {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .experience-item-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .experience-item-footer {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .btn-edit, .btn-delete {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .info-group {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .card-header-modern {
+        padding: 0.875rem 1rem;
+    }
+    
+    .card-body-modern {
+        padding: 1rem;
+    }
+    
+    .company-info {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .company-info h4 {
+        font-size: 0.95rem;
+    }
+}
+</style>
+
+<script>
+// Validación de fechas
+document.querySelector('.experience-form-modern').addEventListener('submit', function(e) {
+    const fechaInicio = document.getElementById('fecha_ingreso');
+    const fechaFin = document.getElementById('fecha_salida');
+    
+    if (fechaFin.value && fechaInicio.value > fechaFin.value) {
+        alert('La fecha de salida no puede ser anterior a la fecha de ingreso');
+        e.preventDefault();
+    }
+});
+
+// Cerrar mensajes flash
+document.querySelectorAll('.close').forEach(button => {
+    button.addEventListener('click', function() {
+        this.parentElement.style.opacity = '0';
+        setTimeout(() => {
+            this.parentElement.remove();
+        }, 300);
+    });
+});
+</script>
+{% endblock %}
