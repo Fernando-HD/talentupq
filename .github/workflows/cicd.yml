@@ -6,9 +6,6 @@ on:
   pull_request:
     branches: [main]
 
-env:
-  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/talentupq
-
 jobs:
   ci:
     name: Integración Continua
@@ -37,7 +34,9 @@ jobs:
         run: pytest tests/ -v
 
       - name: Verificar build de Docker
-        run: docker build -t ${{ env.IMAGE_NAME }}:test .
+        run: |
+          IMAGE_LC=$(echo "ghcr.io/${{ github.repository_owner }}/talentupq" | tr '[:upper:]' '[:lower:]')
+          docker build -t ${IMAGE_LC}:test .
 
   cd:
     name: Despliegue Continuo
@@ -49,6 +48,9 @@ jobs:
       - name: Checkout del código
         uses: actions/checkout@v4
 
+      - name: Definir imagen en minúsculas
+        run: echo "IMAGE_LC=$(echo 'ghcr.io/${{ github.repository_owner }}/talentupq' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
       - name: Login a GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -58,10 +60,10 @@ jobs:
 
       - name: Construir y publicar imagen Docker
         run: |
-          docker build -t ${{ env.IMAGE_NAME }}:latest \
-                       -t ${{ env.IMAGE_NAME }}:${{ github.sha }} .
-          docker push ${{ env.IMAGE_NAME }}:latest
-          docker push ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker build -t ${{ env.IMAGE_LC }}:latest \
+                       -t ${{ env.IMAGE_LC }}:${{ github.sha }} .
+          docker push ${{ env.IMAGE_LC }}:latest
+          docker push ${{ env.IMAGE_LC }}:${{ github.sha }}
 
       - name: Desplegar en VPS via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -71,8 +73,9 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             cd /opt/talentupq
-            docker pull ghcr.io/fernando-hd/talentupq:latest
+            docker pull $(echo "ghcr.io/${{ github.repository_owner }}/talentupq" | tr '[:upper:]' '[:lower:]'):latest
             docker compose up -d --no-deps backend
             sleep 5
             curl -f http://localhost:5000/health || exit 1
             echo "Deploy exitoso: $(date)"
+EOF
