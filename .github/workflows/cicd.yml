@@ -78,4 +78,3 @@ jobs:
             sleep 5
             curl -f http://localhost:5000/health || exit 1
             echo "Deploy exitoso: $(date)"
-EOF
