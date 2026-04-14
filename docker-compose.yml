@@ -20,9 +20,7 @@ services:
 #      retries: 10
 
   flask_app:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: ghcr.io/fernando-hd/talentupq:latest
     container_name: talentupq_flask
     environment:
       DB_HOST: sqlserver
@@ -45,9 +43,7 @@ services:
       - uploads_data:/app/static/uploads
 
   react_app:
-    build:
-      context: ./frontend-react
-      dockerfile: Dockerfile
+    image: ghcr.io/fernando-hd/talentupq:latest
     container_name: talentupq_react
     ports:
       - "3000:3000"
