@@ -77,4 +77,4 @@ jobs:
             docker compose up -d 
             sleep 5
             curl -f http://localhost:5000/health || exit 1
-            echo "Deploy exitoso: $(date)"
+            echo "Deploy exitoso TEST CI/CD: $(date)"
