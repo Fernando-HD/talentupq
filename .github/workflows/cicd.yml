@@ -44,7 +44,7 @@ jobs:
     needs: ci
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
-    steps:
+  steps:
       - name: Checkout del código
         uses: actions/checkout@v4
 
@@ -58,7 +58,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Construir y publicar imagen Docker
+            - name: Construir y publicar imagen Docker
         run: |
           docker build -t ${{ env.IMAGE_LC }}:latest \
                        -t ${{ env.IMAGE_LC }}:${{ github.sha }} .
@@ -74,8 +74,7 @@ jobs:
           script: |
             cd /opt/talentupq
             docker pull $(echo "ghcr.io/${{ github.repository_owner }}/talentupq" | tr '[:upper:]' '[:lower:]'):latest
-            docker compose up -d --no-deps backend
+            docker compose up -d 
             sleep 5
             curl -f http://localhost:5000/health || exit 1
             echo "Deploy exitoso: $(date)"
-# Conexion ssh arreglada
