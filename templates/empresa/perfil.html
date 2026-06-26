@@ -1,0 +1,753 @@
+{% extends "base.html" %}
+
+{% block title %}Perfil de Empresa{% endblock %}
+
+{% block content %}
+<div class="empresa-dashboard">
+    <div class="empresa-header">
+        <h1 class="empresa-title">
+            <i class="fas fa-building"></i> Perfil de Empresa
+        </h1>
+        <a href="{{ url_for('empresa_dashboard') }}" class="btn btn-outline">
+            <i class="fas fa-arrow-left"></i> Volver al Dashboard
+        </a>
+    </div>
+
+    <div class="empresa-card">
+        <div class="card-header-modern">
+            <div class="header-icon">
+                <i class="fas fa-info-circle"></i>
+            </div>
+            <div class="header-info">
+                <h3 class="card-title-modern">Información de la Empresa</h3>
+                <p class="card-subtitle-modern">Actualiza los datos de tu empresa para conectar con los mejores talentos</p>
+            </div>
+        </div>
+        
+        <div class="card-body-modern">
+            <form method="POST" enctype="multipart/form-data" class="empresa-form-modern">
+                <!-- Sección Logo -->
+                <div class="form-section">
+                    <div class="section-header-mini">
+                        <i class="fas fa-image"></i>
+                        <h4>Logo de la Empresa</h4>
+                        <span class="section-hint">Recomendado: 200x200px</span>
+                    </div>
+                    
+                    <div class="logo-container">
+                        <div class="logo-preview-area">
+                            <div class="logo-preview-wrapper">
+                                {% if empresa.Logo %}
+                                <img src="{{ url_for('static', filename='uploads/' + empresa.Logo) }}" 
+                                     id="logo-preview" class="logo-preview" alt="Logo actual">
+                                {% else %}
+                                <img src="{{ url_for('static', filename='images/default-company.png') }}" 
+                                     id="logo-preview" class="logo-preview" alt="Logo por defecto">
+                                {% endif %}
+                                <div class="logo-overlay">
+                                    <i class="fas fa-camera"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="logo-upload-area">
+                            <label for="logo-input" class="upload-btn">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <span>Cambiar Logo</span>
+                                <input type="file" name="logo" id="logo-input" accept="image/*" class="hidden-input">
+                            </label>
+                            <div class="upload-hints">
+                                <small><i class="fas fa-info-circle"></i> Formatos: JPG, PNG (Max. 2MB)</small>
+                                <small><i class="fas fa-expand"></i> Recomendamos imágenes cuadradas</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Información Básica -->
+                <div class="form-section">
+                    <div class="section-header-mini">
+                        <i class="fas fa-building"></i>
+                        <h4>Información Básica</h4>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-field">
+                            <label class="field-label">
+                                <i class="fas fa-tag"></i>
+                                <span>Nombre de la Empresa *</span>
+                            </label>
+                            <input type="text" name="nombre" class="field-control" 
+                                   value="{{ empresa.Nombre }}" required 
+                                   placeholder="Ej: Tecnologías Innovadoras S.A.">
+                        </div>
+                        
+                        <div class="form-field">
+                            <label class="field-label">
+                                <i class="fas fa-globe"></i>
+                                <span>Sitio Web</span>
+                            </label>
+                            <div class="input-with-icon">
+                                <i class="fas fa-link"></i>
+                                <input type="url" name="sitio_web" class="field-control" 
+                                       value="{{ empresa.SitioWeb }}" 
+                                       placeholder="https://www.ejemplo.com">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-field full-width">
+                        <label class="field-label">
+                            <i class="fas fa-align-left"></i>
+                            <span>Descripción de la Empresa *</span>
+                        </label>
+                        <textarea name="descripcion" class="field-control description-field" 
+                                  rows="5" required 
+                                  placeholder="Describe la misión, visión, valores y actividades de tu empresa...">{{ empresa.Descripcion }}</textarea>
+                        <div class="field-footer">
+                            <small class="field-hint">Máximo 500 caracteres</small>
+                            <div class="char-counter-modern">
+                                <i class="fas fa-font"></i>
+                                <span id="char-count">{{ empresa.Descripcion|length if empresa.Descripcion else 0 }}</span>
+                                <span>/500</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-field">
+                            <label class="field-label">
+                                <i class="fas fa-map-marker-alt"></i>
+                                <span>Dirección</span>
+                            </label>
+                            <div class="input-with-icon">
+                                <i class="fas fa-location-dot"></i>
+                                <input type="text" name="direccion" class="field-control" 
+                                       value="{{ empresa.Direccion }}" 
+                                       placeholder="Calle, número, colonia, ciudad, CP">
+                            </div>
+                        </div>
+                        
+                        <div class="form-field">
+                            <label class="field-label">
+                                <i class="fas fa-phone-alt"></i>
+                                <span>Teléfono</span>
+                            </label>
+                            <div class="input-with-icon">
+                                <i class="fas fa-phone"></i>
+                                <input type="tel" name="telefono" class="field-control" 
+                                       value="{{ empresa.Telefono }}" 
+                                       placeholder="+52 55 1234 5678">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions-modern">
+                    <button type="submit" class="btn-primary-modern">
+                        <i class="fas fa-save"></i> Guardar Cambios
+                    </button>
+                    <a href="{{ url_for('empresa_dashboard') }}" class="btn-secondary-modern">
+                        <i class="fas fa-times"></i> Cancelar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Variables */
+:root {
+    --primary-color: #2563eb;
+    --primary-dark: #1d4ed8;
+    --success-color: #10b981;
+    --dark-color: #1e293b;
+    --gray-light: #f8fafc;
+    --gray-border: #e2e8f0;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --transition: all 0.3s ease;
+}
+
+/* Dashboard Principal */
+.empresa-dashboard {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 1.5rem;
+}
+
+.empresa-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--gray-border);
+}
+
+.empresa-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--dark-color);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.empresa-title i {
+    color: var(--primary-color);
+    font-size: 1.85rem;
+}
+
+/* Tarjeta principal */
+.empresa-card {
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--gray-border);
+    overflow: hidden;
+    transition: var(--transition);
+}
+
+.empresa-card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.card-header-modern {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem 1.75rem;
+    background: linear-gradient(135deg, #fafcff 0%, #ffffff 100%);
+    border-bottom: 1px solid var(--gray-border);
+}
+
+.header-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(37, 99, 235, 0.1);
+    border-radius: var(--radius-md);
+}
+
+.header-icon i {
+    font-size: 1.5rem;
+    color: var(--primary-color);
+}
+
+.header-info {
+    flex: 1;
+}
+
+.card-title-modern {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--dark-color);
+}
+
+.card-subtitle-modern {
+    margin: 0.25rem 0 0;
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+.card-body-modern {
+    padding: 1.75rem;
+}
+
+/* Formulario */
+.empresa-form-modern {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.form-section {
+    background: var(--gray-light);
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+    border: 1px solid var(--gray-border);
+}
+
+.section-header-mini {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--gray-border);
+}
+
+.section-header-mini i {
+    font-size: 1rem;
+    color: var(--primary-color);
+}
+
+.section-header-mini h4 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--dark-color);
+}
+
+.section-hint {
+    font-size: 0.7rem;
+    color: #64748b;
+    margin-left: auto;
+}
+
+/* Logo Section */
+.logo-container {
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.logo-preview-area {
+    flex-shrink: 0;
+}
+
+.logo-preview-wrapper {
+    position: relative;
+    width: 140px;
+    height: 140px;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: white;
+    border: 2px dashed var(--gray-border);
+    transition: var(--transition);
+    cursor: pointer;
+}
+
+.logo-preview-wrapper:hover {
+    border-color: var(--primary-color);
+    transform: scale(1.02);
+}
+
+.logo-preview {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 10px;
+}
+
+.logo-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: var(--transition);
+}
+
+.logo-preview-wrapper:hover .logo-overlay {
+    opacity: 1;
+}
+
+.logo-overlay i {
+    color: white;
+    font-size: 1.5rem;
+}
+
+.logo-upload-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.upload-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1.25rem;
+    background: white;
+    border: 1px solid var(--gray-border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition);
+    width: fit-content;
+    font-weight: 500;
+    color: var(--dark-color);
+}
+
+.upload-btn:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    transform: translateY(-2px);
+}
+
+.upload-btn i {
+    font-size: 1rem;
+}
+
+.upload-hints {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.upload-hints small {
+    font-size: 0.7rem;
+    color: #64748b;
+}
+
+.upload-hints small i {
+    margin-right: 0.25rem;
+    color: var(--primary-color);
+}
+
+.hidden-input {
+    display: none;
+}
+
+/* Form Grid */
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
+    margin-bottom: 1rem;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-field.full-width {
+    grid-column: span 2;
+}
+
+.field-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--dark-color);
+}
+
+.field-label i {
+    color: var(--primary-color);
+    width: 16px;
+    font-size: 0.8rem;
+}
+
+.field-control {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    border: 1px solid var(--gray-border);
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+    background: white;
+    font-family: inherit;
+    width: 100%;
+}
+
+.field-control:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+textarea.field-control {
+    resize: vertical;
+    font-family: inherit;
+    min-height: 120px;
+}
+
+.description-field {
+    line-height: 1.5;
+}
+
+.field-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 0.5rem;
+}
+
+.field-hint {
+    font-size: 0.7rem;
+    color: #64748b;
+}
+
+.char-counter-modern {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.7rem;
+    color: #64748b;
+}
+
+.char-counter-modern i {
+    font-size: 0.65rem;
+}
+
+/* Input with icon */
+.input-with-icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-with-icon i {
+    position: absolute;
+    left: 12px;
+    color: #94a3b8;
+    font-size: 0.85rem;
+}
+
+.input-with-icon .field-control {
+    padding-left: 36px;
+}
+
+/* Botones */
+.form-actions-modern {
+    display: flex;
+    gap: 1rem;
+    padding-top: 1rem;
+    margin-top: 0.5rem;
+    border-top: 1px solid var(--gray-border);
+}
+
+.btn-primary-modern {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-primary-modern:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-secondary-modern {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: white;
+    color: var(--dark-color);
+    border: 1px solid var(--gray-border);
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.btn-secondary-modern:hover {
+    background: var(--gray-light);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.btn-outline {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.25rem;
+    background: transparent;
+    color: var(--dark-color);
+    border: 1px solid var(--gray-border);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.btn-outline:hover {
+    background: var(--gray-light);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .empresa-dashboard {
+        padding: 1rem;
+    }
+    
+    .empresa-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .empresa-title {
+        font-size: 1.5rem;
+    }
+    
+    .card-header-modern {
+        padding: 1rem 1.25rem;
+    }
+    
+    .card-body-modern {
+        padding: 1.25rem;
+    }
+    
+    .form-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .form-field.full-width {
+        grid-column: span 1;
+    }
+    
+    .logo-container {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .logo-upload-area {
+        align-items: center;
+    }
+    
+    .upload-btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .form-actions-modern {
+        flex-direction: column;
+    }
+    
+    .btn-primary-modern, .btn-secondary-modern {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .section-header-mini {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .section-hint {
+        margin-left: 0;
+    }
+}
+
+@media (max-width: 480px) {
+    .card-header-modern {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .header-info {
+        text-align: center;
+    }
+    
+    .card-body-modern {
+        padding: 1rem;
+    }
+    
+    .form-section {
+        padding: 1rem;
+    }
+    
+    .logo-preview-wrapper {
+        width: 120px;
+        height: 120px;
+    }
+}
+</style>
+
+<script>
+// Preview de imagen con validación
+document.getElementById('logo-input').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        // Validar tamaño (max 2MB)
+        if (file.size > 2 * 1024 * 1024) {
+            alert('El archivo es demasiado grande. Máximo 2MB permitidos.');
+            this.value = '';
+            return;
+        }
+        
+        // Validar tipo de archivo
+        const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!validTypes.includes(file.type)) {
+            alert('Solo se permiten imágenes JPG, PNG, GIF o WEBP.');
+            this.value = '';
+            return;
+        }
+        
+        // Mostrar vista previa con animación
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const preview = document.getElementById('logo-preview');
+            preview.style.opacity = '0';
+            setTimeout(() => {
+                preview.src = event.target.result;
+                preview.style.opacity = '1';
+            }, 200);
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+// Contador de caracteres para la descripción con animación
+const textarea = document.querySelector('textarea[name="descripcion"]');
+const charCountSpan = document.getElementById('char-count');
+
+if (textarea && charCountSpan) {
+    textarea.addEventListener('input', function(e) {
+        const charCount = e.target.value.length;
+        charCountSpan.textContent = charCount;
+        
+        // Efecto visual si se pasa del límite
+        if (charCount > 500) {
+            this.classList.add('textarea-error');
+            charCountSpan.style.color = '#ef4444';
+        } else {
+            this.classList.remove('textarea-error');
+            charCountSpan.style.color = '';
+        }
+    });
+}
+
+// Animación al cargar la página
+document.addEventListener('DOMContentLoaded', function() {
+    const card = document.querySelector('.empresa-card');
+    if (card) {
+        card.style.animation = 'fadeInUp 0.5s ease-out';
+    }
+});
+
+// Efecto de onda en el botón de guardar
+document.querySelector('.btn-primary-modern')?.addEventListener('click', function(e) {
+    this.style.transform = 'scale(0.98)';
+    setTimeout(() => {
+        this.style.transform = '';
+    }, 200);
+});
+</script>
+{% endblock %}

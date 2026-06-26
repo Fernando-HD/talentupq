@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+
+{% block title %}Iniciar Sesión{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-header">
+            <h2>Iniciar Sesión</h2>
+            <p>Ingresa tus credenciales para acceder</p>
+        </div>
+        
+        <form method="POST" action="{{ url_for('login') }}" class="auth-form">
+            <div class="form-group">
+                <label for="email" class="form-label">Correo Electrónico</label>
+                <input type="email" id="email" name="email" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password" class="form-label">Contraseña</label>
+                <input type="password" id="password" name="password" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+                <button type="submit" class="btn btn-primary btn-block">Iniciar Sesión</button>
+            </div>
+            
+            <div class="auth-footer">
+                <p>¿No tienes una cuenta? <a href="{{ url_for('registro') }}">Regístrate aquí</a></p>
+                <p><a href="{{ url_for('forgot_password') }}">¿Olvidaste tu contraseña?</a></p>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Simple -->
+<div id="adminModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 9999; display: flex; justify-content: center; align-items: center;">
+    <div style="background: #1e1e2f; padding: 2rem; border-radius: 20px; width: 400px; text-align: center; color: white;">
+        <button onclick="closeModal()" style="float: right; background: none; border: none; color: white; font-size: 24px; cursor: pointer;">&times;</button>
+        <h2 style="margin-top: 0;">🔐 Admin Portal</h2>
+        
+        <div style="margin: 20px 0;">
+            <button onclick="showPassword()" style="background: #ffd700; color: #1e1e2f; padding: 10px 20px; margin: 5px; border: none; border-radius: 8px; cursor: pointer;">🔑 Contraseña</button>
+            <button onclick="showFacial()" style="background: #ffd700; color: #1e1e2f; padding: 10px 20px; margin: 5px; border: none; border-radius: 8px; cursor: pointer;">👤 Reconocimiento Facial</button>
+        </div>
+        
+        <div id="passwordDiv">
+            <form method="POST" action="{{ url_for('login') }}" onsubmit="return checkPassword()">
+                <input type="hidden" name="is_admin" value="true">
+                <input type="hidden" name="email" value="Admin@upq.edu.mx">
+                <input type="password" id="adminPass" name="password" placeholder="Contraseña" style="width: 100%; padding: 10px; margin: 10px 0; border-radius: 8px; border: none;">
+                <button type="submit" style="background: #ffd700; color: #1e1e2f; padding: 10px; width: 100%; border: none; border-radius: 8px; cursor: pointer;">Acceder</button>
+            </form>
+        </div>
+        
+        <div id="facialDiv" style="display: none;">
+            <div style="background: #000; height: 200px; border-radius: 10px; margin: 10px 0; display: flex; align-items: center; justify-content: center;">
+                <video id="video" autoplay muted playsinline style="width: 100%; height: 100%; object-fit: cover; border-radius: 10px;"></video>
+            </div>
+            <button id="startCameraBtn" onclick="startCamera()" style="background: #ffd700; color: #1e1e2f; padding: 10px; width: 100%; margin: 5px 0; border: none; border-radius: 8px; cursor: pointer;">📷 Iniciar Cámara</button>
+            <button id="verifyBtn" onclick="verifyFace()" disabled style="background: #ffd700; color: #1e1e2f; padding: 10px; width: 100%; margin: 5px 0; border: none; border-radius: 8px; cursor: pointer;">✅ Verificar Rostro</button>
+            <div id="facialMsg" style="margin-top: 10px; font-size: 12px;"></div>
+        </div>
+        
+        <p style="font-size: 10px; opacity: 0.5; margin-top: 20px;">⚠️ Solo personal autorizado</p>
+    </div>
+</div>
+
+<style>
+.auth-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.auth-card {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    width: 100%;
+    max-width: 400px;
+    padding: 2rem;
+}
+
+.auth-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.auth-header h2 {
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+}
+
+.form-group {
+    margin-bottom: 1.25rem;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #2c3e50;
+    font-weight: 500;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    font-size: 1rem;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 0.75rem;
+    border-radius: 10px;
+    width: 100%;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.auth-footer {
+    margin-top: 1.5rem;
+    text-align: center;
+    font-size: 0.9rem;
+    color: #7f8c8d;
+}
+
+.auth-footer a {
+    color: #667eea;
+    text-decoration: none;
+}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+
+<script>
+// Variables
+let modelsLoaded = false;
+let video = null;
+let stream = null;
+let modal = document.getElementById('adminModal');
+let facialDiv = document.getElementById('facialDiv');
+
+// === SECUENCIA SECRETA ===
+let sequence = [];
+let metaKey = false;
+
+document.addEventListener('keydown', function(e) {
+    if (e.metaKey || e.ctrlKey) {
+        metaKey = true;
+        return;
+    }
+    
+    if (metaKey && document.activeElement.tagName !== 'INPUT') {
+        const key = e.key.toLowerCase();
+        if (/^[a-z]$/.test(key)) {
+            sequence.push(key);
+            if (sequence.length > 3) sequence.shift();
+            console.log('Secuencia actual:', sequence);
+            if (sequence.join('') === 'abc') {
+                console.log('✅ Secuencia correcta! Abriendo modal...');
+                openModal();
+                sequence = [];
+            }
+        }
+    }
+});
+
+document.addEventListener('keyup', function(e) {
+    if (e.key === 'Meta' || e.key === 'Control') {
+        metaKey = false;
+        sequence = [];
+    }
+});
+
+function openModal() {
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+    modal.style.display = 'none';
+    document.body.style.overflow = '';
+    stopCamera();
+}
+
+function showPassword() {
+    document.getElementById('passwordDiv').style.display = 'block';
+    document.getElementById('facialDiv').style.display = 'none';
+    stopCamera();
+}
+
+function showFacial() {
+    document.getElementById('passwordDiv').style.display = 'none';
+    document.getElementById('facialDiv').style.display = 'block';
+    loadModels();
+}
+
+function checkPassword() {
+    const pass = document.getElementById('adminPass').value;
+    if (pass.length < 8) {
+        alert('La contraseña debe tener al menos 8 caracteres');
+        return false;
+    }
+    return true;
+}
+
+// Cargar modelos
+async function loadModels() {
+    const msg = document.getElementById('facialMsg');
+    if (modelsLoaded) {
+        msg.innerHTML = '✅ Modelos listos';
+        return;
+    }
+    
+    msg.innerHTML = '🔄 Cargando modelos...';
+    
+    try {
+        await faceapi.nets.tinyFaceDetector.loadFromUri('/static/models');
+        await faceapi.nets.faceLandmark68Net.loadFromUri('/static/models');
+        await faceapi.nets.faceRecognitionNet.loadFromUri('/static/models');
+        
+        modelsLoaded = true;
+        msg.innerHTML = '✅ Modelos cargados. Puedes iniciar la cámara.';
+        msg.style.color = '#4caf50';
+    } catch (error) {
+        console.error('Error:', error);
+        msg.innerHTML = '❌ Error cargando modelos';
+        msg.style.color = '#f44336';
+    }
+}
+
+// Iniciar cámara
+async function startCamera() {
+    const btn = document.getElementById('startCameraBtn');
+    const msg = document.getElementById('facialMsg');
+    
+    if (!modelsLoaded) {
+        msg.innerHTML = '❌ Espera a que carguen los modelos';
+        return;
+    }
+    
+    try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video = document.getElementById('video');
+        video.srcObject = stream;
+        await video.play();
+        
+        btn.disabled = true;
+        document.getElementById('verifyBtn').disabled = false;
+        msg.innerHTML = '✅ Cámara activa. Mira al frente.';
+        msg.style.color = '#4caf50';
+    } catch (error) {
+        console.error('Error:', error);
+        msg.innerHTML = '❌ No se pudo acceder a la cámara';
+        msg.style.color = '#f44336';
+    }
+}
+
+// Verificar rostro
+async function verifyFace() {
+    const btn = document.getElementById('verifyBtn');
+    const msg = document.getElementById('facialMsg');
+    
+    if (!video || !stream) {
+        msg.innerHTML = '❌ Inicia la cámara primero';
+        msg.style.color = '#f44336';
+        return;
+    }
+    
+    btn.disabled = true;
+    msg.innerHTML = '🔄 Verificando rostro...';
+    msg.style.color = 'white';
+    
+    try {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        
+        const detections = await faceapi.detectAllFaces(canvas, 
+            new faceapi.TinyFaceDetectorOptions());
+        
+        if (detections.length === 1) {
+            msg.innerHTML = '✅ ¡Rostro verificado! Redirigiendo...';
+            msg.style.color = '#4caf50';
+            setTimeout(() => {
+                window.location.href = "{{ url_for('admin_dashboard') }}";
+            }, 1500);
+        } else if (detections.length > 1) {
+            msg.innerHTML = '❌ Múltiples rostros detectados';
+            msg.style.color = '#f44336';
+            btn.disabled = false;
+        } else {
+            msg.innerHTML = '❌ No se detectó ningún rostro';
+            msg.style.color = '#f44336';
+            btn.disabled = false;
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        msg.innerHTML = '❌ Error en la verificación';
+        msg.style.color = '#f44336';
+        btn.disabled = false;
+    }
+}
+
+function stopCamera() {
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+    }
+    if (video) video.srcObject = null;
+    document.getElementById('startCameraBtn').disabled = false;
+    document.getElementById('verifyBtn').disabled = true;
+}
+</script>
+{% endblock %}

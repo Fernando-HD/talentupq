@@ -1,0 +1,59 @@
+<!-- templates/admin/vacantes.html -->
+{% extends "base.html" %}
+
+{% block title %}Vacantes - Panel de Control{% endblock %}
+
+{% block content %}
+<div class="crud-container">
+    <div class="crud-header">
+        <h2>Gestión de Vacantes</h2>
+        <a href="{{ url_for('crear_vacante') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Nueva Vacante
+        </a>
+    </div>
+    
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Puesto</th>
+                    <th>Empresa</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for vacante in vacantes %}
+                <tr>
+                    <td>{{ vacante.id }}</td>
+                    <td>{{ vacante.puesto }}</td>
+                    <td>{{ vacante.empresa_nombre }}</td>
+                    <td>
+                        <span class="badge bg-{{ 
+                            'success' if vacante.estatus == 'aprobada' else 
+                            'warning' if vacante.estatus == 'en_revision' else 
+                            'danger' if vacante.estatus == 'rechazada' else 
+                            'secondary' 
+                        }}">
+                            {{ vacante.estatus }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="btn-group">
+                            <a href="{{ url_for('editar_vacante', id=vacante.id) }}" class="btn btn-sm btn-warning">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{{ url_for('eliminar_vacante', id=vacante.id) }}" class="btn btn-sm btn-danger" 
+                               onclick="return confirm('¿Eliminar esta vacante?')">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

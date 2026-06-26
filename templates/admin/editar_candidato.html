@@ -1,0 +1,1243 @@
+<!-- templates/admin/editar_candidato.html -->
+{% extends "base.html" %}
+
+{% block title %}Editar Candidato{% endblock %}
+
+{% block content %}
+<div class="admin-dashboard">
+    <div class="admin-header">
+        <div class="header-left">
+            <div class="header-icon">
+                <i class="fas fa-user-edit"></i>
+            </div>
+            <div>
+                <h1>Editar Candidato</h1>
+                <p class="header-subtitle">{{ candidato.Nombre }} {{ candidato.ApellidoPaterno }}</p>
+            </div>
+        </div>
+        <a href="{{ url_for('admin_candidatos') }}" class="btn-back">
+            <i class="fas fa-arrow-left"></i>
+            <span>Volver a candidatos</span>
+        </a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                    <div class="flash-message flash-{{ category }}">
+                        <i class="fas {% if category == 'success' %}fa-check-circle{% elif category == 'error' %}fa-exclamation-circle{% else %}fa-info-circle{% endif %}"></i>
+                        <span>{{ message }}</span>
+                        <button class="flash-close" onclick="this.parentElement.remove()">&times;</button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <div class="admin-card">
+        <div class="card-header-modern">
+            <div class="header-icon-small">
+                <i class="fas fa-user"></i>
+            </div>
+            <h3>Información del Candidato</h3>
+            <span class="card-badge">ID: {{ candidato.CandidatoID }}</span>
+        </div>
+
+        <form method="POST" enctype="multipart/form-data" class="admin-form-modern">
+            <!-- Sección 1: Información básica -->
+            <div class="form-section">
+                <div class="section-header-mini">
+                    <i class="fas fa-id-card"></i>
+                    <h4>Información Básica</h4>
+                </div>
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-id-badge"></i>
+                            <span>Usuario ID *</span>
+                        </label>
+                        <input type="number" id="usuario_id" name="usuario_id" 
+                               class="field-control" value="{{ candidato.UsuarioID }}" required>
+                        <small class="field-hint">ID del usuario asociado a este candidato</small>
+                    </div>
+
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-user"></i>
+                            <span>Nombre *</span>
+                        </label>
+                        <input type="text" id="nombre" name="nombre" 
+                               class="field-control" value="{{ candidato.Nombre }}" required>
+                    </div>
+
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-user-tag"></i>
+                            <span>Apellido Paterno *</span>
+                        </label>
+                        <input type="text" id="apellido_paterno" name="apellido_paterno" 
+                               class="field-control" value="{{ candidato.ApellidoPaterno }}" required>
+                    </div>
+
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-user-tag"></i>
+                            <span>Apellido Materno</span>
+                        </label>
+                        <input type="text" id="apellido_materno" name="apellido_materno" 
+                               class="field-control" value="{{ candidato.ApellidoMaterno if candidato.ApellidoMaterno }}">
+                    </div>
+
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-phone-alt"></i>
+                            <span>Teléfono</span>
+                        </label>
+                        <input type="tel" id="telefono" name="telefono" 
+                               class="field-control" value="{{ candidato.Telefono if candidato.Telefono }}"
+                               placeholder="+52 55 1234 5678">
+                    </div>
+
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-calendar-alt"></i>
+                            <span>Fecha de Nacimiento</span>
+                        </label>
+                        <input type="date" id="fecha_nacimiento" name="fecha_nacimiento" 
+                               class="field-control" value="{{ candidato.FechaNacimiento if candidato.FechaNacimiento }}">
+                    </div>
+
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-venus-mars"></i>
+                            <span>Sexo</span>
+                        </label>
+                        <select id="sexo" name="sexo" class="field-control">
+                            <option value="">Seleccionar...</option>
+                            <option value="Masculino" {% if candidato.Sexo == 'Masculino' %}selected{% endif %}>Masculino</option>
+                            <option value="Femenino" {% if candidato.Sexo == 'Femenino' %}selected{% endif %}>Femenino</option>
+                            <option value="Otro" {% if candidato.Sexo == 'Otro' %}selected{% endif %}>Otro</option>
+                        </select>
+                    </div>
+
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-heart"></i>
+                            <span>Estado Civil</span>
+                        </label>
+                        <select id="estado_civil" name="estado_civil" class="field-control">
+                            <option value="">Seleccionar...</option>
+                            <option value="Soltero/a" {% if candidato.EstadoCivil == 'Soltero/a' %}selected{% endif %}>Soltero/a</option>
+                            <option value="Casado/a" {% if candidato.EstadoCivil == 'Casado/a' %}selected{% endif %}>Casado/a</option>
+                            <option value="Divorciado/a" {% if candidato.EstadoCivil == 'Divorciado/a' %}selected{% endif %}>Divorciado/a</option>
+                            <option value="Viudo/a" {% if candidato.EstadoCivil == 'Viudo/a' %}selected{% endif %}>Viudo/a</option>
+                            <option value="Unión Libre" {% if candidato.EstadoCivil == 'Unión Libre' %}selected{% endif %}>Unión Libre</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección 2: Información profesional -->
+            <div class="form-section">
+                <div class="section-header-mini">
+                    <i class="fas fa-briefcase"></i>
+                    <h4>Información Profesional</h4>
+                </div>
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-user-graduate"></i>
+                            <span>Puesto Actual</span>
+                        </label>
+                        <input type="text" id="puesto_actual" name="puesto_actual" 
+                               class="field-control" value="{{ candidato.PuestoActual if candidato.PuestoActual }}"
+                               placeholder="Ej: Ingeniero de Software">
+                    </div>
+
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-bullseye"></i>
+                            <span>Puesto Solicitado</span>
+                        </label>
+                        <input type="text" id="puesto_solicitado" name="puesto_solicitado" 
+                               class="field-control" value="{{ candidato.PuestoSolicitado if candidato.PuestoSolicitado }}"
+                               placeholder="Ej: Desarrollador Full Stack">
+                    </div>
+
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-laptop-house"></i>
+                            <span>Modalidad de Trabajo</span>
+                        </label>
+                        <select id="modalidad_trabajo" name="modalidad_trabajo" class="field-control">
+                            <option value="">Seleccionar...</option>
+                            <option value="Presencial" {% if candidato.ModalidadTrabajo == 'Presencial' %}selected{% endif %}>Presencial</option>
+                            <option value="Remoto" {% if candidato.ModalidadTrabajo == 'Remoto' %}selected{% endif %}>Remoto</option>
+                            <option value="Híbrido" {% if candidato.ModalidadTrabajo == 'Híbrido' %}selected{% endif %}>Híbrido</option>
+                            <option value="Freelance" {% if candidato.ModalidadTrabajo == 'Freelance' %}selected{% endif %}>Freelance</option>
+                        </select>
+                    </div>
+
+                    <div class="form-field full-width">
+                        <label class="field-label">
+                            <i class="fas fa-file-alt"></i>
+                            <span>Resumen Profesional</span>
+                        </label>
+                        <textarea id="resumen_profesional" name="resumen_profesional" 
+                                  class="field-control" rows="4" 
+                                  placeholder="Describe tu experiencia, habilidades y objetivos profesionales...">{{ candidato.ResumenProfesional if candidato.ResumenProfesional }}</textarea>
+                        <small class="field-hint">Máximo 500 caracteres</small>
+                        <div class="char-counter" id="charCounter">{{ candidato.ResumenProfesional|length if candidato.ResumenProfesional else 0 }}/500</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección 3: Documentos -->
+            <div class="form-section">
+                <div class="section-header-mini">
+                    <i class="fas fa-file-pdf"></i>
+                    <h4>Documentos</h4>
+                </div>
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-camera"></i>
+                            <span>Foto de Perfil</span>
+                        </label>
+                        <div class="file-upload-modern">
+                            <div class="file-upload-preview" id="fotoPreview">
+                                {% if candidato.FotoPerfil %}
+                                    <img src="{{ url_for('static', filename='uploads/' + candidato.FotoPerfil) }}" 
+                                         alt="Foto de perfil">
+                                {% else %}
+                                    <i class="fas fa-user-circle"></i>
+                                {% endif %}
+                            </div>
+                            <div class="file-upload-controls">
+                                <label class="file-upload-btn">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <span>Cambiar Foto</span>
+                                    <input type="file" id="foto_perfil" name="foto_perfil" accept="image/*">
+                                </label>
+                                <span class="file-name" id="fotoFileName">Mantener foto actual</span>
+                                <small class="field-hint">Formatos: JPG, PNG (Máx. 2MB)</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-file-pdf"></i>
+                            <span>Curriculum Vitae (CV)</span>
+                        </label>
+                        <div class="file-upload-modern">
+                            <div class="file-upload-preview cv-preview">
+                                {% if candidato.CV %}
+                                    <i class="fas fa-file-pdf"></i>
+                                    <span class="cv-name">{{ candidato.CV.split('_')[-1] if candidato.CV else 'documento.pdf' }}</span>
+                                {% else %}
+                                    <i class="fas fa-file-alt"></i>
+                                {% endif %}
+                            </div>
+                            <div class="file-upload-controls">
+                                <label class="file-upload-btn">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <span>Cambiar CV</span>
+                                    <input type="file" id="cv" name="cv" accept=".pdf,.doc,.docx">
+                                </label>
+                                <span class="file-name" id="cvFileName">Mantener CV actual</span>
+                                <small class="field-hint">Formatos: PDF, DOC, DOCX (Máx. 5MB)</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección 4: Otra información -->
+            <div class="form-section">
+                <div class="section-header-mini">
+                    <i class="fas fa-info-circle"></i>
+                    <h4>Información Adicional</h4>
+                </div>
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-flag"></i>
+                            <span>Nacionalidad</span>
+                        </label>
+                        <input type="text" id="nacionalidad" name="nacionalidad" 
+                               class="field-control" value="{{ candidato.Nacionalidad if candidato.Nacionalidad }}"
+                               placeholder="Ej: Mexicana">
+                    </div>
+
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-id-card"></i>
+                            <span>RFC</span>
+                        </label>
+                        <input type="text" id="rfc" name="rfc" 
+                               class="field-control" value="{{ candidato.RFC if candidato.RFC }}"
+                               placeholder="Ej: ABCD123456XYZ">
+                    </div>
+
+                    <div class="form-field full-width">
+                        <label class="field-label">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span>Dirección</span>
+                        </label>
+                        <textarea id="direccion" name="direccion" 
+                                  class="field-control" rows="2" 
+                                  placeholder="Calle, número, colonia, ciudad, CP">{{ candidato.Direccion if candidato.Direccion }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección 5: Disponibilidades -->
+            <div class="form-section">
+                <div class="section-header-mini">
+                    <i class="fas fa-check-circle"></i>
+                    <h4>Disponibilidades</h4>
+                </div>
+                <div class="checkbox-group-modern">
+                    <label class="checkbox-modern">
+                        <input type="checkbox" id="reubicacion" name="reubicacion" {% if candidato.Reubicacion %}checked{% endif %}>
+                        <span class="checkbox-custom"></span>
+                        <span class="checkbox-label">
+                            <i class="fas fa-map-marked-alt"></i>
+                            Disponible para reubicarse
+                        </span>
+                    </label>
+                    <label class="checkbox-modern">
+                        <input type="checkbox" id="viajar" name="viajar" {% if candidato.Viajar %}checked{% endif %}>
+                        <span class="checkbox-custom"></span>
+                        <span class="checkbox-label">
+                            <i class="fas fa-plane"></i>
+                            Disponible para viajar
+                        </span>
+                    </label>
+                    <label class="checkbox-modern">
+                        <input type="checkbox" id="licencia" name="licencia" {% if candidato.LicenciaConducir %}checked{% endif %}>
+                        <span class="checkbox-custom"></span>
+                        <span class="checkbox-label">
+                            <i class="fas fa-car"></i>
+                            Licencia de conducir
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn-primary-modern">
+                    <i class="fas fa-save"></i>
+                    <span>Guardar Cambios</span>
+                </button>
+                <button type="reset" class="btn-secondary-modern" onclick="resetForm()">
+                    <i class="fas fa-undo"></i>
+                    <span>Limpiar</span>
+                </button>
+                <a href="{{ url_for('admin_candidatos') }}" class="btn-secondary-modern">
+                    <i class="fas fa-times"></i>
+                    <span>Cancelar</span>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Tarjeta informativa -->
+    <div class="info-card">
+        <div class="card-header-modern">
+            <div class="header-icon-small">
+                <i class="fas fa-info-circle"></i>
+            </div>
+            <h3>Información Adicional</h3>
+        </div>
+        <div class="info-content">
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">ID de Candidato:</span>
+                    <span class="info-value">{{ candidato.CandidatoID }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Usuario Asociado:</span>
+                    <span class="info-value">ID: {{ candidato.UsuarioID }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Fecha de Registro:</span>
+                    <span class="info-value">{{ candidato.FechaRegistro.strftime('%d/%m/%Y %H:%M') if candidato.FechaRegistro else 'No disponible' }}</span>
+                </div>
+            </div>
+            <div class="info-tip">
+                <i class="fas fa-lightbulb"></i>
+                <div>
+                    <strong>Consejo:</strong>
+                    <p>Mantén actualizada la información del candidato para que las empresas tengan una mejor referencia al momento de evaluar postulaciones.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Variables */
+:root {
+    --primary-color: #2563eb;
+    --primary-dark: #1d4ed8;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --danger-color: #ef4444;
+    --dark-color: #1e293b;
+    --gray-light: #f8fafc;
+    --gray-border: #e2e8f0;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --transition: all 0.3s ease;
+}
+
+/* Dashboard Principal */
+.admin-dashboard {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 1.5rem;
+}
+
+/* Header */
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--gray-border);
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.header-icon {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+}
+
+.header-icon i {
+    font-size: 1.5rem;
+    color: white;
+}
+
+.admin-header h1 {
+    margin: 0;
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--dark-color);
+}
+
+.header-subtitle {
+    margin: 0.25rem 0 0;
+    color: #64748b;
+    font-size: 0.85rem;
+}
+
+.btn-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.25rem;
+    background: white;
+    color: var(--dark-color);
+    border: 1px solid var(--gray-border);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.btn-back:hover {
+    background: var(--gray-light);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    transform: translateX(-3px);
+}
+
+/* Flash Messages */
+.flash-messages {
+    margin-bottom: 1.5rem;
+}
+
+.flash-message {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    border-radius: var(--radius-md);
+    margin-bottom: 0.75rem;
+    animation: slideIn 0.3s ease-out;
+    position: relative;
+}
+
+.flash-success {
+    background: #ecfdf5;
+    border-left: 4px solid var(--success-color);
+    color: #065f46;
+}
+
+.flash-error {
+    background: #fef2f2;
+    border-left: 4px solid var(--danger-color);
+    color: #991b1b;
+}
+
+.flash-info {
+    background: #eff6ff;
+    border-left: 4px solid var(--primary-color);
+    color: #1e40af;
+}
+
+.flash-message i {
+    font-size: 1.1rem;
+}
+
+.flash-close {
+    margin-left: auto;
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0.7;
+    transition: var(--transition);
+}
+
+.flash-close:hover {
+    opacity: 1;
+}
+
+/* Tarjeta Principal */
+.admin-card {
+    background: white;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--gray-border);
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
+}
+
+.admin-card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.card-header-modern {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    background: var(--gray-light);
+    border-bottom: 1px solid var(--gray-border);
+}
+
+.header-icon-small {
+    width: 32px;
+    height: 32px;
+    background: rgba(37, 99, 235, 0.1);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.header-icon-small i {
+    font-size: 1rem;
+    color: var(--primary-color);
+}
+
+.card-header-modern h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--dark-color);
+    flex: 1;
+}
+
+.card-badge {
+    background: var(--primary-color);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+/* Formulario */
+.admin-form-modern {
+    padding: 1.5rem;
+}
+
+.form-section {
+    background: var(--gray-light);
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--gray-border);
+}
+
+.section-header-mini {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--gray-border);
+}
+
+.section-header-mini i {
+    font-size: 1rem;
+    color: var(--primary-color);
+}
+
+.section-header-mini h4 {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--dark-color);
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-field.full-width {
+    grid-column: span 2;
+}
+
+.field-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--dark-color);
+}
+
+.field-label i {
+    color: var(--primary-color);
+    width: 16px;
+    font-size: 0.8rem;
+}
+
+.field-control {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    border: 1px solid var(--gray-border);
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+    background: white;
+    font-family: inherit;
+    width: 100%;
+}
+
+.field-control:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+textarea.field-control {
+    resize: vertical;
+    font-family: inherit;
+}
+
+select.field-control {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+}
+
+.field-hint {
+    font-size: 0.7rem;
+    color: #64748b;
+}
+
+/* File Upload Moderno */
+.file-upload-modern {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.file-upload-preview {
+    width: 80px;
+    height: 80px;
+    background: white;
+    border: 2px dashed var(--gray-border);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+    overflow: hidden;
+}
+
+.file-upload-preview i {
+    font-size: 2rem;
+    color: #94a3b8;
+}
+
+.file-upload-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: var(--radius-md);
+    padding: 0.5rem;
+}
+
+.file-upload-preview.cv-preview {
+    background: var(--gray-light);
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.file-upload-preview.cv-preview i {
+    font-size: 1.5rem;
+}
+
+.file-upload-preview.cv-preview .cv-name {
+    font-size: 0.65rem;
+    color: #64748b;
+    text-align: center;
+    word-break: break-all;
+    padding: 0 0.25rem;
+}
+
+.file-upload-controls {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.file-upload-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: white;
+    border: 1px solid var(--gray-border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--dark-color);
+    width: fit-content;
+}
+
+.file-upload-btn:hover {
+    background: var(--gray-light);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.file-upload-btn i {
+    font-size: 0.9rem;
+}
+
+.file-upload-btn input {
+    display: none;
+}
+
+.file-name {
+    font-size: 0.7rem;
+    color: #64748b;
+}
+
+/* Char Counter */
+.char-counter {
+    font-size: 0.7rem;
+    color: #94a3b8;
+    text-align: right;
+    margin-top: 0.25rem;
+    font-family: monospace;
+}
+
+.char-counter.warning {
+    color: var(--warning-color);
+}
+
+.char-counter.danger {
+    color: var(--danger-color);
+}
+
+/* Checkbox Group Moderno */
+.checkbox-group-modern {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.checkbox-modern {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+}
+
+.checkbox-modern input {
+    display: none;
+}
+
+.checkbox-custom {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--gray-border);
+    border-radius: 4px;
+    position: relative;
+    transition: var(--transition);
+}
+
+.checkbox-modern input:checked + .checkbox-custom {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.checkbox-modern input:checked + .checkbox-custom::after {
+    content: "✓";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 10px;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--dark-color);
+}
+
+.checkbox-label i {
+    color: var(--primary-color);
+}
+
+/* Botones */
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--gray-border);
+    margin-top: 1rem;
+    flex-wrap: wrap;
+}
+
+.btn-primary-modern {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-primary-modern:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-secondary-modern {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: white;
+    color: var(--dark-color);
+    border: 1px solid var(--gray-border);
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: var(--transition);
+    cursor: pointer;
+}
+
+.btn-secondary-modern:hover {
+    background: var(--gray-light);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+/* Tarjeta Informativa */
+.info-card {
+    background: white;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--gray-border);
+    overflow: hidden;
+}
+
+.info-content {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--gray-border);
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+}
+
+.info-label {
+    font-size: 0.8rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.info-value {
+    font-size: 0.85rem;
+    color: var(--dark-color);
+    font-weight: 500;
+}
+
+.info-tip {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: var(--gray-light);
+    border-radius: var(--radius-md);
+    transition: var(--transition);
+}
+
+.info-tip:hover {
+    background: white;
+    box-shadow: var(--shadow-sm);
+}
+
+.info-tip i {
+    font-size: 1.1rem;
+    color: var(--primary-color);
+    margin-top: 0.1rem;
+}
+
+.info-tip strong {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--dark-color);
+    margin-bottom: 0.25rem;
+}
+
+.info-tip p {
+    margin: 0;
+    font-size: 0.75rem;
+    color: #64748b;
+    line-height: 1.4;
+}
+
+/* Animaciones */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .admin-dashboard {
+        padding: 1rem;
+    }
+    
+    .admin-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .btn-back {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .form-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .form-field.full-width {
+        grid-column: span 1;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .btn-primary-modern, .btn-secondary-modern {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .file-upload-modern {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .file-upload-btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .checkbox-group-modern {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .info-grid {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+    
+    .info-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+    }
+    
+    .info-tip {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .info-tip i {
+        margin: 0 auto;
+    }
+}
+
+@media (max-width: 480px) {
+    .header-left {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .card-header-modern {
+        padding: 0.875rem 1rem;
+        flex-wrap: wrap;
+    }
+    
+    .admin-form-modern {
+        padding: 1rem;
+    }
+    
+    .form-section {
+        padding: 1rem;
+    }
+}
+</style>
+
+<script>
+// Preview de foto
+document.getElementById('foto_perfil').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    const fileNameSpan = document.getElementById('fotoFileName');
+    const previewDiv = document.getElementById('fotoPreview');
+    
+    if (file) {
+        if (file.size > 2 * 1024 * 1024) {
+            alert('El archivo es demasiado grande. Máximo 2MB permitidos.');
+            this.value = '';
+            fileNameSpan.textContent = 'Mantener foto actual';
+            return;
+        }
+        
+        const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!validTypes.includes(file.type)) {
+            alert('Solo se permiten imágenes JPG, PNG, GIF o WEBP.');
+            this.value = '';
+            fileNameSpan.textContent = 'Mantener foto actual';
+            return;
+        }
+        
+        fileNameSpan.textContent = file.name;
+        
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            previewDiv.innerHTML = `<img src="${event.target.result}" alt="Preview">`;
+            previewDiv.style.borderColor = 'var(--primary-color)';
+        };
+        reader.readAsDataURL(file);
+    } else {
+        fileNameSpan.textContent = 'Mantener foto actual';
+        {% if candidato.FotoPerfil %}
+            previewDiv.innerHTML = `<img src="{{ url_for('static', filename='uploads/' + candidato.FotoPerfil) }}" alt="Foto de perfil">`;
+        {% else %}
+            previewDiv.innerHTML = '<i class="fas fa-user-circle"></i>';
+        {% endif %}
+        previewDiv.style.borderColor = '';
+    }
+});
+
+// Preview de CV
+document.getElementById('cv').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    const fileNameSpan = document.getElementById('cvFileName');
+    const previewDiv = document.querySelector('.file-upload-preview.cv-preview');
+    
+    if (file) {
+        if (file.size > 5 * 1024 * 1024) {
+            alert('El archivo es demasiado grande. Máximo 5MB permitidos.');
+            this.value = '';
+            fileNameSpan.textContent = 'Mantener CV actual';
+            return;
+        }
+        
+        const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+        if (!validTypes.includes(file.type)) {
+            alert('Solo se permiten archivos PDF, DOC o DOCX.');
+            this.value = '';
+            fileNameSpan.textContent = 'Mantener CV actual';
+            return;
+        }
+        
+        fileNameSpan.textContent = file.name;
+        
+        // Mostrar preview del nombre del archivo
+        previewDiv.innerHTML = `<i class="fas fa-file-pdf"></i><span class="cv-name">${file.name}</span>`;
+        previewDiv.style.borderColor = 'var(--primary-color)';
+    } else {
+        fileNameSpan.textContent = 'Mantener CV actual';
+        {% if candidato.CV %}
+            previewDiv.innerHTML = `<i class="fas fa-file-pdf"></i><span class="cv-name">{{ candidato.CV.split('_')[-1] if candidato.CV else 'documento.pdf' }}</span>`;
+        {% else %}
+            previewDiv.innerHTML = '<i class="fas fa-file-alt"></i>';
+        {% endif %}
+        previewDiv.style.borderColor = '';
+    }
+});
+
+// Contador de caracteres
+const resumen = document.getElementById('resumen_profesional');
+const charCounter = document.querySelector('.char-counter');
+const maxLength = 500;
+
+if (resumen && charCounter) {
+    resumen.addEventListener('input', function() {
+        const length = this.value.length;
+        charCounter.textContent = `${length}/${maxLength}`;
+        
+        if (length > maxLength) {
+            charCounter.classList.add('danger');
+            this.style.borderColor = 'var(--danger-color)';
+        } else if (length > maxLength * 0.9) {
+            charCounter.classList.add('warning');
+            charCounter.classList.remove('danger');
+            this.style.borderColor = 'var(--warning-color)';
+        } else {
+            charCounter.classList.remove('warning', 'danger');
+            this.style.borderColor = '';
+        }
+    });
+}
+
+// Limpiar formulario
+function resetForm() {
+    if (confirm('¿Estás seguro de que quieres limpiar todos los cambios no guardados?')) {
+        // Resetear campos del formulario
+        document.querySelector('form').reset();
+        
+        // Restaurar valores originales de los campos
+        {% set candidato_data = candidato %}
+        document.getElementById('usuario_id').value = {{ candidato.UsuarioID }};
+        document.getElementById('nombre').value = '{{ candidato.Nombre }}';
+        document.getElementById('apellido_paterno').value = '{{ candidato.ApellidoPaterno }}';
+        document.getElementById('apellido_materno').value = '{{ candidato.ApellidoMaterno if candidato.ApellidoMaterno else "" }}';
+        document.getElementById('telefono').value = '{{ candidato.Telefono if candidato.Telefono else "" }}';
+        document.getElementById('fecha_nacimiento').value = '{{ candidato.FechaNacimiento if candidato.FechaNacimiento else "" }}';
+        document.getElementById('sexo').value = '{{ candidato.Sexo if candidato.Sexo else "" }}';
+        document.getElementById('estado_civil').value = '{{ candidato.EstadoCivil if candidato.EstadoCivil else "" }}';
+        document.getElementById('puesto_actual').value = '{{ candidato.PuestoActual if candidato.PuestoActual else "" }}';
+        document.getElementById('puesto_solicitado').value = '{{ candidato.PuestoSolicitado if candidato.PuestoSolicitado else "" }}';
+        document.getElementById('modalidad_trabajo').value = '{{ candidato.ModalidadTrabajo if candidato.ModalidadTrabajo else "" }}';
+        document.getElementById('nacionalidad').value = '{{ candidato.Nacionalidad if candidato.Nacionalidad else "" }}';
+        document.getElementById('rfc').value = '{{ candidato.RFC if candidato.RFC else "" }}';
+        document.getElementById('direccion').value = '{{ candidato.Direccion if candidato.Direccion else "" }}';
+        document.getElementById('resumen_profesional').value = '{{ candidato.ResumenProfesional if candidato.ResumenProfesional else "" }}';
+        document.getElementById('reubicacion').checked = {{ 'true' if candidato.Reubicacion else 'false' }};
+        document.getElementById('viajar').checked = {{ 'true' if candidato.Viajar else 'false' }};
+        document.getElementById('licencia').checked = {{ 'true' if candidato.LicenciaConducir else 'false' }};
+        
+        // Resetear contador
+        if (charCounter) charCounter.textContent = `{{ candidato.ResumenProfesional|length if candidato.ResumenProfesional else 0 }}/500`;
+        
+        // Resetear previews
+        const fotoPreview = document.getElementById('fotoPreview');
+        const cvPreview = document.querySelector('.file-upload-preview.cv-preview');
+        
+        {% if candidato.FotoPerfil %}
+            fotoPreview.innerHTML = `<img src="{{ url_for('static', filename='uploads/' + candidato.FotoPerfil) }}" alt="Foto de perfil">`;
+        {% else %}
+            fotoPreview.innerHTML = '<i class="fas fa-user-circle"></i>';
+        {% endif %}
+        fotoPreview.style.borderColor = '';
+        
+        {% if candidato.CV %}
+            cvPreview.innerHTML = `<i class="fas fa-file-pdf"></i><span class="cv-name">{{ candidato.CV.split('_')[-1] if candidato.CV else 'documento.pdf' }}</span>`;
+        {% else %}
+            cvPreview.innerHTML = '<i class="fas fa-file-alt"></i>';
+        {% endif %}
+        cvPreview.style.borderColor = '';
+        
+        document.getElementById('fotoFileName').textContent = 'Mantener foto actual';
+        document.getElementById('cvFileName').textContent = 'Mantener CV actual';
+        
+        if (resumen) resumen.style.borderColor = '';
+    }
+}
+</script>
+{% endblock %}

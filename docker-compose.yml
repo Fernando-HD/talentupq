@@ -1,0 +1,72 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: talentupq_sqlserver
+    env_file:
+      - .env
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: ${DB_PASSWORD}
+      MSSQL_PID: Express
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+      - ./scripts/init:/docker-entrypoint-initdb.d
+    networks:
+      - talentupq_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P ${DB_PASSWORD} -C -Q 'SELECT 1' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+
+  flask_app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ghcr.io/fernando-hd/talentupq:latest
+    container_name: talentupq_flask
+    env_file:
+      - .env
+    environment:
+      DB_HOST: sqlserver
+      DB_PORT: 1433
+      FLASK_ENV: production
+    ports:
+      - "5000:5000"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    networks:
+      - talentupq_network
+    restart: unless-stopped
+    volumes:
+      - uploads_data:/app/static/uploads
+      # Solamente montar .env en desarrollo, NO en produccion
+      # - ./.env:/app/.env:ro
+
+  react_app:
+    build:
+      context: ./frontend-react
+      dockerfile: Dockerfile
+    container_name: talentupq_react
+    env_file:
+      - .env
+    ports:
+      - "3000:3000"
+    depends_on:
+      - flask_app
+    networks:
+      - talentupq_network
+    restart: unless-stopped
+
+volumes:
+  sqlserver_data:
+  uploads_data:
+
+networks:
+  talentupq_network:
+    driver: bridge

@@ -1,0 +1,58 @@
+<!-- templates/admin/postulaciones.html -->
+{% extends "base.html" %}
+
+{% block title %}Postulaciones - Panel de Control{% endblock %}
+
+{% block content %}
+<div class="crud-container">
+    <div class="crud-header">
+        <h2>Gestión de Postulaciones</h2>
+        <a href="{{ url_for('crear_postulacion') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Nueva Postulación
+        </a>
+    </div>
+    
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Candidato</th>
+                    <th>Vacante</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for postulacion in postulaciones %}
+                <tr>
+                    <td>{{ postulacion.id }}</td>
+                    <td>{{ postulacion.candidato_nombre }}</td>
+                    <td>{{ postulacion.vacante_puesto }}</td>
+                    <td>
+                        <span class="badge bg-{{ 
+                            'success' if postulacion.estado == 'aceptada' else 
+                            'danger' if postulacion.estado == 'rechazada' else 
+                            'info' 
+                        }}">
+                            {{ postulacion.estado }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="btn-group">
+                            <a href="{{ url_for('editar_postulacion', id=postulacion.id) }}" class="btn btn-sm btn-warning">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{{ url_for('eliminar_postulacion', id=postulacion.id) }}" class="btn btn-sm btn-danger" 
+                               onclick="return confirm('¿Eliminar esta postulación?')">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

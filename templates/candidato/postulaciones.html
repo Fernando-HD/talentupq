@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block title %}Mis Postulaciones{% endblock %}
+
+{% block content %}
+<section class="dashboard">
+    <div class="dashboard-header">
+        <h1 class="dashboard-title">Mis Postulaciones</h1>
+        <a href="{{ url_for('candidato_dashboard') }}" class="btn btn-outline">
+            <i class="fas fa-arrow-left"></i> Volver
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Historial de Postulaciones</h3>
+            <div class="card-actions">
+                <form method="GET" action="{{ url_for('candidato_postulaciones') }}" class="search-form">
+                    <div class="input-group">
+                        <input type="text" name="q" placeholder="Buscar por puesto o empresa..." 
+                               value="{{ request.args.get('q', '') }}" class="form-control">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card-body">
+            {% if postulaciones_completas %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Puesto</th>
+                            <th>Empresa</th>
+                            <th>Fecha</th>
+                            <th>Estatus</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for post in postulaciones_completas %}
+                        <tr>
+                            <td>{{ post.vacante.puesto }}</td>
+                            <td>{{ post.empresa.nombre }}</td>
+                            <td>{{ post.postulacion.fecha.strftime('%d/%m/%Y') }}</td>
+                            <td>
+                                <span class="badge 
+                                    {% if post.postulacion.estatus == 'aceptado' %}badge-success
+                                    {% elif post.postulacion.estatus == 'rechazado' %}badge-danger
+                                    {% else %}badge-primary{% endif %}">
+                                    {{ post.postulacion.estatus|capitalize }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <a href="{{ url_for('candidato_ver_vacante', vacante_id=post.vacante.id) }}" 
+                                       class="btn btn-sm btn-outline" data-tooltip="Ver vacante">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    
+                                    {% if post.postulacion.estatus == 'pendiente' %}
+                                    <form method="POST" action="{{ url_for('candidato_cancelar_postulacion', postulacion_id=post.postulacion.id) }}" 
+                                          onsubmit="return confirm('¿Estás seguro de cancelar esta postulación?');">
+                                        <button type="submit" class="btn btn-sm btn-danger" data-tooltip="Cancelar">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        
+                        {% if post.postulacion.comentarios %}
+                        <tr class="postulacion-comentario">
+                            <td colspan="5">
+                                <div class="comentario-header">
+                                    <strong>Comentarios:</strong>
+                                </div>
+                                <p>{{ post.postulacion.comentarios }}</p>
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="no-results">
+                <i class="fas fa-briefcase"></i>
+                <p>No has realizado ninguna postulación aún</p>
+                <a href="{{ url_for('candidato_vacantes') }}" class="btn btn-primary">
+                    Buscar vacantes
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<style>
+.card-actions {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.search-form {
+    width: 300px;
+}
+
+.table-responsive {
+    overflow-x: auto;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table th {
+    background-color: #f8f9fa;
+    text-align: left;
+    padding: 12px 15px;
+    font-weight: 600;
+    color: var(--primary-color);
+    border-bottom: 2px solid #eee;
+}
+
+.table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #eee;
+    vertical-align: middle;
+}
+
+.table tr:last-child td {
+    border-bottom: none;
+}
+
+.table tr:hover {
+    background-color: #f9f9f9;
+}
+
+.postulacion-comentario {
+    background-color: #f8f9fa;
+}
+
+.postulacion-comentario td {
+    padding: 15px;
+}
+
+.comentario-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.comentario-header i {
+    color: var(--secondary-color);
+}
+
+.no-results {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.no-results i {
+    font-size: 3rem;
+    color: #ddd;
+    margin-bottom: 15px;
+}
+
+.no-results p {
+    color: #666;
+    margin-bottom: 20px;
+}
+
+.btn-group {
+    display: flex;
+    gap: 5px;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,650 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Editar' if editar else 'Nueva' }} Vacante{% endblock %}
+
+{% block content %}
+<div class="vacante-dashboard">
+    <div class="vacante-header">
+        <h1 class="vacante-title">
+            <i class="fas {% if editar %}fa-edit{% else %}fa-plus-circle{% endif %}"></i>
+            {{ 'Editar' if editar else 'Nueva' }} Vacante
+        </h1>
+        <a href="{{ url_for('empresa_vacantes') }}" class="btn btn-outline">
+            <i class="fas fa-arrow-left"></i> Cancelar
+        </a>
+    </div>
+
+    <div class="vacante-card">
+        <div class="card-header-modern">
+            <div class="header-icon">
+                <i class="fas fa-briefcase"></i>
+            </div>
+            <h3 class="card-title-modern">Información de la Vacante</h3>
+            <span class="required-badge">Campos obligatorios *</span>
+        </div>
+        
+        <div class="card-body-modern">
+            <form method="POST" class="vacante-form-modern">
+                <div class="form-field full-width">
+                    <label class="field-label">
+                        <i class="fas fa-tag"></i>
+                        <span>Puesto *</span>
+                    </label>
+                    <input type="text" name="puesto" class="field-control" 
+                           value="{{ vacante.puesto if editar }}" 
+                           required placeholder="Ej: Ingeniero de Software Senior">
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-graduation-cap"></i>
+                            <span>Grado de Estudios *</span>
+                        </label>
+                        <select name="grado_estudios" class="field-control" required>
+                            <option value="">Seleccionar...</option>
+                            {% for grado in grados_estudios %}
+                            <option value="{{ grado }}" {% if editar and vacante.grado_estudios == grado %}selected{% endif %}>{{ grado }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-users"></i>
+                            <span>Plazas Disponibles *</span>
+                        </label>
+                        <input type="number" name="plazas" class="field-control" 
+                               min="1" value="{{ vacante.plazas if editar else 1 }}" required>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-file-signature"></i>
+                            <span>Tipo de Contrato *</span>
+                        </label>
+                        <select name="tipo_contrato" class="field-control" required>
+                            <option value="">Seleccionar...</option>
+                            {% for tipo in tipos_contrato %}
+                            <option value="{{ tipo }}" {% if editar and vacante.tipo_contrato == tipo %}selected{% endif %}>{{ tipo }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-laptop-house"></i>
+                            <span>Modalidad *</span>
+                        </label>
+                        <select name="modalidad" class="field-control" required>
+                            <option value="">Seleccionar...</option>
+                            {% for modalidad in modalidades %}
+                            <option value="{{ modalidad }}" {% if editar and vacante.modalidad == modalidad %}selected{% endif %}>{{ modalidad }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-chart-line"></i>
+                            <span>Experiencia Requerida *</span>
+                        </label>
+                        <select name="experiencia" class="field-control" required>
+                            <option value="">Seleccionar...</option>
+                            {% for nivel in niveles_experiencia %}
+                            <option value="{{ nivel }}" {% if editar and vacante.experiencia == nivel %}selected{% endif %}>{{ nivel }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label class="field-label">
+                            <i class="fas fa-dollar-sign"></i>
+                            <span>Salario (Opcional)</span>
+                        </label>
+                        <div class="currency-input">
+                            <span class="currency-symbol">$</span>
+                            <input type="text" name="salario" class="field-control currency-field" 
+                                   value="{{ vacante.salario if editar }}" 
+                                   placeholder="Ej: 25,000 - 30,000">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-field full-width">
+                    <label class="field-label">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span>Fecha de Cierre (Opcional)</span>
+                    </label>
+                    <input type="date" name="fecha_cierre" class="field-control" 
+                           value="{{ vacante.fecha_cierre.strftime('%Y-%m-%d') if editar and vacante.fecha_cierre }}">
+                    <small class="field-hint">Dejar en blanco si no hay fecha límite</small>
+                </div>
+
+                <div class="form-field full-width">
+                    <label class="field-label">
+                        <i class="fas fa-align-left"></i>
+                        <span>Descripción del Puesto *</span>
+                    </label>
+                    <textarea name="resumen" class="field-control" rows="6" required 
+                              placeholder="Describe las responsabilidades, requisitos y actividades del puesto...">{{ vacante.resumen if editar }}</textarea>
+                    <small class="field-hint">Detalla las funciones principales, requisitos y lo que se espera del candidato</small>
+                </div>
+
+                <!-- Habilidades Requeridas -->
+                <div class="skills-section">
+                    <div class="section-header-mini">
+                        <i class="fas fa-star"></i>
+                        <h4>Habilidades Requeridas</h4>
+                        <span class="section-hint">Selecciona las habilidades esenciales</span>
+                    </div>
+                    <div class="skills-grid">
+                        {% for habilidad in todas_habilidades %}
+                        <div class="skill-card">
+                            <input type="checkbox" name="habilidades_requeridas" 
+                                   id="hab_req_{{ habilidad.HabilidadID }}" 
+                                   value="{{ habilidad.HabilidadID }}"
+                                   {% if editar and habilidad.HabilidadID in vacante.habilidades_requeridas %}checked{% endif %}>
+                            <label for="hab_req_{{ habilidad.HabilidadID }}">
+                                <i class="fas fa-check-circle"></i>
+                                <span>{{ habilidad.Nombre }}</span>
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <!-- Habilidades Opcionales -->
+                <div class="skills-section">
+                    <div class="section-header-mini">
+                        <i class="fas fa-heart"></i>
+                        <h4>Habilidades Opcionales (Deseables)</h4>
+                        <span class="section-hint">Habilidades que suman puntos extra</span>
+                    </div>
+                    <div class="skills-grid">
+                        {% for habilidad in todas_habilidades %}
+                        <div class="skill-card optional">
+                            <input type="checkbox" name="habilidades_opcionales" 
+                                   id="hab_op_{{ habilidad.HabilidadID }}" 
+                                   value="{{ habilidad.HabilidadID }}"
+                                   {% if editar and habilidad.HabilidadID in vacante.habilidades_opcionales %}checked{% endif %}>
+                            <label for="hab_op_{{ habilidad.HabilidadID }}">
+                                <i class="fas fa-plus-circle"></i>
+                                <span>{{ habilidad.Nombre }}</span>
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="form-field full-width">
+                    <label class="field-label">
+                        <i class="fas fa-gift"></i>
+                        <span>Beneficios (Opcional)</span>
+                    </label>
+                    <textarea name="beneficios" class="field-control" rows="3" 
+                              placeholder="Ej: Seguro médico, vales de despensa, home office, etc.">{{ vacante.beneficios if editar }}</textarea>
+                    <small class="field-hint">Enumera los beneficios que ofrece la empresa</small>
+                </div>
+
+                <div class="form-actions-modern">
+                    <button type="submit" class="btn-primary-modern">
+                        <i class="fas {{ 'fa-save' if editar else 'fa-paper-plane' }}"></i>
+                        {{ 'Actualizar Vacante' if editar else 'Publicar Vacante' }}
+                    </button>
+                    <a href="{{ url_for('empresa_vacantes') }}" class="btn-secondary-modern">
+                        <i class="fas fa-times"></i> Cancelar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Variables */
+:root {
+    --primary-color: #2563eb;
+    --primary-dark: #1d4ed8;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --danger-color: #ef4444;
+    --dark-color: #1e293b;
+    --gray-light: #f8fafc;
+    --gray-border: #e2e8f0;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --transition: all 0.3s ease;
+}
+
+/* Dashboard Principal */
+.vacante-dashboard {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 1.5rem;
+}
+
+.vacante-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--gray-border);
+}
+
+.vacante-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--dark-color);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.vacante-title i {
+    color: var(--primary-color);
+    font-size: 1.85rem;
+}
+
+/* Tarjeta principal */
+.vacante-card {
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--gray-border);
+    overflow: hidden;
+    transition: var(--transition);
+}
+
+.vacante-card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.card-header-modern {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem 1.75rem;
+    background: linear-gradient(135deg, #fafcff 0%, #ffffff 100%);
+    border-bottom: 1px solid var(--gray-border);
+    flex-wrap: wrap;
+}
+
+.header-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(37, 99, 235, 0.1);
+    border-radius: var(--radius-sm);
+}
+
+.header-icon i {
+    font-size: 1.25rem;
+    color: var(--primary-color);
+}
+
+.card-title-modern {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--dark-color);
+    flex: 1;
+}
+
+.required-badge {
+    font-size: 0.7rem;
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+}
+
+.card-body-modern {
+    padding: 1.75rem;
+}
+
+/* Formulario */
+.vacante-form-modern {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-field.full-width {
+    grid-column: span 2;
+}
+
+.field-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--dark-color);
+}
+
+.field-label i {
+    color: var(--primary-color);
+    width: 18px;
+}
+
+.field-control {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    border: 1px solid var(--gray-border);
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+    background: white;
+    font-family: inherit;
+}
+
+.field-control:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+select.field-control {
+    cursor: pointer;
+}
+
+textarea.field-control {
+    resize: vertical;
+    font-family: inherit;
+}
+
+.field-hint {
+    font-size: 0.7rem;
+    color: #64748b;
+    margin-top: 0.25rem;
+}
+
+/* Currency Input */
+.currency-input {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.currency-symbol {
+    position: absolute;
+    left: 12px;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.currency-field {
+    padding-left: 28px;
+}
+
+/* Skills Sections */
+.skills-section {
+    background: var(--gray-light);
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+    border: 1px solid var(--gray-border);
+}
+
+.section-header-mini {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--gray-border);
+    flex-wrap: wrap;
+}
+
+.section-header-mini i {
+    font-size: 1rem;
+    color: var(--primary-color);
+}
+
+.section-header-mini h4 {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--dark-color);
+}
+
+.section-hint {
+    font-size: 0.7rem;
+    color: #64748b;
+    margin-left: auto;
+}
+
+.skills-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+
+.skill-card {
+    position: relative;
+}
+
+.skill-card input[type="checkbox"] {
+    display: none;
+}
+
+.skill-card label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: white;
+    border: 1px solid var(--gray-border);
+    border-radius: 30px;
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--dark-color);
+}
+
+.skill-card label i {
+    font-size: 0.7rem;
+    color: #94a3b8;
+    transition: var(--transition);
+}
+
+.skill-card:hover label {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+    border-color: var(--primary-color);
+}
+
+.skill-card input[type="checkbox"]:checked + label {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    border-color: var(--primary-color);
+    color: white;
+}
+
+.skill-card input[type="checkbox"]:checked + label i {
+    color: white;
+}
+
+.skill-card.optional input[type="checkbox"]:checked + label {
+    background: linear-gradient(135deg, #10b981, #059669);
+    border-color: #10b981;
+}
+
+/* Botones del formulario */
+.form-actions-modern {
+    display: flex;
+    gap: 1rem;
+    padding-top: 1rem;
+    margin-top: 1rem;
+    border-top: 1px solid var(--gray-border);
+}
+
+.btn-primary-modern {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-primary-modern:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-secondary-modern {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: white;
+    color: var(--dark-color);
+    border: 1px solid var(--gray-border);
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.btn-secondary-modern:hover {
+    background: var(--gray-light);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.btn-outline {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.25rem;
+    background: transparent;
+    color: var(--dark-color);
+    border: 1px solid var(--gray-border);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.btn-outline:hover {
+    background: var(--gray-light);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .vacante-dashboard {
+        padding: 1rem;
+    }
+    
+    .vacante-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .vacante-title {
+        font-size: 1.5rem;
+    }
+    
+    .form-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .form-field.full-width {
+        grid-column: span 1;
+    }
+    
+    .card-header-modern {
+        padding: 1rem 1.25rem;
+    }
+    
+    .card-body-modern {
+        padding: 1.25rem;
+    }
+    
+    .form-actions-modern {
+        flex-direction: column;
+    }
+    
+    .btn-primary-modern, .btn-secondary-modern {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .skills-grid {
+        gap: 0.5rem;
+    }
+    
+    .skill-card label {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.75rem;
+    }
+    
+    .section-header-mini {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .section-hint {
+        margin-left: 0;
+    }
+}
+
+@media (max-width: 480px) {
+    .card-header-modern {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+    
+    .required-badge {
+        align-self: flex-start;
+    }
+    
+    .card-body-modern {
+        padding: 1rem;
+    }
+    
+    .skills-grid {
+        flex-direction: column;
+    }
+    
+    .skill-card label {
+        width: 100%;
+        justify-content: center;
+    }
+}
+</style>
+{% endblock %}

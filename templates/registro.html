@@ -1,0 +1,454 @@
+{% extends "base.html" %}
+
+{% block title %}Registro{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-background">
+        <div class="floating-shape shape-1"></div>
+        <div class="floating-shape shape-2"></div>
+        <div class="floating-shape shape-3"></div>
+    </div>
+    
+    <div class="auth-card animate-on-scroll">
+        <div class="auth-header">
+            <div class="auth-icon">
+                <i class="fas fa-user-plus"></i>
+            </div>
+            <h2>Crear Cuenta</h2>
+            <p>Completa el formulario para registrarte</p>
+        </div>
+        
+        <form method="POST" action="{{ url_for('registro') }}" class="auth-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="nombre" class="form-label">Nombre(s)</label>
+                    <input type="text" id="nombre" name="nombre" class="form-control" required>
+                    <div class="form-underline"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="apellido_paterno" class="form-label">Apellido Paterno</label>
+                    <input type="text" id="apellido_paterno" name="apellido_paterno" class="form-control" required>
+                    <div class="form-underline"></div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="apellido_materno" class="form-label">Apellido Materno</label>
+                <input type="text" id="apellido_materno" name="apellido_materno" class="form-control">
+                <div class="form-underline"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="telefono" class="form-label">Teléfono</label>
+                <input type="tel" id="telefono" name="telefono" class="form-control" required>
+                <div class="form-underline"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="direccion" class="form-label">Dirección</label>
+                <textarea id="direccion" name="direccion" class="form-control" rows="2" required></textarea>
+                <div class="form-underline"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="email" class="form-label">Correo Electrónico</label>
+                <input type="email" id="email" name="email" class="form-control" required>
+                <div class="form-underline"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="password" class="form-label">Contraseña</label>
+                <div class="password-container">
+                    <input type="password" id="password" name="password" class="form-control" required>
+                    <button type="button" class="password-toggle" onclick="togglePassword()">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+                <div class="form-underline"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="tipo" class="form-label">Tipo de Usuario</label>
+                <select id="tipo" name="tipo" class="form-control" required>
+                    <option value="">Selecciona una opción</option>
+                    <option value="candidato">Candidato (Buscas empleo)</option>
+                    <option value="empresa">Empresa (Buscas talento)</option>
+                </select>
+                <div class="form-underline"></div>
+            </div>
+            
+            <div class="form-group">
+                <button type="submit" class="btn btn-primary btn-block pulse-on-hover">
+                    <span class="btn-text">Registrarse</span>
+                    <i class="fas fa-arrow-right btn-icon"></i>
+                </button>
+            </div>
+            
+            <div class="auth-footer">
+                <p>¿Ya tienes una cuenta? <a href="{{ url_for('login') }}" class="auth-link">Inicia sesión aquí</a></p>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .auth-container {
+        position: relative;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 20px;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        overflow: hidden;
+    }
+    
+    .auth-background {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+    }
+    
+    .auth-background .floating-shape {
+        position: absolute;
+        border-radius: 50%;
+        opacity: 0.08;
+        animation: float 20s infinite ease-in-out;
+    }
+    
+    .auth-background .shape-1 {
+        width: 150px;
+        height: 150px;
+        background-color: #3498db;
+        top: 10%;
+        left: 5%;
+        animation-delay: 0s;
+    }
+    
+    .auth-background .shape-2 {
+        width: 100px;
+        height: 100px;
+        background-color: #2ecc71;
+        top: 70%;
+        right: 10%;
+        animation-delay: 7s;
+    }
+    
+    .auth-background .shape-3 {
+        width: 80px;
+        height: 80px;
+        background-color: #9b59b6;
+        bottom: 20%;
+        left: 15%;
+        animation-delay: 14s;
+    }
+    
+    .auth-card {
+        background: #fff;
+        padding: 3rem;
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 500px;
+        position: relative;
+        z-index: 1;
+        border: 1px solid #f1f3f4;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .auth-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 25px 80px rgba(0, 0, 0, 0.15);
+    }
+    
+    .auth-header {
+        text-align: center;
+        margin-bottom: 2.5rem;
+    }
+    
+    .auth-icon {
+        width: 70px;
+        height: 70px;
+        margin: 0 auto 1.5rem;
+        background: linear-gradient(135deg, #3498db, #2ecc71);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.8rem;
+    }
+    
+    .auth-header h2 {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+        color: #2c3e50;
+        font-weight: 600;
+    }
+    
+    .auth-header p {
+        color: #5a6c7d;
+        font-size: 1rem;
+    }
+    
+    .auth-form {
+        width: 100%;
+    }
+    
+    .form-row {
+        display: flex;
+        gap: 15px;
+    }
+    
+    .form-row .form-group {
+        flex: 1;
+    }
+    
+    .form-group {
+        margin-bottom: 1.8rem;
+        position: relative;
+    }
+    
+    .form-label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        color: #2c3e50;
+        transition: color 0.3s ease;
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 12px 0;
+        border: none;
+        background: transparent;
+        border-bottom: 2px solid #e1e5e9;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        color: #2c3e50;
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-bottom-color: #3498db;
+    }
+    
+    .form-control:focus + .form-underline {
+        transform: scaleX(1);
+    }
+    
+    .form-underline {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        background: linear-gradient(to right, #3498db, #2ecc71);
+        transform: scaleX(0);
+        transition: transform 0.3s ease;
+        transform-origin: left;
+    }
+    
+    textarea.form-control {
+        min-height: 80px;
+        resize: vertical;
+        border: 2px solid #e1e5e9;
+        border-radius: 8px;
+        padding: 12px;
+        transition: all 0.3s ease;
+    }
+    
+    textarea.form-control:focus {
+        border-color: #3498db;
+        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+    }
+    
+    select.form-control {
+        border: 2px solid #e1e5e9;
+        border-radius: 8px;
+        padding: 12px;
+        background: white;
+        transition: all 0.3s ease;
+        appearance: none;
+        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235a6c7d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        background-size: 16px;
+    }
+    
+    select.form-control:focus {
+        border-color: #3498db;
+        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+    }
+    
+    .password-container {
+        position: relative;
+    }
+    
+    .password-toggle {
+        position: absolute;
+        right: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: #5a6c7d;
+        cursor: pointer;
+        padding: 8px;
+        transition: color 0.3s ease;
+    }
+    
+    .password-toggle:hover {
+        color: #3498db;
+    }
+    
+    .btn-block {
+        width: 100%;
+        padding: 14px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .btn-icon {
+        transition: transform 0.3s ease;
+    }
+    
+    .btn-block:hover .btn-icon {
+        transform: translateX(5px);
+    }
+    
+    .auth-footer {
+        text-align: center;
+        margin-top: 2rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid #e1e5e9;
+    }
+    
+    .auth-footer p {
+        color: #5a6c7d;
+        margin: 0;
+    }
+    
+    .auth-link {
+        color: #3498db;
+        text-decoration: none;
+        font-weight: 500;
+        transition: color 0.3s ease;
+        position: relative;
+    }
+    
+    .auth-link::after {
+        content: '';
+        position: absolute;
+        bottom: -2px;
+        left: 0;
+        width: 0;
+        height: 2px;
+        background: #3498db;
+        transition: width 0.3s ease;
+    }
+    
+    .auth-link:hover {
+        color: #2980b9;
+    }
+    
+    .auth-link:hover::after {
+        width: 100%;
+    }
+    
+    /* Animations */
+    @keyframes float {
+        0%, 100% {
+            transform: translateY(0) rotate(0deg);
+        }
+        50% {
+            transform: translateY(-15px) rotate(3deg);
+        }
+    }
+    
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .auth-card {
+            padding: 2rem 1.5rem;
+        }
+        
+        .form-row {
+            flex-direction: column;
+            gap: 0;
+        }
+        
+        .auth-header h2 {
+            font-size: 1.7rem;
+        }
+        
+        .auth-icon {
+            width: 60px;
+            height: 60px;
+            font-size: 1.5rem;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .auth-container {
+            padding: 20px 15px;
+        }
+        
+        .auth-card {
+            padding: 1.5rem;
+        }
+    }
+</style>
+
+<script>
+    function togglePassword() {
+        const passwordInput = document.getElementById('password');
+        const toggleIcon = document.querySelector('.password-toggle i');
+        
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            toggleIcon.classList.remove('fa-eye');
+            toggleIcon.classList.add('fa-eye-slash');
+        } else {
+            passwordInput.type = 'password';
+            toggleIcon.classList.remove('fa-eye-slash');
+            toggleIcon.classList.add('fa-eye');
+        }
+    }
+    
+    // Add focus effects to form inputs
+    document.addEventListener('DOMContentLoaded', function() {
+        const formInputs = document.querySelectorAll('.form-control');
+        
+        formInputs.forEach(input => {
+            // Add focus class to parent when input is focused
+            input.addEventListener('focus', function() {
+                this.parentElement.classList.add('focused');
+            });
+            
+            input.addEventListener('blur', function() {
+                if (this.value === '') {
+                    this.parentElement.classList.remove('focused');
+                }
+            });
+            
+            // Check if input has value on page load
+            if (input.value !== '') {
+                input.parentElement.classList.add('focused');
+            }
+        });
+    });
+</script>
+{% endblock %}

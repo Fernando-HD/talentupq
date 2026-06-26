@@ -1,0 +1,50 @@
+<!-- templates/admin/candidatos.html -->
+{% extends "base.html" %}
+
+{% block title %}Candidatos - Panel de Control{% endblock %}
+
+{% block content %}
+<div class="crud-container">
+    <div class="crud-header">
+        <h2>Gestión de Candidatos</h2>
+        <a href="{{ url_for('crear_candidato') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Nuevo Candidato
+        </a>
+    </div>
+    
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Email</th>
+                    <th>Ubicación</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for candidato in candidatos %}
+                <tr>
+                    <td>{{ candidato.id }}</td>
+                    <td>{{ candidato.nombre }} {{ candidato.apellido }}</td>
+                    <td>{{ candidato.email }}</td>
+                    <td>{{ candidato.ubicacion }}</td>
+                    <td>
+                        <div class="btn-group">
+                            <a href="{{ url_for('editar_candidato', id=candidato.id) }}" class="btn btn-sm btn-warning">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{{ url_for('eliminar_candidato', id=candidato.id) }}" class="btn btn-sm btn-danger" 
+                               onclick="return confirm('¿Eliminar este candidato?')">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

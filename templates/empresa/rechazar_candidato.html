@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Rechazar Candidato{% endblock %}
+
+{% block content %}
+<section class="dashboard">
+    <div class="dashboard-header">
+        <h1 class="dashboard-title">Rechazar Candidato</h1>
+        <a href="{{ url_for('empresa_ver_vacante', vacante_id=vacante_id) }}" class="btn btn-outline">
+            <i class="fas fa-arrow-left"></i> Volver
+        </a>
+    </div>
+
+    <div class="dashboard-grid">
+        <!-- Menú lateral (reutilizado) -->
+        {% include "empresa/_sidebar.html" %}
+
+        <!-- Contenido principal -->
+        <div class="dashboard-content">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Motivo del Rechazo</h3>
+                </div>
+                <form method="POST" class="card-body">
+                    <div class="form-group">
+                        <label class="form-label">Comentarios</label>
+                        <textarea name="comentarios" class="form-control" rows="5" required placeholder="Explica al candidato el motivo del rechazo..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-times"></i> Confirmar Rechazo
+                        </button>
+                        <a href="{{ url_for('empresa_ver_vacante', vacante_id=vacante_id) }}" class="btn btn-outline">
+                            Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

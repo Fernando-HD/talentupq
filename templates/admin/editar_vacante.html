@@ -1,0 +1,489 @@
+<!-- templates/admin/editar_vacante.html -->
+{% extends "base.html" %}
+
+{% block title %}Editar Vacante{% endblock %}
+
+{% block content %}
+<style>
+    :root {
+        --primary-color: #4361ee;
+        --primary-dark: #3a56d4;
+        --secondary-color: #6c757d;
+        --success-color: #10b981;
+        --danger-color: #ef4444;
+        --warning-color: #f59e0b;
+        --dark-color: #1f2937;
+        --light-color: #f9fafb;
+        --border-color: #e5e7eb;
+        --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+        --radius-md: 0.5rem;
+        --radius-lg: 0.75rem;
+    }
+    
+    .admin-container {
+        max-width: 1400px;
+        margin: 2rem auto;
+        padding: 0 1.5rem;
+    }
+    
+    .admin-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid var(--border-color);
+    }
+    
+    .admin-header h1 {
+        font-size: 1.875rem;
+        font-weight: 700;
+        color: var(--dark-color);
+        margin: 0;
+        background: linear-gradient(135deg, var(--dark-color) 0%, var(--primary-color) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .vacancy-badge {
+        background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+    
+    .form-card {
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        overflow: hidden;
+        margin-bottom: 2rem;
+    }
+    
+    .form-section {
+        padding: 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .form-section:last-child {
+        border-bottom: none;
+    }
+    
+    .section-title {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: var(--dark-color);
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .section-title i {
+        color: var(--primary-color);
+        font-size: 1.25rem;
+    }
+    
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 1.5rem;
+    }
+    
+    .form-group {
+        margin-bottom: 0;
+    }
+    
+    .full-width {
+        grid-column: 1 / -1;
+    }
+    
+    label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        color: var(--dark-color);
+        font-size: 0.875rem;
+    }
+    
+    label .required {
+        color: var(--danger-color);
+        margin-left: 0.25rem;
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 0.625rem 0.875rem;
+        font-size: 0.875rem;
+        line-height: 1.5;
+        color: var(--dark-color);
+        background-color: #fff;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        transition: all 0.2s ease;
+        font-family: inherit;
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+    }
+    
+    .form-control:hover:not(:focus) {
+        border-color: #cbd5e1;
+    }
+    
+    textarea.form-control {
+        min-height: 100px;
+        resize: vertical;
+    }
+    
+    select.form-control {
+        cursor: pointer;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 0.75rem center;
+        background-size: 1rem;
+        padding-right: 2rem;
+    }
+    
+    .form-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
+        padding: 1.5rem;
+        background-color: var(--light-color);
+        border-top: 1px solid var(--border-color);
+    }
+    
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.625rem 1.25rem;
+        border-radius: var(--radius-md);
+        text-decoration: none;
+        font-size: 0.875rem;
+        font-weight: 500;
+        transition: all 0.2s;
+        cursor: pointer;
+        border: none;
+        line-height: 1;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+        color: white;
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
+    }
+    
+    .btn-secondary {
+        background-color: white;
+        color: var(--secondary-color);
+        border: 1px solid var(--border-color);
+    }
+    
+    .btn-secondary:hover {
+        background-color: var(--light-color);
+        border-color: #d1d5db;
+    }
+    
+    .btn-outline {
+        background-color: transparent;
+        color: var(--secondary-color);
+        border: 1px solid var(--border-color);
+    }
+    
+    .btn-outline:hover {
+        background-color: var(--light-color);
+    }
+    
+    .flash-messages {
+        margin-bottom: 1.5rem;
+    }
+    
+    .flash-success, .flash-error {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 1rem;
+        border-radius: var(--radius-md);
+        margin-bottom: 0.75rem;
+        animation: slideIn 0.3s ease;
+    }
+    
+    .flash-success {
+        background-color: #d1fae5;
+        color: #065f46;
+        border-left: 4px solid var(--success-color);
+    }
+    
+    .flash-error {
+        background-color: #fee2e2;
+        color: #991b1b;
+        border-left: 4px solid var(--danger-color);
+    }
+    
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .info-hint {
+        font-size: 0.75rem;
+        color: #6b7280;
+        margin-top: 0.25rem;
+    }
+    
+    @media (max-width: 768px) {
+        .admin-container {
+            padding: 0 1rem;
+            margin: 1rem auto;
+        }
+        
+        .form-grid {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+        
+        .form-section {
+            padding: 1rem;
+        }
+        
+        .form-actions {
+            flex-direction: column-reverse;
+        }
+        
+        .btn {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>
+
+<div class="admin-container">
+    <div class="admin-header">
+        <div>
+            <h1>Editar Vacante</h1>
+            <p class="info-hint" style="margin-top: 0.5rem;">
+                <i class="fas fa-briefcase"></i> ID: {{ vacante.VacanteID }} | 
+                <i class="fas fa-calendar-alt"></i> Última actualización: {{ vacante.FechaPublicacion.split('T')[0] if vacante.FechaPublicacion else 'No definida' }}
+            </p>
+        </div>
+        <a href="{{ url_for('admin_vacantes') }}" class="btn btn-outline">
+            <i class="fas fa-arrow-left"></i> Volver al listado
+        </a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                    <div class="flash-{{ category }}">
+                        <i class="fas fa-{% if category == 'success' %}check-circle{% else %}exclamation-circle{% endif %}"></i>
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST">
+        <div class="form-card">
+            <!-- Información básica -->
+            <div class="form-section">
+                <div class="section-title">
+                    <i class="fas fa-info-circle"></i>
+                    Información Básica
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="empresa_id">Empresa ID <span class="required">*</span></label>
+                        <input type="number" id="empresa_id" name="empresa_id" 
+                               class="form-control" value="{{ vacante.EmpresaID }}" required>
+                        <div class="info-hint">ID de la empresa que publica la vacante</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="puesto">Puesto <span class="required">*</span></label>
+                        <input type="text" id="puesto" name="puesto" 
+                               class="form-control" value="{{ vacante.Puesto }}" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="grado_estudios">Grado de Estudios <span class="required">*</span></label>
+                        <input type="text" id="grado_estudios" name="grado_estudios" 
+                               class="form-control" value="{{ vacante.GradoEstudios }}" required>
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label for="resumen">Resumen <span class="required">*</span></label>
+                        <textarea id="resumen" name="resumen" 
+                                  class="form-control" required>{{ vacante.Resumen }}</textarea>
+                        <div class="info-hint">Descripción breve del puesto y responsabilidades principales</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detalles del puesto -->
+            <div class="form-section">
+                <div class="section-title">
+                    <i class="fas fa-chart-line"></i>
+                    Detalles del Puesto
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="plazas">Plazas Totales <span class="required">*</span></label>
+                        <input type="number" id="plazas" name="plazas" 
+                               class="form-control" value="{{ vacante.Plazas }}" required min="1">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="plazas_disponibles">Plazas Disponibles <span class="required">*</span></label>
+                        <input type="number" id="plazas_disponibles" name="plazas_disponibles" 
+                               class="form-control" value="{{ vacante.PlazasDisponibles }}" required min="0">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="estatus">Estatus <span class="required">*</span></label>
+                        <select id="estatus" name="estatus" class="form-control" required>
+                            <option value="en_revision" {% if vacante.Estatus == 'en_revision' %}selected{% endif %}>En revisión</option>
+                            <option value="aprobada" {% if vacante.Estatus == 'aprobada' %}selected{% endif %}>Aprobada</option>
+                            <option value="rechazada" {% if vacante.Estatus == 'rechazada' %}selected{% endif %}>Rechazada</option>
+                            <option value="cerrada" {% if vacante.Estatus == 'cerrada' %}selected{% endif %}>Cerrada</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="experiencia_requerida">Experiencia Requerida <span class="required">*</span></label>
+                        <select id="experiencia_requerida" name="experiencia_requerida" class="form-control" required>
+                            <option value="Sin experiencia" {% if vacante.ExperienciaRequerida == 'Sin experiencia' %}selected{% endif %}>Sin experiencia</option>
+                            <option value="1-3 años" {% if vacante.ExperienciaRequerida == '1-3 años' %}selected{% endif %}>1-3 años</option>
+                            <option value="3-5 años" {% if vacante.ExperienciaRequerida == '3-5 años' %}selected{% endif %}>3-5 años</option>
+                            <option value="5+ años" {% if vacante.ExperienciaRequerida == '5+ años' %}selected{% endif %}>5+ años</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Información de contrato y ubicación -->
+            <div class="form-section">
+                <div class="section-title">
+                    <i class="fas fa-briefcase"></i>
+                    Contrato y Ubicación
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="salario">Salario</label>
+                        <input type="text" id="salario" name="salario" 
+                               class="form-control" value="{{ vacante.Salario if vacante.Salario }}" 
+                               placeholder="Ej: $30,000 - $40,000 MXN">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tipo_contrato">Tipo de Contrato <span class="required">*</span></label>
+                        <input type="text" id="tipo_contrato" name="tipo_contrato" 
+                               class="form-control" value="{{ vacante.TipoContrato }}" required
+                               placeholder="Ej: Tiempo completo, Medio tiempo, Por honorarios">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="modalidad">Modalidad <span class="required">*</span></label>
+                        <select id="modalidad" name="modalidad" class="form-control" required>
+                            <option value="Presencial" {% if vacante.Modalidad == 'Presencial' %}selected{% endif %}>Presencial</option>
+                            <option value="Remoto" {% if vacante.Modalidad == 'Remoto' %}selected{% endif %}>Remoto</option>
+                            <option value="Híbrido" {% if vacante.Modalidad == 'Híbrido' %}selected{% endif %}>Híbrido</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="ubicacion">Ubicación</label>
+                        <input type="text" id="ubicacion" name="ubicacion" 
+                               class="form-control" value="{{ vacante.Ubicacion if vacante.Ubicacion }}"
+                               placeholder="Ej: Ciudad de México, CDMX">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Beneficios y fechas -->
+            <div class="form-section">
+                <div class="section-title">
+                    <i class="fas fa-gift"></i>
+                    Beneficios y Fechas
+                </div>
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label for="beneficios">Beneficios</label>
+                        <textarea id="beneficios" name="beneficios" 
+                                  class="form-control" placeholder="Lista de beneficios: seguro médico, vales de despensa, etc.">{{ vacante.Beneficios if vacante.Beneficios }}</textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="fecha_cierre">Fecha de Cierre</label>
+                        <input type="date" id="fecha_cierre" name="fecha_cierre" 
+                               class="form-control" value="{{ vacante.FechaCierre if vacante.FechaCierre }}">
+                        <div class="info-hint">Fecha límite para postularse</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="fecha_publicacion">Fecha de Publicación</label>
+                        <input type="datetime-local" id="fecha_publicacion" name="fecha_publicacion" 
+                               class="form-control" value="{{ vacante.FechaPublicacion if vacante.FechaPublicacion }}">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="fecha_aprobacion">Fecha de Aprobación</label>
+                        <input type="datetime-local" id="fecha_aprobacion" name="fecha_aprobacion" 
+                               class="form-control" value="{{ vacante.FechaAprobacion if vacante.FechaAprobacion }}">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comentarios administrativos -->
+            <div class="form-section">
+                <div class="section-title">
+                    <i class="fas fa-comment-dots"></i>
+                    Comentarios Administrativos
+                </div>
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label for="comentarios_admin">Comentarios del Administrador</label>
+                        <textarea id="comentarios_admin" name="comentarios_admin" 
+                                  class="form-control" placeholder="Notas internas, observaciones o comentarios sobre la vacante...">{{ vacante.ComentariosAdmin if vacante.ComentariosAdmin }}</textarea>
+                        <div class="info-hint">Estos comentarios solo serán visibles para administradores</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="reset" class="btn btn-secondary">
+                    <i class="fas fa-undo-alt"></i> Limpiar cambios
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Guardar cambios
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,727 @@
+{% extends "base.html" %}
+
+{% block title %}Mis Vacantes{% endblock %}
+
+{% block content %}
+<div class="vacantes-dashboard">
+    <div class="vacantes-header">
+        <h1 class="vacantes-title">
+            <i class="fas fa-briefcase"></i> Mis Vacantes
+        </h1>
+        <a href="{{ url_for('empresa_nueva_vacante') }}" class="btn-primary-gradient">
+            <i class="fas fa-plus-circle"></i> Nueva Vacante
+        </a>
+    </div>
+
+    <!-- Notificaciones -->
+    {% if empresa.notificaciones %}
+    <div class="notification-card">
+        <div class="notification-icon-wrapper">
+            <i class="fas fa-bell"></i>
+        </div>
+        <div class="notification-content">
+            <p class="notification-text">
+                <strong>Tienes {{ empresa.notificaciones|length }} notificación{% if empresa.notificaciones|length != 1 %}es{% endif %}</strong>
+                <span>Revisa tus notificaciones para más detalles</span>
+            </p>
+        </div>
+        <a href="{{ url_for('empresa_notificaciones') }}" class="notification-link">
+            Ver todas <i class="fas fa-arrow-right"></i>
+        </a>
+    </div>
+    {% endif %}
+
+    <!-- Filtros -->
+    <div class="filters-card">
+        <div class="filter-header">
+            <i class="fas fa-filter"></i>
+            <span>Filtrar vacantes</span>
+        </div>
+        <div class="filter-controls">
+            <select id="estatus" class="filter-select" onchange="filterVacantes()">
+                <option value="">Todas las vacantes</option>
+                <option value="en_revision">En revisión</option>
+                <option value="aprobada">Aprobadas</option>
+                <option value="rechazada">Rechazadas</option>
+                <option value="abierta">Abiertas</option>
+                <option value="cerrada">Cerradas</option>
+            </select>
+            <div class="filter-stats">
+                <span class="stats-badge" id="total-count">0</span>
+                <span>vacantes encontradas</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Vacantes -->
+    <div class="vacantes-grid" id="vacantes-grid">
+        {% if vacantes %}
+            {% for item in vacantes %}
+            <div class="vacante-card-modern" data-estatus="{{ item['Estatus'] }}">
+                <div class="vacante-card-header">
+                    <div class="vacante-title-section">
+                        <h3 class="vacante-title-modern">{{ item['Puesto'] }}</h3>
+                        <span class="status-badge status-{{ item['Estatus']|replace('_', '-') }}">
+                            {% if item['Estatus'] == 'en_revision' %}
+                                <i class="fas fa-clock"></i> En revisión
+                            {% elif item['Estatus'] == 'aprobada' %}
+                                <i class="fas fa-check-circle"></i> Aprobada
+                            {% elif item['Estatus'] == 'rechazada' %}
+                                <i class="fas fa-times-circle"></i> Rechazada
+                            {% elif item['Estatus'] == 'abierta' %}
+                                <i class="fas fa-play-circle"></i> Abierta
+                            {% elif item['Estatus'] == 'cerrada' %}
+                                <i class="fas fa-ban"></i> Cerrada
+                            {% else %}
+                                {{ item['Estatus']|replace('_', ' ')|capitalize }}
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="vacante-card-body">
+                    <div class="info-grid">
+                        <div class="info-item-modern">
+                            <i class="fas fa-graduation-cap"></i>
+                            <span>{{ item['GradoEstudios'] }}</span>
+                        </div>
+                        
+                        <div class="info-item-modern">
+                            <i class="fas fa-users"></i>
+                            <span>{{ item['NumPostulaciones'] }} postulacione{% if item['NumPostulaciones'] != 1 %}s{% endif %}</span>
+                        </div>
+                        
+                        <div class="info-item-modern">
+                            <i class="fas fa-calendar-alt"></i>
+                            <span>{{ item['FechaPublicacion'].strftime('%d/%m/%Y') }}</span>
+                        </div>
+                        
+                        {% if item['PlazasDisponibles'] %}
+                        <div class="info-item-modern">
+                            <i class="fas fa-chair"></i>
+                            <span>{{ item['PlazasDisponibles'] }} plaza{% if item['PlazasDisponibles'] != 1 %}s{% endif %} disponible{% if item['PlazasDisponibles'] != 1 %}s{% endif %}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    {% if item['Estatus'] == 'rechazada' and item['ComentariosAdmin'] %}
+                    <div class="admin-feedback">
+                        <div class="feedback-header">
+                            <i class="fas fa-comment-alt"></i>
+                            <strong>Motivo del rechazo:</strong>
+                        </div>
+                        <p class="feedback-text">{{ item['ComentariosAdmin'] }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="vacante-card-footer">
+                    <a href="{{ url_for('empresa_ver_vacante', vacante_id=item['VacanteID']) }}" 
+                       class="btn-view">
+                        <i class="fas fa-eye"></i> Ver detalles
+                    </a>
+                    
+                    {% if item['Estatus'] == 'aprobada' %}
+                    <a href="{{ url_for('empresa_cambiar_estado_vacante', vacante_id=item['VacanteID'], nuevo_estado='cerrada') }}" 
+                       class="btn-close-vacancy"
+                       onclick="return confirm('¿Estás seguro de cerrar esta vacante? Las postulaciones ya no serán visibles.')">
+                        <i class="fas fa-pause-circle"></i> Cerrar vacante
+                    </a>
+                    {% elif item['Estatus'] == 'cerrada' %}
+                    <a href="{{ url_for('empresa_cambiar_estado_vacante', vacante_id=item['VacanteID'], nuevo_estado='abierta') }}" 
+                       class="btn-reopen-vacancy"
+                       onclick="return confirm('¿Estás seguro de reabrir esta vacante? Los candidatos podrán postularse nuevamente.')">
+                        <i class="fas fa-play-circle"></i> Reabrir vacante
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state-modern">
+                <div class="empty-icon">
+                    <i class="fas fa-briefcase"></i>
+                </div>
+                <h4>No has creado ninguna vacante aún</h4>
+                <p>Comienza publicando tu primera vacante para encontrar al talento que tu empresa necesita</p>
+                <a href="{{ url_for('empresa_nueva_vacante') }}" class="btn-primary-modern">
+                    <i class="fas fa-plus-circle"></i> Crear primera vacante
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+/* Variables */
+:root {
+    --primary-color: #2563eb;
+    --primary-dark: #1d4ed8;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --danger-color: #ef4444;
+    --info-color: #3b82f6;
+    --dark-color: #1e293b;
+    --gray-light: #f8fafc;
+    --gray-border: #e2e8f0;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --transition: all 0.3s ease;
+}
+
+/* Dashboard Principal */
+.vacantes-dashboard {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1.5rem;
+}
+
+.vacantes-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--gray-border);
+}
+
+.vacantes-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--dark-color);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.vacantes-title i {
+    color: var(--primary-color);
+    font-size: 1.85rem;
+}
+
+.btn-primary-gradient {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.7rem 1.5rem;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: var(--transition);
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-primary-gradient:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+/* Notification Card */
+.notification-card {
+    background: linear-gradient(135deg, #eff6ff 0%, #e0f2fe 100%);
+    border-left: 4px solid var(--primary-color);
+    border-radius: var(--radius-md);
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    animation: slideIn 0.3s ease-out;
+}
+
+.notification-icon-wrapper {
+    width: 40px;
+    height: 40px;
+    background: var(--primary-color);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.2rem;
+}
+
+.notification-content {
+    flex: 1;
+}
+
+.notification-text {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.notification-text strong {
+    color: var(--dark-color);
+    font-size: 0.9rem;
+}
+
+.notification-text span {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+.notification-link {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: var(--transition);
+}
+
+.notification-link:hover {
+    gap: 0.75rem;
+    color: var(--primary-dark);
+}
+
+/* Filters Card */
+.filters-card {
+    background: white;
+    border-radius: var(--radius-md);
+    padding: 1rem 1.5rem;
+    margin-bottom: 2rem;
+    border: 1px solid var(--gray-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.filter-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--dark-color);
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.filter-header i {
+    color: var(--primary-color);
+}
+
+.filter-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.filter-select {
+    padding: 0.6rem 2rem 0.6rem 1rem;
+    border: 1px solid var(--gray-border);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    background: white;
+    cursor: pointer;
+    transition: var(--transition);
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+}
+
+.filter-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.filter-stats {
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+.stats-badge {
+    background: var(--primary-color);
+    color: white;
+    padding: 0.2rem 0.5rem;
+    border-radius: 20px;
+    font-weight: 600;
+    margin-right: 0.25rem;
+}
+
+/* Vacantes Grid */
+.vacantes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: 1.5rem;
+}
+
+.vacante-card-modern {
+    background: white;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--gray-border);
+    overflow: hidden;
+    transition: var(--transition);
+    animation: fadeInUp 0.3s ease-out;
+}
+
+.vacante-card-modern:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md);
+}
+
+.vacante-card-header {
+    padding: 1.25rem 1.25rem 0.75rem;
+    border-bottom: 1px solid var(--gray-border);
+}
+
+.vacante-title-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.vacante-title-modern {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--dark-color);
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 30px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.status-en-revision {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.status-aprobada {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.status-rechazada {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.status-abierta {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.status-cerrada {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.vacante-card-body {
+    padding: 1rem 1.25rem;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+}
+
+.info-item-modern {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    color: #475569;
+}
+
+.info-item-modern i {
+    width: 20px;
+    color: var(--primary-color);
+    font-size: 0.8rem;
+}
+
+.admin-feedback {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: #fef2f2;
+    border-radius: var(--radius-sm);
+    border-left: 3px solid var(--danger-color);
+}
+
+.feedback-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.7rem;
+    color: #991b1b;
+    margin-bottom: 0.25rem;
+}
+
+.feedback-text {
+    margin: 0;
+    font-size: 0.75rem;
+    color: #7f1a1a;
+    line-height: 1.4;
+}
+
+.vacante-card-footer {
+    padding: 0.75rem 1.25rem;
+    background: var(--gray-light);
+    border-top: 1px solid var(--gray-border);
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.btn-view, .btn-close-vacancy, .btn-reopen-vacancy {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: var(--transition);
+    cursor: pointer;
+}
+
+.btn-view {
+    background: white;
+    color: var(--primary-color);
+    border: 1px solid var(--gray-border);
+}
+
+.btn-view:hover {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    transform: translateY(-1px);
+}
+
+.btn-close-vacancy {
+    background: white;
+    color: var(--warning-color);
+    border: 1px solid var(--gray-border);
+}
+
+.btn-close-vacancy:hover {
+    background: var(--warning-color);
+    color: white;
+    border-color: var(--warning-color);
+    transform: translateY(-1px);
+}
+
+.btn-reopen-vacancy {
+    background: white;
+    color: var(--success-color);
+    border: 1px solid var(--gray-border);
+}
+
+.btn-reopen-vacancy:hover {
+    background: var(--success-color);
+    color: white;
+    border-color: var(--success-color);
+    transform: translateY(-1px);
+}
+
+/* Empty State */
+.empty-state-modern {
+    text-align: center;
+    padding: 3rem 2rem;
+    background: var(--gray-light);
+    border-radius: var(--radius-md);
+    border: 1px dashed var(--gray-border);
+    grid-column: 1 / -1;
+}
+
+.empty-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border-radius: 50%;
+    border: 2px dashed var(--gray-border);
+}
+
+.empty-icon i {
+    font-size: 2.5rem;
+    color: #94a3b8;
+}
+
+.empty-state-modern h4 {
+    margin: 0 0 0.5rem;
+    font-size: 1.1rem;
+    color: var(--dark-color);
+}
+
+.empty-state-modern p {
+    margin: 0 0 1.5rem;
+    color: #64748b;
+    font-size: 0.85rem;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.btn-primary-modern {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: var(--primary-color);
+    color: white;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.btn-primary-modern:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+/* Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .vacantes-dashboard {
+        padding: 1rem;
+    }
+    
+    .vacantes-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .vacantes-title {
+        font-size: 1.5rem;
+    }
+    
+    .vacantes-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .filters-card {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .filter-controls {
+        width: 100%;
+    }
+    
+    .filter-select {
+        flex: 1;
+    }
+    
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .vacante-card-footer {
+        flex-direction: column;
+    }
+    
+    .btn-view, .btn-close-vacancy, .btn-reopen-vacancy {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .vacante-title-section {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
+@media (max-width: 480px) {
+    .notification-card {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .notification-link {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .filter-stats {
+        width: 100%;
+        text-align: center;
+    }
+}
+</style>
+
+<script>
+function filterVacantes() {
+    const filter = document.getElementById('estatus').value;
+    const vacantes = document.querySelectorAll('.vacante-card-modern');
+    let visibleCount = 0;
+    
+    vacantes.forEach(vacante => {
+        if (!filter || vacante.dataset.estatus === filter) {
+            vacante.style.display = 'block';
+            visibleCount++;
+        } else {
+            vacante.style.display = 'none';
+        }
+    });
+    
+    // Actualizar contador
+    const totalCountSpan = document.getElementById('total-count');
+    if (totalCountSpan) {
+        totalCountSpan.textContent = visibleCount;
+    }
+}
+
+// Inicializar contador al cargar
+document.addEventListener('DOMContentLoaded', function() {
+    const vacantes = document.querySelectorAll('.vacante-card-modern');
+    const totalCountSpan = document.getElementById('total-count');
+    if (totalCountSpan) {
+        totalCountSpan.textContent = vacantes.length;
+    }
+});
+</script>
+{% endblock %}

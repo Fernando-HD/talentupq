@@ -1,0 +1,602 @@
+<!-- templates/mensajeria/conversaciones.html -->
+{% extends "base.html" %}
+
+{% block title %}Mis Conversaciones{% endblock %}
+
+{% block content %}
+<div class="conversaciones-dashboard">
+    <div class="conversaciones-header">
+        <h1 class="conversaciones-title">
+            <i class="fas fa-comments"></i> Mis Conversaciones
+        </h1>
+        {% if tipo_usuario == 'candidato' %}
+        <a href="{{ url_for('candidato_vacantes') }}" class="btn btn-outline">
+            <i class="fas fa-search"></i> Buscar vacantes
+        </a>
+        {% endif %}
+    </div>
+
+    <div class="conversaciones-card">
+        <div class="card-header-modern">
+            <div class="header-icon">
+                <i class="fas fa-envelope"></i>
+            </div>
+            <h3 class="card-title-modern">
+                Chats Activos
+                <span class="count-badge">{{ conversaciones|length }}</span>
+            </h3>
+        </div>
+        <div class="card-body-modern">
+            {% if conversaciones and conversaciones|length > 0 %}
+                <div class="conversaciones-grid">
+                    {% for conv in conversaciones %}
+                    <a href="{{ url_for('ver_conversacion', vacante_id=conv.VacanteID, candidato_id=conv.CandidatoID) }}" 
+                       class="conversacion-card {% if conv.NoLeidos and conv.NoLeidos > 0 %}no-leidos{% endif %}">
+                        <div class="conversacion-card-header">
+                            <div class="conversacion-avatar">
+                                {% if tipo_usuario == 'empresa' %}
+                                    <div class="avatar-circle">
+                                        <i class="fas fa-user-circle"></i>
+                                    </div>
+                                {% else %}
+                                    <div class="avatar-circle company">
+                                        <i class="fas fa-building"></i>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="conversacion-card-info">
+                                <div class="conversacion-nombre">
+                                    <h4>
+                                        {% if tipo_usuario == 'empresa' %}
+                                            {{ conv.CandidatoNombre }} {{ conv.CandidatoApellido }}
+                                        {% else %}
+                                            {{ conv.EmpresaNombre }}
+                                        {% endif %}
+                                    </h4>
+                                    <span class="conversacion-fecha">
+                                        <i class="fas fa-clock"></i>
+                                        {% if conv.UltimoMensajeFecha %}
+                                            {{ conv.UltimoMensajeFecha.strftime('%d/%m/%Y %H:%M') }}
+                                        {% endif %}
+                                    </span>
+                                </div>
+                                <div class="conversacion-vacante">
+                                    <i class="fas fa-briefcase"></i>
+                                    <span>{{ conv.VacantePuesto }}</span>
+                                </div>
+                                <div class="conversacion-ultimo-mensaje">
+                                    <i class="fas fa-comment"></i>
+                                    <p>
+                                        {% if conv.UltimoMensaje %}
+                                            {{ conv.UltimoMensaje|truncate(100) }}
+                                        {% else %}
+                                            Sin mensajes aún
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="conversacion-card-footer">
+                            {% if conv.NoLeidos and conv.NoLeidos > 0 %}
+                                <div class="no-leidos-badge">
+                                    <i class="fas fa-envelope"></i>
+                                    <span>{{ conv.NoLeidos }} nuevo{% if conv.NoLeidos > 1 %}s{% endif %}</span>
+                                </div>
+                            {% endif %}
+                            <div class="conversacion-action">
+                                <span class="btn-chat">
+                                    <i class="fas fa-comment-dots"></i> Responder
+                                    <i class="fas fa-arrow-right"></i>
+                                </span>
+                            </div>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state-modern">
+                    <div class="empty-icon">
+                        <i class="fas fa-comments"></i>
+                    </div>
+                    <h4>No tienes conversaciones activas</h4>
+                    <p>
+                        {% if tipo_usuario == 'candidato' %}
+                            Cuando una empresa acepte tu postulación, podrás chatear con ellos aquí.
+                        {% else %}
+                            Cuando aceptes un candidato, podrás chatear con él aquí.
+                        {% endif %}
+                    </p>
+                    {% if tipo_usuario == 'candidato' %}
+                        <a href="{{ url_for('candidato_vacantes') }}" class="btn-primary-modern">
+                            <i class="fas fa-search"></i> Explorar vacantes
+                        </a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+/* Variables */
+:root {
+    --primary-color: #2563eb;
+    --primary-dark: #1d4ed8;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --danger-color: #ef4444;
+    --dark-color: #1e293b;
+    --gray-light: #f8fafc;
+    --gray-border: #e2e8f0;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --transition: all 0.3s ease;
+}
+
+/* Dashboard Principal */
+.conversaciones-dashboard {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 1.5rem;
+}
+
+.conversaciones-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--gray-border);
+}
+
+.conversaciones-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--dark-color);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.conversaciones-title i {
+    color: var(--primary-color);
+    font-size: 1.85rem;
+}
+
+/* Tarjeta principal */
+.conversaciones-card {
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--gray-border);
+    overflow: hidden;
+    transition: var(--transition);
+}
+
+.conversaciones-card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.card-header-modern {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem 1.75rem;
+    background: linear-gradient(135deg, #fafcff 0%, #ffffff 100%);
+    border-bottom: 1px solid var(--gray-border);
+}
+
+.header-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(37, 99, 235, 0.1);
+    border-radius: var(--radius-sm);
+}
+
+.header-icon i {
+    font-size: 1.25rem;
+    color: var(--primary-color);
+}
+
+.card-title-modern {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--dark-color);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+}
+
+.count-badge {
+    background: var(--primary-color);
+    color: white;
+    padding: 0.25rem 0.6rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-left: 0.5rem;
+}
+
+.card-body-modern {
+    padding: 1.75rem;
+}
+
+/* Grid de conversaciones */
+.conversaciones-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.conversacion-card {
+    background: white;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--gray-border);
+    overflow: hidden;
+    transition: var(--transition);
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+.conversacion-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--primary-color);
+}
+
+.conversacion-card.no-leidos {
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.02) 0%, rgba(37, 99, 235, 0.05) 100%);
+    border-left: 3px solid var(--primary-color);
+}
+
+.conversacion-card-header {
+    padding: 1.25rem;
+    display: flex;
+    gap: 1rem;
+}
+
+.conversacion-avatar {
+    flex-shrink: 0;
+}
+
+.avatar-circle {
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.5rem;
+    box-shadow: var(--shadow-sm);
+}
+
+.avatar-circle.company {
+    background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.conversacion-card-info {
+    flex: 1;
+}
+
+.conversacion-nombre {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.conversacion-nombre h4 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--dark-color);
+}
+
+.conversacion-fecha {
+    font-size: 0.7rem;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.conversacion-fecha i {
+    font-size: 0.65rem;
+}
+
+.conversacion-vacante {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    background: var(--gray-light);
+    border-radius: var(--radius-sm);
+    width: fit-content;
+}
+
+.conversacion-vacante i {
+    font-size: 0.7rem;
+    color: var(--primary-color);
+}
+
+.conversacion-vacante span {
+    font-size: 0.75rem;
+    color: #475569;
+    font-weight: 500;
+}
+
+.conversacion-ultimo-mensaje {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+.conversacion-ultimo-mensaje i {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin-top: 0.15rem;
+    flex-shrink: 0;
+}
+
+.conversacion-ultimo-mensaje p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #475569;
+    line-height: 1.4;
+}
+
+.conversacion-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1.25rem;
+    background: var(--gray-light);
+    border-top: 1px solid var(--gray-border);
+}
+
+.no-leidos-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.8rem;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    border-radius: 30px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    animation: pulse 2s infinite;
+}
+
+.no-leidos-badge i {
+    font-size: 0.7rem;
+}
+
+.conversacion-action {
+    display: flex;
+    align-items: center;
+}
+
+.btn-chat {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: transparent;
+    color: var(--primary-color);
+    font-size: 0.8rem;
+    font-weight: 500;
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+    cursor: pointer;
+}
+
+.btn-chat i:last-child {
+    transition: transform 0.3s ease;
+}
+
+.conversacion-card:hover .btn-chat i:last-child {
+    transform: translateX(4px);
+}
+
+/* Empty State */
+.empty-state-modern {
+    text-align: center;
+    padding: 3rem 2rem;
+    background: var(--gray-light);
+    border-radius: var(--radius-md);
+    border: 1px dashed var(--gray-border);
+}
+
+.empty-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border-radius: 50%;
+    border: 2px dashed var(--gray-border);
+}
+
+.empty-icon i {
+    font-size: 2.5rem;
+    color: #94a3b8;
+}
+
+.empty-state-modern h4 {
+    margin: 0 0 0.5rem;
+    font-size: 1.1rem;
+    color: var(--dark-color);
+}
+
+.empty-state-modern p {
+    margin: 0 0 1.5rem;
+    color: #64748b;
+    font-size: 0.85rem;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.btn-primary-modern {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: var(--primary-color);
+    color: white;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.btn-primary-modern:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    color: white;
+}
+
+.btn-outline {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.25rem;
+    background: transparent;
+    color: var(--dark-color);
+    border: 1px solid var(--gray-border);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.btn-outline:hover {
+    background: var(--gray-light);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+/* Animaciones */
+@keyframes pulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 0 8px rgba(37, 99, 235, 0);
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .conversaciones-dashboard {
+        padding: 1rem;
+    }
+    
+    .conversaciones-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .conversaciones-title {
+        font-size: 1.5rem;
+    }
+    
+    .card-header-modern {
+        padding: 1rem 1.25rem;
+    }
+    
+    .card-body-modern {
+        padding: 1.25rem;
+    }
+    
+    .conversacion-card-header {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .conversacion-nombre {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .conversacion-vacante {
+        margin-left: auto;
+        margin-right: auto;
+    }
+    
+    .conversacion-ultimo-mensaje {
+        justify-content: center;
+        text-align: center;
+    }
+    
+    .conversacion-card-footer {
+        flex-direction: column;
+        gap: 0.75rem;
+        align-items: stretch;
+    }
+    
+    .no-leidos-badge {
+        justify-content: center;
+    }
+    
+    .btn-chat {
+        justify-content: center;
+        width: 100%;
+    }
+    
+    .btn-outline {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .card-header-modern {
+        padding: 0.875rem 1rem;
+    }
+    
+    .card-body-modern {
+        padding: 1rem;
+    }
+    
+    .avatar-circle {
+        width: 48px;
+        height: 48px;
+        font-size: 1.25rem;
+    }
+    
+    .conversacion-nombre h4 {
+        font-size: 0.9rem;
+    }
+    
+    .conversacion-ultimo-mensaje p {
+        font-size: 0.75rem;
+    }
+}
+</style>
+{% endblock %}

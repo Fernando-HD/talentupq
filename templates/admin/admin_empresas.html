@@ -1,0 +1,50 @@
+<!-- templates/admin/empresas.html -->
+{% extends "base.html" %}
+
+{% block title %}Empresas - Panel de Control{% endblock %}
+
+{% block content %}
+<div class="crud-container">
+    <div class="crud-header">
+        <h2>Gestión de Empresas</h2>
+        <a href="{{ url_for('crear_empresa') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Nueva Empresa
+        </a>
+    </div>
+    
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Industria</th>
+                    <th>Ubicación</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for empresa in empresas %}
+                <tr>
+                    <td>{{ empresa.id }}</td>
+                    <td>{{ empresa.nombre }}</td>
+                    <td>{{ empresa.industria }}</td>
+                    <td>{{ empresa.ubicacion }}</td>
+                    <td>
+                        <div class="btn-group">
+                            <a href="{{ url_for('editar_empresa', id=empresa.id) }}" class="btn btn-sm btn-warning">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{{ url_for('eliminar_empresa', id=empresa.id) }}" class="btn btn-sm btn-danger" 
+                               onclick="return confirm('¿Eliminar esta empresa?')">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

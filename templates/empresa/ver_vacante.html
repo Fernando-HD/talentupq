@@ -1,0 +1,939 @@
+{% extends "base.html" %}
+
+{% block title %}{{ vacante.Puesto }} | TalentUPQ{% endblock %}
+
+{% block content %}
+<div class="empresa-vacante-dashboard">
+    <!-- Encabezado mejorado -->
+    <div class="vacante-header-section">
+        <div class="header-navigation">
+            <a href="{{ url_for('empresa_vacantes') }}" class="btn-back">
+                <i class="fas fa-arrow-left"></i>
+                <span>Volver a mis vacantes</span>
+            </a>
+        </div>
+        
+        <div class="vacante-title-area">
+            <div class="title-wrapper">
+                <h1 class="vacante-title">{{ vacante.Puesto }}</h1>
+                <span class="status-badge status-{{ vacante.Estatus|replace('_', '-') }}">
+                    {% if vacante.Estatus == 'abierta' %}
+                        <i class="fas fa-play-circle"></i> Abierta
+                    {% elif vacante.Estatus == 'cerrada' %}
+                        <i class="fas fa-ban"></i> Cerrada
+                    {% elif vacante.Estatus == 'en_revision' %}
+                        <i class="fas fa-clock"></i> En revisión
+                    {% elif vacante.Estatus == 'aprobada' %}
+                        <i class="fas fa-check-circle"></i> Aprobada
+                    {% else %}
+                        {{ vacante.Estatus|capitalize }}
+                    {% endif %}
+                </span>
+            </div>
+            <div class="vacante-meta">
+                <div class="meta-item">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>Publicada: {{ vacante.FechaPublicacion.strftime('%d/%m/%Y') }}</span>
+                </div>
+                {% if vacante.FechaCierre %}
+                <div class="meta-item">
+                    <i class="fas fa-calendar-times"></i>
+                    <span>Cierra: {{ vacante.FechaCierre.strftime('%d/%m/%Y') }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if vacante.Estatus == 'abierta' %}
+        <div class="header-actions">
+            <a href="{{ url_for('empresa_cambiar_estado_vacante', vacante_id=vacante.VacanteID, nuevo_estado='cerrada') }}" 
+               class="btn-pause"
+               onclick="return confirm('¿Estás seguro de cerrar esta vacante? Las postulaciones ya no serán visibles para nuevos candidatos.')">
+                <i class="fas fa-pause-circle"></i> Cerrar vacante
+            </a>
+        </div>
+        {% elif vacante.Estatus == 'cerrada' %}
+        <div class="header-actions">
+            <a href="{{ url_for('empresa_cambiar_estado_vacante', vacante_id=vacante.VacanteID, nuevo_estado='abierta') }}" 
+               class="btn-reopen"
+               onclick="return confirm('¿Estás seguro de reabrir esta vacante? Los candidatos podrán postularse nuevamente.')">
+                <i class="fas fa-play-circle"></i> Reabrir vacante
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Contenido principal en dos columnas -->
+    <div class="vacante-grid">
+        <!-- Columna izquierda - Detalles de la vacante -->
+        <div class="vacante-info-column">
+            <!-- Información básica -->
+            <div class="info-card">
+                <div class="card-header-modern">
+                    <div class="header-icon">
+                        <i class="fas fa-info-circle"></i>
+                    </div>
+                    <h3 class="card-title">Información general</h3>
+                </div>
+                <div class="card-content">
+                    <div class="info-grid">
+                        <div class="info-item-modern">
+                            <div class="info-icon-wrapper">
+                                <i class="fas fa-graduation-cap"></i>
+                            </div>
+                            <div class="info-text">
+                                <span class="info-label">Grado de estudios</span>
+                                <p class="info-value">{{ vacante.GradoEstudios }}</p>
+                            </div>
+                        </div>
+                        <div class="info-item-modern">
+                            <div class="info-icon-wrapper">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <div class="info-text">
+                                <span class="info-label">Plazas disponibles</span>
+                                <p class="info-value">{{ vacante.PlazasDisponibles }}</p>
+                            </div>
+                        </div>
+                        <div class="info-item-modern">
+                            <div class="info-icon-wrapper">
+                                <i class="fas fa-file-contract"></i>
+                            </div>
+                            <div class="info-text">
+                                <span class="info-label">Tipo de contrato</span>
+                                <p class="info-value">{{ vacante.TipoContrato }}</p>
+                            </div>
+                        </div>
+                        <div class="info-item-modern">
+                            <div class="info-icon-wrapper">
+                                <i class="fas fa-laptop-house"></i>
+                            </div>
+                            <div class="info-text">
+                                <span class="info-label">Modalidad</span>
+                                <p class="info-value">{{ vacante.Modalidad }}</p>
+                            </div>
+                        </div>
+                        <div class="info-item-modern">
+                            <div class="info-icon-wrapper">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <div class="info-text">
+                                <span class="info-label">Experiencia requerida</span>
+                                <p class="info-value">{{ vacante.ExperienciaRequerida }}</p>
+                            </div>
+                        </div>
+                        <div class="info-item-modern">
+                            <div class="info-icon-wrapper">
+                                <i class="fas fa-map-marker-alt"></i>
+                            </div>
+                            <div class="info-text">
+                                <span class="info-label">Ubicación</span>
+                                <p class="info-value">{{ vacante.Ubicacion or 'No especificada' }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Descripción del puesto -->
+            <div class="info-card">
+                <div class="card-header-modern">
+                    <div class="header-icon">
+                        <i class="fas fa-align-left"></i>
+                    </div>
+                    <h3 class="card-title">Descripción del puesto</h3>
+                </div>
+                <div class="card-content">
+                    <div class="description-content">
+                        {{ vacante.Resumen|replace('\n', '<br>')|safe }}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Habilidades requeridas -->
+            {% if habilidades_requeridas %}
+            <div class="info-card">
+                <div class="card-header-modern">
+                    <div class="header-icon">
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <h3 class="card-title">Habilidades requeridas</h3>
+                </div>
+                <div class="card-content">
+                    <div class="skills-container-modern">
+                        {% for habilidad in habilidades_requeridas %}
+                        <span class="skill-badge required">
+                            <i class="fas fa-check-circle"></i>
+                            {{ habilidad.Nombre }}
+                        </span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Habilidades opcionales -->
+            {% if habilidades_opcionales %}
+            <div class="info-card">
+                <div class="card-header-modern">
+                    <div class="header-icon">
+                        <i class="fas fa-star-half-alt"></i>
+                    </div>
+                    <h3 class="card-title">Habilidades opcionales</h3>
+                </div>
+                <div class="card-content">
+                    <div class="skills-container-modern">
+                        {% for habilidad in habilidades_opcionales %}
+                        <span class="skill-badge optional">
+                            <i class="fas fa-plus-circle"></i>
+                            {{ habilidad.Nombre }}
+                        </span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Beneficios -->
+            {% if vacante.Beneficios %}
+            <div class="info-card">
+                <div class="card-header-modern">
+                    <div class="header-icon">
+                        <i class="fas fa-gift"></i>
+                    </div>
+                    <h3 class="card-title">Beneficios</h3>
+                </div>
+                <div class="card-content">
+                    <div class="benefits-content">
+                        {{ vacante.Beneficios|replace('\n', '<br>')|safe }}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Comentarios de admin (si los hay) -->
+            {% if vacante.ComentariosAdmin %}
+            <div class="info-card admin-feedback-card">
+                <div class="card-header-modern">
+                    <div class="header-icon">
+                        <i class="fas fa-comment-alt"></i>
+                    </div>
+                    <h3 class="card-title">Comentarios del administrador</h3>
+                </div>
+                <div class="card-content">
+                    <div class="admin-comment">
+                        <i class="fas fa-info-circle"></i>
+                        <p>{{ vacante.ComentariosAdmin }}</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Columna derecha - Postulaciones -->
+        <div class="postulaciones-column">
+            <div class="postulaciones-card">
+                <div class="card-header-modern">
+                    <div class="header-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h3 class="card-title">
+                        Postulaciones
+                        <span class="badge-count">{{ postulaciones|length }}</span>
+                    </h3>
+                </div>
+                
+                <div class="card-content no-padding">
+                    {% if postulaciones %}
+                    <div class="applications-list">
+                        {% for post in postulaciones %}
+                        <div class="application-card {% if post.Estatus == 'aceptado' %}accepted{% elif post.Estatus == 'rechazado' %}rejected{% endif %}">
+                            <div class="application-header">
+                                <div class="candidate-avatar">
+                                    <i class="fas fa-user-circle"></i>
+                                </div>
+                                <div class="candidate-info">
+                                    <h4>{{ post.Nombre }} {{ post.Apellido }}</h4>
+                                    <div class="application-details">
+                                        <span class="postulation-date">
+                                            <i class="far fa-calendar-alt"></i>
+                                            {{ post.FechaPostulacion.strftime('%d/%m/%Y') }}
+                                        </span>
+                                        <span class="match-percentage">
+                                            <i class="fas fa-chart-line"></i>
+                                            {{ post.PorcentajeCoincidencia }}% coincidencia
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="application-status status-{{ post.Estatus|default('pendiente') }}">
+                                    {% if post.Estatus == 'aceptado' %}
+                                        <i class="fas fa-check-circle"></i> Aceptado
+                                    {% elif post.Estatus == 'rechazado' %}
+                                        <i class="fas fa-times-circle"></i> Rechazado
+                                    {% else %}
+                                        <i class="fas fa-clock"></i> Pendiente
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="application-actions">
+                                <a href="{{ url_for('empresa_ver_candidato', candidato_id=post.CandidatoID) }}" class="btn-view-profile">
+                                    <i class="fas fa-eye"></i> Ver perfil completo
+                                    <i class="fas fa-arrow-right"></i>
+                                </a>
+                                
+                                {% if not post.Estatus or post.Estatus == 'pendiente' %}
+                                <div class="decision-buttons">
+                                    <a href="{{ url_for('empresa_aceptar_candidato', vacante_id=vacante.VacanteID, candidato_id=post.CandidatoID) }}" 
+                                       class="btn-accept"
+                                       onclick="return confirm('¿Aceptar a {{ post.Nombre }} {{ post.Apellido }} para esta vacante?')">
+                                        <i class="fas fa-check"></i> Aceptar
+                                    </a>
+                                    <a href="{{ url_for('empresa_rechazar_candidato', vacante_id=vacante.VacanteID, candidato_id=post.CandidatoID) }}" 
+                                       class="btn-reject"
+                                       onclick="return confirm('¿Rechazar a {{ post.Nombre }} {{ post.Apellido }} para esta vacante?')">
+                                        <i class="fas fa-times"></i> Rechazar
+                                    </a>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="empty-state-modern">
+                        <div class="empty-icon">
+                            <i class="fas fa-users-slash"></i>
+                        </div>
+                        <h4>No hay postulaciones aún</h4>
+                        <p>Esta vacante no ha recibido postulaciones hasta el momento.</p>
+                        <p class="empty-hint">Comparte la vacante para atraer más candidatos</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Variables */
+:root {
+    --primary-color: #2563eb;
+    --primary-dark: #1d4ed8;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --danger-color: #ef4444;
+    --dark-color: #1e293b;
+    --gray-light: #f8fafc;
+    --gray-border: #e2e8f0;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --transition: all 0.3s ease;
+}
+
+/* Dashboard Principal */
+.empresa-vacante-dashboard {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1.5rem;
+}
+
+/* Header Section */
+.vacante-header-section {
+    background: white;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--gray-border);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--shadow-sm);
+}
+
+.header-navigation {
+    margin-bottom: 1rem;
+}
+
+.btn-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--gray-light);
+    color: var(--dark-color);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.btn-back:hover {
+    background: var(--gray-border);
+    transform: translateX(-3px);
+}
+
+.vacante-title-area {
+    margin-bottom: 1rem;
+}
+
+.title-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.5rem;
+}
+
+.vacante-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--dark-color);
+    margin: 0;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.8rem;
+    border-radius: 30px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.status-abierta {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.status-cerrada {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.status-en-revision {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.status-aprobada {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.vacante-meta {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+.meta-item i {
+    font-size: 0.75rem;
+}
+
+.header-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.btn-pause, .btn-reopen {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.25rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.btn-pause {
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.btn-pause:hover {
+    background: #fde68a;
+    transform: translateY(-2px);
+}
+
+.btn-reopen {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.btn-reopen:hover {
+    background: #bbf7d0;
+    transform: translateY(-2px);
+}
+
+/* Grid Principal */
+.vacante-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+/* Tarjetas de información */
+.info-card {
+    background: white;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--gray-border);
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+}
+
+.card-header-modern {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    background: var(--gray-light);
+    border-bottom: 1px solid var(--gray-border);
+}
+
+.header-icon {
+    width: 32px;
+    height: 32px;
+    background: rgba(37, 99, 235, 0.1);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.header-icon i {
+    font-size: 1rem;
+    color: var(--primary-color);
+}
+
+.card-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--dark-color);
+}
+
+.badge-count {
+    background: var(--primary-color);
+    color: white;
+    padding: 0.2rem 0.5rem;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    margin-left: 0.5rem;
+}
+
+.card-content {
+    padding: 1.25rem;
+}
+
+.card-content.no-padding {
+    padding: 0;
+}
+
+/* Info Grid */
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+
+.info-item-modern {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: var(--gray-light);
+    border-radius: var(--radius-sm);
+}
+
+.info-icon-wrapper {
+    width: 36px;
+    height: 36px;
+    background: white;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.info-icon-wrapper i {
+    font-size: 1rem;
+    color: var(--primary-color);
+}
+
+.info-text {
+    flex: 1;
+}
+
+.info-label {
+    display: block;
+    font-size: 0.65rem;
+    color: #64748b;
+}
+
+.info-value {
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--dark-color);
+}
+
+/* Descripción */
+.description-content {
+    line-height: 1.6;
+    color: #475569;
+    font-size: 0.9rem;
+}
+
+/* Skills */
+.skills-container-modern {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+
+.skill-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: 30px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.skill-badge.required {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.skill-badge.optional {
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.skill-badge i {
+    font-size: 0.7rem;
+}
+
+/* Beneficios */
+.benefits-content {
+    line-height: 1.6;
+    color: #475569;
+    font-size: 0.85rem;
+}
+
+/* Admin Feedback */
+.admin-feedback-card {
+    border-left: 4px solid var(--warning-color);
+}
+
+.admin-comment {
+    display: flex;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: #fffbeb;
+    border-radius: var(--radius-sm);
+}
+
+.admin-comment i {
+    color: var(--warning-color);
+    font-size: 1.2rem;
+}
+
+.admin-comment p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #92400e;
+    line-height: 1.5;
+}
+
+/* Postulaciones Card */
+.postulaciones-card {
+    background: white;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--gray-border);
+    overflow: hidden;
+    position: sticky;
+    top: 1rem;
+}
+
+.applications-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.application-card {
+    padding: 1.25rem;
+    border-bottom: 1px solid var(--gray-border);
+    transition: var(--transition);
+}
+
+.application-card:last-child {
+    border-bottom: none;
+}
+
+.application-card:hover {
+    background: var(--gray-light);
+}
+
+.application-card.accepted {
+    background: #ecfdf5;
+}
+
+.application-card.rejected {
+    background: #fef2f2;
+}
+
+.application-header {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.candidate-avatar {
+    width: 48px;
+    height: 48px;
+    background: rgba(37, 99, 235, 0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.candidate-avatar i {
+    font-size: 1.5rem;
+    color: var(--primary-color);
+}
+
+.candidate-info {
+    flex: 1;
+}
+
+.candidate-info h4 {
+    margin: 0 0 0.25rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--dark-color);
+}
+
+.application-details {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.postulation-date, .match-percentage {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.7rem;
+    color: #64748b;
+}
+
+.application-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.status-aceptado {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.status-rechazado {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.status-pendiente {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.application-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.btn-view-profile {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--primary-color);
+    text-decoration: none;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.btn-view-profile i:last-child {
+    transition: transform 0.3s ease;
+}
+
+.btn-view-profile:hover i:last-child {
+    transform: translateX(4px);
+}
+
+.decision-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-accept, .btn-reject {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.btn-accept {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.btn-accept:hover {
+    background: #bbf7d0;
+    transform: translateY(-1px);
+}
+
+.btn-reject {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.btn-reject:hover {
+    background: #fecaca;
+    transform: translateY(-1px);
+}
+
+/* Empty State */
+.empty-state-modern {
+    text-align: center;
+    padding: 3rem 2rem;
+}
+
+.empty-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 1rem;
+    background: var(--gray-light);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px dashed var(--gray-border);
+}
+
+.empty-icon i {
+    font-size: 2.5rem;
+    color: #94a3b8;
+}
+
+.empty-state-modern h4 {
+    margin: 0 0 0.5rem;
+    font-size: 1rem;
+    color: var(--dark-color);
+}
+
+.empty-state-modern p {
+    margin: 0;
+    color: #64748b;
+    font-size: 0.85rem;
+}
+
+.empty-hint {
+    margin-top: 0.5rem !important;
+    font-size: 0.75rem !important;
+    color: #94a3b8 !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .empresa-vacante-dashboard {
+        padding: 1rem;
+    }
+    
+    .vacante-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .vacante-title {
+        font-size: 1.5rem;
+    }
+    
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .application-header {
+        flex-direction: column;
+    }
+    
+    .application-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .decision-buttons {
+        width: 100%;
+    }
+    
+    .btn-accept, .btn-reject {
+        flex: 1;
+        justify-content: center;
+    }
+    
+    .btn-view-profile {
+        justify-content: center;
+    }
+    
+    .postulaciones-card {
+        position: static;
+    }
+}
+
+@media (max-width: 480px) {
+    .title-wrapper {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .vacante-meta {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .application-details {
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+}
+</style>
+{% endblock %}

@@ -1,0 +1,232 @@
+<!-- templates/admin/usuarios.html -->
+{% extends "base.html" %}
+
+{% block title %}Gestión de Usuarios{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+
+
+    <div class="admin-header">
+        <h1>Gestión de Usuarios</h1>
+        <div class="admin-actions">
+            <a href="{{ url_for('crear_usuario') }}" class="btn btn-success">
+                <i class="fas fa-plus"></i> Crear Nuevo Usuario
+            </a>
+            <a href="{{ url_for('admin_panel_control') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Volver al Panel
+            </a>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Email</th>
+                    <th>Tipo de Usuario</th>
+                    <th>Fecha Registro</th>
+                    <th>Activo</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for usuario in usuarios %}
+                <tr>
+                    <td>{{ usuario.UsuarioID }}</td>
+                    <td>{{ usuario.Email }}</td>
+                    <td>
+                        <span class="badge 
+                            {% if usuario.TipoUsuario == 'admin' %}badge-primary
+                            {% elif usuario.TipoUsuario == 'empresa' %}badge-success
+                            {% elif usuario.TipoUsuario == 'candidato' %}badge-info
+                            {% else %}badge-secondary{% endif %}">
+                            {{ usuario.TipoUsuario | capitalize }}
+                        </span>
+                    </td>
+                    <td>{{ usuario.FechaRegistro.strftime('%d/%m/%Y %H:%M') }}</td>
+                    <td>
+                        <span class="badge {% if usuario.Activo %}badge-success{% else %}badge-secondary{% endif %}">
+                            {% if usuario.Activo %}Activo{% else %}Inactivo{% endif %}
+                        </span>
+                    </td>
+                    <td class="actions">
+                        <a href="{{ url_for('editar_usuario', usuario_id=usuario.UsuarioID) }}" 
+                           class="btn btn-sm btn-warning" title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <form action="{{ url_for('eliminar_usuario', usuario_id=usuario.UsuarioID) }}" 
+                              method="POST" style="display: inline;">
+                            <button type="submit" class="btn btn-sm btn-secondary" 
+                                    onclick="return confirm('¿Estás seguro de eliminar este usuario?')" 
+                                    title="Eliminar">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+    .admin-container {
+        max-width: 1200px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+    }
+    
+    .admin-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    
+    .admin-header h1 {
+        font-size: 2rem;
+        color: #2c3e50;
+        margin: 0;
+    }
+    
+    .admin-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .table-responsive {
+        overflow-x: auto;
+    }
+    
+    .admin-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    .admin-table th, 
+    .admin-table td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .admin-table th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        color: #495057;
+    }
+    
+    .admin-table tr:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .badge {
+        display: inline-block;
+        padding: 0.25em 0.4em;
+        font-size: 75%;
+        font-weight: 700;
+        line-height: 1;
+        text-align: center;
+        white-space: nowrap;
+        vertical-align: baseline;
+        border-radius: 0.25rem;
+    }
+    
+    .badge-primary {
+        color: #fff;
+        background-color: #3498db;
+    }
+    
+    .badge-success {
+        color: #fff;
+        background-color: #2ecc71;
+    }
+    
+    .badge-info {
+        color: #fff;
+        background-color: #1abc9c;
+    }
+    
+    .badge-secondary {
+        color: #fff;
+        background-color: #6c757d;
+    }
+    
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        text-decoration: none;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+        cursor: pointer;
+        border: none;
+    }
+    
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.8rem;
+    }
+    
+    .btn-success {
+        background-color: #28a745;
+        color: white;
+    }
+    
+    .btn-success:hover {
+        background-color: #218838;
+    }
+    
+    .btn-secondary {
+        background-color: #6c757d;
+        color: white;
+    }
+    
+    .btn-secondary:hover {
+        background-color: #5a6268;
+    }
+    
+    .btn-warning {
+        background-color: #ffc107;
+        color: #212529;
+    }
+    
+    .btn-warning:hover {
+        background-color: #e0a800;
+    }
+    
+    .actions {
+        display: flex;
+        gap: 0.25rem;
+    }
+    
+    .flash-messages {
+        margin-bottom: 1.5rem;
+    }
+    
+    .flash-success {
+        background-color: #d4edda;
+        color: #155724;
+        padding: 10px;
+        border-radius: 4px;
+        margin-bottom: 10px;
+    }
+    
+    .flash-error {
+        background-color: #f8d7da;
+        color: #721c24;
+        padding: 10px;
+        border-radius: 4px;
+        margin-bottom: 10px;
+    }
+</style>
+{% endblock %}
