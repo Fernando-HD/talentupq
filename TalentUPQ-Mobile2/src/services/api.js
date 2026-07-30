@@ -2,7 +2,7 @@ import { create } from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
 export const API_URL =
-  process.env.EXPO_PUBLIC_API_URL || 'http://127.0.0.1:5000/api/v1';
+  process.env.EXPO_PUBLIC_API_URL || 'https://talentupq-api.onrender.com/api/v1';
 
 const api = create({
   baseURL: API_URL,
