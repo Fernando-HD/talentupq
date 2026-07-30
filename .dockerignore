@@ -1,90 +1,18 @@
-# =============================================================================
-# TalentUPQ - .dockerignore
-# Protege secretos y archivos innecesarios del contexto de build de Docker
-# =============================================================================
-
-# --- Secretos (NUNCA deben entrar a la imagen) ---
-.env
-.env.local
-.env.*.local
-*.key
-*.pem
-certificates/
-
-# --- Python ---
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-*.egg-info/
-dist/
-build/
-*.egg
-.eggs/
-
-# --- Entorno virtual ---
-env/
-venv/
-.venv/
-ENV/
-env.bak/
-venv.bak/
-
-# --- Git ---
-.git/
+.git
 .gitignore
-.gitignore.backup
-.gitattributes
-.github/
-
-# --- IDE / Editor ---
-.vscode/
-.idea/
-*.sublime-*
-*.swp
-*.swo
-*~
-
-# --- Sistema ---
+.env
+.env.*
+!.env.example
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# --- Logs ---
+.vscode
+.idea
+__pycache__
+*.py[cod]
 *.log
-*.bak
-*.backup
-
-# --- Node / React (no necesario para backend Flask) ---
-node_modules/
-frontend-react/node_modules/
-frontend-react/build/
-
-# --- Documentación y assets no necesarios en runtime ---
-README.md
-LICENSE
-*.md
-docs/
-screenshots/
-
-# --- Tests (no necesarios en produccion) ---
-tests/
-*.test.py
-*.spec.py
-
-# --- Archivos temporales ---
-*.tmp
-*.swp
-*.swo
-nltk_data/
-
-# --- Bases de datos locales ---
-*.db
-*.sqlite
-*.sqlite3
-OCC*.sql
-occ.sql
+**/node_modules
+**/.expo
+OCC-Mobile
+TalentUPQ-Mobile2
+frontend-react
+static/uploads
+tests

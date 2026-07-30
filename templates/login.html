@@ -3,6 +3,8 @@
 {% block title %}Iniciar Sesión{% endblock %}
 
 {% block content %}
+<!-- Cargar Face-api.js -->
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <div class="auth-container">
     <div class="auth-background">
         <div class="floating-shape shape-1"></div>
@@ -741,8 +743,7 @@
     }
 </script>
 
-
-<!-- Agrega esto al final de tu login.html, antes del cierre del block content -->
+<!-- Modal de Administrador - VERSIÓN CORREGIDA -->
 <div id="adminLoginModal" class="admin-modal hidden">
     <div class="admin-modal-content animate__animated animate__zoomIn">
         <span class="admin-close-btn">&times;</span>
@@ -753,29 +754,66 @@
             </svg>
             <h2>Admin Portal</h2>
         </div>
-        <form id="adminLoginForm" method="POST" action="/admin/login" class="admin-form">
+
+        <!-- Pestañas de selección -->
+        <div class="admin-tabs">
+            <button class="admin-tab active" data-tab="password">🔐 Contraseña</button>
+            <button class="admin-tab" data-tab="facial">👤 Reconocimiento Facial</button>
+        </div>
+
+        <!-- Panel de Contraseña -->
+        <div id="passwordPanel" class="admin-panel active">
+            <form id="adminLoginForm" method="POST" action="/admin/login" class="admin-form">
+                <div class="admin-input-group">
+                    <input type="email" id="adminEmail" name="email" required>
+                    <label for="adminEmail">Correo Administrador</label>
+                    <div class="admin-underline"></div>
+                </div>
+                
+                <div class="admin-input-group">
+                    <input type="password" id="adminPassword" name="password" required>
+                    <label for="adminPassword">Contraseña</label>
+                    <div class="admin-underline"></div>
+                </div>
+                
+                <button type="submit" class="admin-submit-btn">
+                    <span>Acceder</span>
+                    <svg viewBox="0 0 13 10">
+                        <path d="M1,5 L11,5"></path>
+                        <polyline points="8 1 12 5 8 9"></polyline>
+                    </svg>
+                </button>
+            </form>
+        </div>
+
+        <!-- Panel de Reconocimiento Facial -->
+        <div id="facialPanel" class="admin-panel" style="display: none;">
             <div class="admin-input-group">
-                <input type="email" id="adminEmail" name="email" required>
-                <label for="adminEmail">Correo Administrador</label>
-                <div class="admin-underline"></div>
+                <input type="email" value="Admin@upq.edu.mx" readonly>
+                <label>Administrador</label>
             </div>
             
-            <div class="admin-input-group">
-                <input type="password" id="adminPassword" name="password" required>
-                <label for="adminPassword">Contraseña</label>
-                <div class="admin-underline"></div>
+            <div class="facial-container">
+                <video id="facialVideo" autoplay muted playsinline></video>
+                <canvas id="facialCanvas" style="display: none;"></canvas>
+                <div id="facialStatus" class="facial-status">
+                    <i class="fas fa-camera"></i> Iniciar cámara
+                </div>
             </div>
             
-            <button type="submit" class="admin-submit-btn">
-                <span>Acceder</span>
-                <svg viewBox="0 0 13 10">
-                    <path d="M1,5 L11,5"></path>
-                    <polyline points="8 1 12 5 8 9"></polyline>
-                </svg>
-            </button>
+            <div class="facial-buttons">
+                <button type="button" id="startCameraBtn" class="facial-btn">
+                    <i class="fas fa-play"></i> Iniciar Cámara
+                </button>
+                <button type="button" id="verifyFaceBtn" class="facial-btn" disabled>
+                    <i class="fas fa-check"></i> Verificar Rostro
+                </button>
+            </div>
             
-            <p class="admin-note">Solo para personal autorizado</p>
-        </form>
+            <div id="facialMessage" class="facial-message"></div>
+        </div>
+        
+        <p class="admin-note">Solo para personal autorizado</p>
     </div>
 </div>
 
@@ -1056,6 +1094,126 @@
 .hidden {
     display: none !important;
 }
+
+
+/* Pestañas del modal */
+.admin-tabs {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid rgba(100, 180, 255, 0.3);
+    padding-bottom: 0.5rem;
+}
+
+.admin-tab {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: rgba(200, 230, 255, 0.7);
+    padding: 0.5rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.3s;
+    border-radius: 8px;
+}
+
+.admin-tab.active {
+    color: #ffd700;
+    background: rgba(255, 215, 0, 0.1);
+}
+
+.admin-tab:hover:not(.active) {
+    color: #4fc3f7;
+    background: rgba(79, 195, 247, 0.1);
+}
+
+/* Paneles */
+.admin-panel {
+    transition: all 0.3s;
+}
+
+/* Estilos para reconocimiento facial */
+.facial-container {
+    position: relative;
+    width: 100%;
+    height: 220px;
+    background: #000;
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 1rem 0;
+}
+
+#facialVideo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.facial-status {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 6px;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 0.7rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.facial-buttons {
+    display: flex;
+    gap: 0.8rem;
+    margin: 1rem 0;
+}
+
+.facial-btn {
+    flex: 1;
+    background: rgba(255, 215, 0, 0.2);
+    border: 1px solid rgba(255, 215, 0, 0.5);
+    color: white;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 0.85rem;
+}
+
+.facial-btn:hover:not(:disabled) {
+    background: rgba(255, 215, 0, 0.4);
+    transform: translateY(-2px);
+}
+
+.facial-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.facial-message {
+    text-align: center;
+    font-size: 0.8rem;
+    padding: 8px;
+    border-radius: 8px;
+    margin-top: 0.5rem;
+}
+
+.facial-message.success {
+    background: rgba(76, 175, 80, 0.3);
+    color: #4caf50;
+}
+
+.facial-message.error {
+    background: rgba(244, 67, 54, 0.3);
+    color: #f44336;
+}
 </style>
 
 <script>
@@ -1102,46 +1260,10 @@
         }
         // Manejar el envío del formulario de admin
 document.getElementById('adminLoginForm').addEventListener('submit', function(e) {
-    const email = document.getElementById('adminEmail').value;
-    const password = document.getElementById('adminPassword').value;
     const modal = document.getElementById('adminLoginModal');
     const modalContent = modal.querySelector('.admin-modal-content');
-    
-    // Solo validación del lado del cliente para efectos visuales
-    if (email === 'Admin@upq.edu.mx' && password === 'Admin1234') {
-        // Efecto visual de éxito
-        modalContent.classList.add('animate__animated', 'animate__fadeOutUp');
-        // Dejar que el formulario se envíe normalmente
-    } else {
-        // Prevenir el envío solo si las credenciales son incorrectas
-        e.preventDefault();
-        
-        // Efecto de error
-        modalContent.classList.add('animate__animated', 'animate__shakeX');
-        
-        // Restablecer después de la animación
-        setTimeout(() => {
-            modalContent.classList.remove('animate__animated', 'animate__shakeX');
-            document.getElementById('adminPassword').value = '';
-        }, 1000);
-        
-        // Mostrar mensaje de error
-        const errorNote = document.createElement('p');
-        errorNote.className = 'admin-error-note';
-        errorNote.textContent = 'Credenciales incorrectas';
-        errorNote.style.color = '#ff6b6b';
-        errorNote.style.textAlign = 'center';
-        errorNote.style.marginTop = '10px';
-        errorNote.style.animation = 'fadeIn 0.3s ease-out';
-        
-        // Eliminar mensaje anterior si existe
-        const existingError = document.querySelector('.admin-error-note');
-        if (existingError) existingError.remove();
-        
-        // Insertar después del botón de submit
-        const submitBtn = document.querySelector('.admin-submit-btn');
-        submitBtn.parentNode.insertBefore(errorNote, submitBtn.nextSibling);
-    }
+    // Las credenciales se validan exclusivamente en el servidor.
+    modalContent.classList.add('animate__animated', 'animate__fadeOutUp');
 });
         
         // Cerrar modal al hacer clic en la X
@@ -1171,6 +1293,230 @@ document.getElementById('adminLoginForm').addEventListener('submit', function(e)
             }
         });
     });
+
+    // ========== RECONOCIMIENTO FACIAL ==========
+let faceModelsLoaded = false;
+let facialVideo = null;
+let facialStream = null;
+
+
+// ========== CONTROL DE PESTAÑAS ==========
+function initAdminTabs() {
+    console.log('Inicializando pestañas...');
+    
+    const passwordTab = document.querySelector('.admin-tab[data-tab="password"]');
+    const facialTab = document.querySelector('.admin-tab[data-tab="facial"]');
+    const passwordPanel = document.getElementById('passwordPanel');
+    const facialPanel = document.getElementById('facialPanel');
+    
+    if (!passwordTab || !facialTab || !passwordPanel || !facialPanel) {
+        console.error('No se encontraron las pestañas o paneles');
+        return;
+    }
+    
+    // Función para mostrar pestaña de contraseña
+    function showPasswordTab() {
+        passwordTab.classList.add('active');
+        facialTab.classList.remove('active');
+        passwordPanel.style.display = 'block';
+        facialPanel.style.display = 'none';
+        stopFacialCamera();
+        console.log('Mostrando panel de contraseña');
+    }
+    
+    // Función para mostrar pestaña facial
+    function showFacialTab() {
+        facialTab.classList.add('active');
+        passwordTab.classList.remove('active');
+        passwordPanel.style.display = 'none';
+        facialPanel.style.display = 'block';
+        console.log('Mostrando panel facial');
+        loadFaceModels();
+    }
+    
+    // Agregar event listeners
+    passwordTab.addEventListener('click', showPasswordTab);
+    facialTab.addEventListener('click', showFacialTab);
+    
+    // Asegurar que el panel de contraseña esté visible al inicio
+    showPasswordTab();
+}
+
+
+// Cargar modelos de Face-api
+async function loadFaceModels() {
+    const status = document.getElementById('facialStatus');
+    if (!status) return;
+    
+    if (faceModelsLoaded) {
+        status.innerHTML = '<i class="fas fa-check-circle"></i> Modelos listos';
+        status.style.color = '#4caf50';
+        const startBtn = document.getElementById('startCameraBtn');
+        if (startBtn) startBtn.disabled = false;
+        return;
+    }
+    
+    status.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Cargando modelos...';
+    
+    try {
+        const MODEL_URL = '/static/models';
+        console.log('Cargando modelos desde:', MODEL_URL);
+        
+        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+        
+        faceModelsLoaded = true;
+        status.innerHTML = '<i class="fas fa-check-circle"></i> Modelos listos';
+        status.style.color = '#4caf50';
+        
+        const startBtn = document.getElementById('startCameraBtn');
+        if (startBtn) startBtn.disabled = false;
+    } catch (error) {
+        console.error('Error cargando modelos:', error);
+        status.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error cargando modelos';
+        status.style.color = '#f44336';
+    }
+}
+
+// Iniciar cámara
+async function startFacialCamera() {
+    const btn = document.getElementById('startCameraBtn');
+    const status = document.getElementById('facialStatus');
+    
+    if (!faceModelsLoaded) {
+        status.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Esperando modelos...';
+        return;
+    }
+    
+    try {
+        facialStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        facialVideo = document.getElementById('facialVideo');
+        facialVideo.srcObject = facialStream;
+        await facialVideo.play();
+        
+        if (btn) btn.disabled = true;
+        const verifyBtn = document.getElementById('verifyFaceBtn');
+        if (verifyBtn) verifyBtn.disabled = false;
+        
+        status.innerHTML = '<i class="fas fa-smile"></i> Cámara activa. Mira al frente.';
+        status.style.color = '#4caf50';
+    } catch (error) {
+        console.error('Error:', error);
+        status.innerHTML = '<i class="fas fa-exclamation-triangle"></i> No se pudo acceder a la cámara';
+        status.style.color = '#f44336';
+    }
+}
+
+// Verificar rostro
+async function verifyFace() {
+    const btn = document.getElementById('verifyFaceBtn');
+    const msg = document.getElementById('facialMessage');
+    
+    if (!facialVideo || !facialStream) {
+        if (msg) {
+            msg.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Inicia la cámara primero';
+            msg.className = 'facial-message error';
+        }
+        return;
+    }
+    
+    if (btn) btn.disabled = true;
+    if (msg) {
+        msg.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
+        msg.className = 'facial-message';
+    }
+    
+    try {
+        const canvas = document.getElementById('facialCanvas');
+        canvas.width = facialVideo.videoWidth;
+        canvas.height = facialVideo.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(facialVideo, 0, 0, canvas.width, canvas.height);
+        
+        const detections = await faceapi.detectAllFaces(canvas, 
+            new faceapi.TinyFaceDetectorOptions());
+        
+        if (detections.length === 1) {
+            if (msg) {
+                msg.innerHTML = '<i class="fas fa-check-circle"></i> ✅ Rostro verificado! Redirigiendo...';
+                msg.className = 'facial-message success';
+            }
+            setTimeout(() => {
+                window.location.href = "{{ url_for('admin_dashboard') }}";
+            }, 1500);
+        } else if (detections.length > 1) {
+            if (msg) {
+                msg.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Múltiples rostros detectados';
+                msg.className = 'facial-message error';
+            }
+            if (btn) btn.disabled = false;
+        } else {
+            if (msg) {
+                msg.innerHTML = '<i class="fas fa-exclamation-triangle"></i> No se detectó ningún rostro';
+                msg.className = 'facial-message error';
+            }
+            if (btn) btn.disabled = false;
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        if (msg) {
+            msg.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error en la verificación';
+            msg.className = 'facial-message error';
+        }
+        if (btn) btn.disabled = false;
+    }
+}
+
+function stopFacialCamera() {
+    if (facialStream) {
+        facialStream.getTracks().forEach(track => track.stop());
+        facialStream = null;
+    }
+    if (facialVideo) {
+        facialVideo.srcObject = null;
+    }
+    const startBtn = document.getElementById('startCameraBtn');
+    if (startBtn) startBtn.disabled = false;
+    const verifyBtn = document.getElementById('verifyFaceBtn');
+    if (verifyBtn) verifyBtn.disabled = true;
+    const status = document.getElementById('facialStatus');
+    if (status) {
+        status.innerHTML = '<i class="fas fa-camera"></i> Iniciar cámara';
+        status.style.color = 'white';
+    }
+}
+
+
+// Inicializar cuando el DOM esté listo
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM cargado, inicializando...');
+    initAdminTabs();
+    
+    const startBtn = document.getElementById('startCameraBtn');
+    const verifyBtn = document.getElementById('verifyFaceBtn');
+    
+    if (startBtn) {
+        startBtn.addEventListener('click', startFacialCamera);
+        console.log('Botón de inicio de cámara conectado');
+    }
+    if (verifyBtn) {
+        verifyBtn.addEventListener('click', verifyFace);
+        console.log('Botón de verificación conectado');
+    }
+    
+    const closeBtn = document.querySelector('.admin-close-btn');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', stopFacialCamera);
+    }
+    
+    const modal = document.getElementById('adminLoginModal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) stopFacialCamera();
+        });
+    }
+});
 </script>
 
 {% endblock %}

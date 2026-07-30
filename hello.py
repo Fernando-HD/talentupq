@@ -1,13 +1,20 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, current_app
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
+import base64
+import hashlib
+import hmac
 from flask import session 
+from flask_login import current_user, login_required
 import os
 import re
 import uuid
 import time
-import pyodbc
+import psycopg2
+from cryptography.fernet import Fernet, InvalidToken
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
+from dotenv import load_dotenv
 import traceback
 from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
@@ -21,19 +28,127 @@ import reportlab
 from flask import send_file
 from flask_cors import CORS
 from flasgger import Swagger, swag_from
-from dotenv import load_dotenv
+from flask_jwt_extended import (
+    JWTManager,
+    create_access_token,
+    create_refresh_token,
+    get_jwt,
+    get_jwt_identity,
+    jwt_required,
+)
+from flask_login import LoginManager, login_required, current_user, login_user, logout_user, UserMixin
+from flask_login import login_user, logout_user
 
-
-
-load_dotenv()
-
+# ==================== CREAR APP (SOLO UNA VEZ) ====================
 app = Flask(__name__)
+load_dotenv()
+app.secret_key = os.getenv('SECRET_KEY', 'upq_bolsa_trabajo_secret_key')
+app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', app.secret_key)
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = 3600
+app.config['JWT_REFRESH_TOKEN_EXPIRES'] = 2592000
+jwt = JWTManager(app)
+
+# ==================== CIFRADO DE DATOS SENSIBLES ====================
+# En producción DATA_ENCRYPTION_KEY debe ser un secreto aleatorio independiente.
+# Se deriva una llave Fernet válida para admitir los secretos generados por Render.
+_configured_encryption_key = os.getenv('DATA_ENCRYPTION_KEY', '').strip()
+_key_material = _configured_encryption_key or app.secret_key
+_fernet_key = base64.urlsafe_b64encode(hashlib.sha256(_key_material.encode()).digest())
+data_cipher = Fernet(_fernet_key)
+
+
+def encrypt_sensitive(value):
+    """Cifra texto con AES-128-CBC + HMAC mediante el formato autenticado Fernet."""
+    if value is None:
+        return None
+    return data_cipher.encrypt(str(value).encode()).decode()
+
+
+def decrypt_sensitive(value):
+    """Descifra texto Fernet; acepta valores antiguos sin cifrar para migración gradual."""
+    if value is None:
+        return None
+    try:
+        return data_cipher.decrypt(str(value).encode()).decode()
+    except (InvalidToken, ValueError):
+        return str(value)
+
+
+def secure_equals_encrypted(encrypted_value, candidate):
+    return hmac.compare_digest(decrypt_sensitive(encrypted_value) or '', str(candidate))
+
+
+# ==================== MÉTRICAS PROMETHEUS ====================
+HTTP_REQUESTS = Counter(
+    'talentupq_http_requests_total', 'Peticiones HTTP recibidas', ['method', 'endpoint', 'status']
+)
+HTTP_LATENCY = Histogram(
+    'talentupq_http_request_duration_seconds', 'Duración de peticiones HTTP', ['method', 'endpoint']
+)
+ACTIVE_REQUESTS = Gauge('talentupq_http_requests_active', 'Peticiones HTTP activas')
+DB_HEALTH = Gauge('talentupq_database_available', 'Disponibilidad de PostgreSQL (1=disponible)')
+
+
+@app.before_request
+def start_request_metrics():
+    request._metrics_started_at = time.monotonic()
+    ACTIVE_REQUESTS.inc()
+
+
+@app.after_request
+def finish_request_metrics(response):
+    endpoint = request.endpoint or 'not_found'
+    HTTP_REQUESTS.labels(request.method, endpoint, response.status_code).inc()
+    started_at = getattr(request, '_metrics_started_at', time.monotonic())
+    HTTP_LATENCY.labels(request.method, endpoint).observe(time.monotonic() - started_at)
+    ACTIVE_REQUESTS.dec()
+    return response
+
+# ==================== CONFIGURACIÓN FLASK-LOGIN ====================
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+login_manager.login_message = 'Por favor inicia sesión para acceder a esta página.'
+login_manager.login_message_category = 'warning'
+
+@login_manager.user_loader
+def load_user(user_id):
+    """Carga un usuario por su ID para Flask-Login"""
+    try:
+        result = execute_query("SELECT * FROM Usuarios WHERE UsuarioID = ?", [user_id])
+        if result:
+            usuario = result[0]
+            return User(
+                id=usuario['UsuarioID'],
+                email=usuario['Email'],
+                tipo=usuario['TipoUsuario'],
+                activo=usuario.get('Activo', 1)
+            )
+        return None
+    except Exception as e:
+        print(f"Error loading user: {e}")
+        return None
+
+# ==================== CLASE USER PARA FLASK-LOGIN ====================
+class User(UserMixin):
+    """Clase para manejar usuarios en Flask-Login"""
+    def __init__(self, id, email, tipo, activo=True):
+        self.id = id
+        self.email = email
+        self.tipo = tipo
+        self.activo = activo
+    
+    def get_id(self):
+        return str(self.id)
+    
+    @property
+    def is_active(self):
+        return self.activo == 1 or self.activo == True
+
+# ==================== CORS ====================
 CORS(app, origins=['http://localhost:3000', 'http://127.0.0.1:3000'])
 
-@app.route("/health")
-def health():
-    return {"status": "ok"}, 200
-
+# ==================== SWAGGER ====================
 app.config['SWAGGER'] = {
     'title': 'TalentUPQ API',
     'version': '1.0.0',
@@ -67,23 +182,23 @@ app.config['SWAGGER'] = {
 
 swagger = Swagger(app)
 
-app.secret_key = os.getenv('SECRET_KEY', 'upq_bolsa_trabajo_secret_key_default')
-app.config['UPLOAD_FOLDER'] = os.getenv('UPLOAD_FOLDER', 'static/uploads')
-app.config['ALLOWED_EXTENSIONS'] = set(os.getenv('ALLOWED_EXTENSIONS', 'pdf,png,jpg,jpeg').split(','))
+# ==================== CONFIGURACIONES ADICIONALES ====================
+app.config['UPLOAD_FOLDER'] = 'static/uploads'
+app.config['ALLOWED_EXTENSIONS'] = {'pdf', 'png', 'jpg', 'jpeg'}
 
-app.config['SQL_SERVER_DRIVER'] = os.getenv('SQL_SERVER_DRIVER', 'ODBC Driver 18 for SQL Server')
-app.config['SQL_SERVER_SERVER'] = f"{os.getenv('DB_HOST', 'localhost')},{os.getenv('DB_PORT', '1433')}"
-app.config['SQL_SERVER_DATABASE'] = os.getenv('DB_NAME', 'BolsaTrabajoUPQ')
-app.config['SQL_SERVER_UID'] = os.getenv('DB_USER', 'sa')
-app.config['SQL_SERVER_PWD'] = os.getenv('DB_PASSWORD', '')
-app.config['SQL_SERVER_ENCRYPT'] = os.getenv('SQL_SERVER_ENCRYPT', 'yes')
-app.config['SQL_SERVER_TRUST_SERVER_CERTIFICATE'] = os.getenv('SQL_SERVER_TRUST_SERVER_CERTIFICATE', 'yes')
+app.config['DB_HOST'] = os.getenv('DB_HOST', 'localhost')
+app.config['DB_PORT'] = int(os.getenv('DB_PORT', '5432'))
+app.config['DB_NAME'] = os.getenv('DB_NAME', 'bolsatrabajoupq')
+app.config['DB_USER'] = os.getenv('DB_USER', os.getenv('USER', 'postgres'))
+app.config['DB_PASSWORD'] = os.getenv('DB_PASSWORD', '')
 
-app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
-app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', '587'))
-app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'True').lower() == 'true'
-app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME', '')
-app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD', '')  
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
+
+
 
 
 
@@ -458,7 +573,7 @@ def forgot_password():
                 ResetToken = ?, 
                 ResetTokenExpira = DATEADD(MINUTE, 10, GETDATE())
                 WHERE Email = ?""",
-                (codigo, email),
+                (encrypt_sensitive(codigo), email),
                 fetch=False
             )
             
@@ -495,13 +610,12 @@ def verify_code():
         
         # Verificar código
         usuario = execute_query(
-            """SELECT UsuarioID, ResetToken, ResetTokenExpira 
-            FROM Usuarios 
-            WHERE Email = ? AND ResetToken = ?""",
-            (email, codigo)
+            """SELECT UsuarioID, ResetToken, ResetTokenExpira
+            FROM Usuarios WHERE Email = ?""",
+            (email,)
         )
         
-        if not usuario:
+        if not usuario or not secure_equals_encrypted(usuario[0]['ResetToken'], codigo):
             flash('Código de verificación incorrecto.', 'error')
             return redirect(url_for('verify_code'))
         
@@ -531,13 +645,12 @@ def reset_password():
     
     # Verificar nuevamente que el código es válido
     usuario = execute_query(
-        """SELECT UsuarioID, ResetToken, ResetTokenExpira 
-        FROM Usuarios 
-        WHERE Email = ? AND ResetToken = ?""",
-        (email, token)
+        """SELECT UsuarioID, ResetToken, ResetTokenExpira
+        FROM Usuarios WHERE Email = ?""",
+        (email,)
     )
     
-    if not usuario:
+    if not usuario or not secure_equals_encrypted(usuario[0]['ResetToken'], token):
         flash('El código de verificación ya no es válido. Por favor solicita uno nuevo.', 'error')
         return redirect(url_for('forgot_password'))
     
@@ -621,28 +734,132 @@ def role_required(role):
     return decorator
 
 
+_COLUMN_NAMES = """
+UsuarioID Email PasswordHash TipoUsuario FechaRegistro Activo ResetToken
+ResetTokenExpira CandidatoID Nombre ApellidoPaterno ApellidoMaterno Telefono
+EstadoCivil Sexo FechaNacimiento Nacionalidad RFC Direccion Reubicacion Viajar
+LicenciaConducir ModalidadTrabajo PuestoActual PuestoSolicitado FotoPerfil CV
+ResumenProfesional EmpresaID SitioWeb Descripcion Logo AdministradorID
+PreparacionID Grado Cedula Estatus Institucion Pais FechaInicio FechaFin
+ExperienciaID Empresa Domicilio Puesto FechaIngreso FechaSalida Funciones
+SueldoInicial SueldoFinal MotivoSeparacion ReferenciaID Ocupacion AnosConocer
+Documento HabilidadID CompetenciaID VacanteID GradoEstudios Resumen Plazas
+PlazasDisponibles FechaPublicacion FechaAprobacion ComentariosAdmin Salario
+TipoContrato Modalidad Ubicacion ExperienciaRequerida Beneficios FechaCierre
+PostulacionID FechaPostulacion Comentarios NotificacionID Mensaje Tipo Fecha
+Leida ConversacionID Activa MensajeID RemitenteID RemitenteTipo FechaEnvio
+Leido FechaLectura EmpresaNombre EmpresaDescripcion CandidatoNombre
+CandidatoApellido CandidatoFoto VacantePuesto UltimoMensaje UltimoMensajeFecha
+NoLeidos Total Count TotalVacantes TotalUsuarios TotalEmpresas TotalCandidatos
+TotalPostulaciones NumPostulaciones EstadoClase HabilidadesRequeridas
+HabilidadesCoincidentes PorcentajeCoincidencia Anios Mes Aceptadas Rechazadas
+Pendientes TotalVacantes Habilidad
+""".split()
+_CANONICAL_COLUMN = {name.lower(): name for name in _COLUMN_NAMES}
+
+
+class CaseInsensitiveDict(dict):
+    """Diccionario compatible con los nombres CamelCase usados por las vistas."""
+    def __init__(self, values=(), **kwargs):
+        normalized = {
+            _CANONICAL_COLUMN.get(str(key).lower(), key): value
+            for key, value in dict(values, **kwargs).items()
+        }
+        super().__init__(normalized)
+
+    def _key(self, key):
+        if isinstance(key, str):
+            for existing in self.keys():
+                if isinstance(existing, str) and existing.lower() == key.lower():
+                    return existing
+        return key
+
+    def __getitem__(self, key):
+        return super().__getitem__(self._key(key))
+
+    def get(self, key, default=None):
+        return super().get(self._key(key), default)
+
+    def __contains__(self, key):
+        return super().__contains__(self._key(key))
+
+
+def _postgres_query(query):
+    """Convierte el pequeño subconjunto T-SQL heredado y sus placeholders."""
+    query = re.sub(
+        r"FORMAT\(([^,]+),\s*'dd/MM/yyyy'\)",
+        r"TO_CHAR(\1, 'DD/MM/YYYY')",
+        query,
+        flags=re.IGNORECASE,
+    )
+    query = re.sub(
+        r"FORMAT\(([^,]+),\s*'yyyy-MM'\)",
+        r"TO_CHAR(\1, 'YYYY-MM')",
+        query,
+        flags=re.IGNORECASE,
+    )
+    query = re.sub(
+        r"DATEADD\(MINUTE,\s*10,\s*GETDATE\(\)\)",
+        "CURRENT_TIMESTAMP + INTERVAL '10 minutes'",
+        query,
+        flags=re.IGNORECASE,
+    )
+    query = re.sub(
+        r"DATEADD\(MONTH,\s*-12,\s*GETDATE\(\)\)",
+        "CURRENT_TIMESTAMP - INTERVAL '12 months'",
+        query,
+        flags=re.IGNORECASE,
+    )
+    query = re.sub(r"GETDATE\(\)", "CURRENT_TIMESTAMP", query, flags=re.IGNORECASE)
+    query = re.sub(r"ISNULL\(", "COALESCE(", query, flags=re.IGNORECASE)
+    for column in ('Activo', 'Leida', 'Leido', 'Activa', 'Reubicacion', 'Viajar', 'LicenciaConducir'):
+        query = re.sub(
+            rf"\b({column})\s*=\s*([01])\b",
+            lambda match: f"{match.group(1)} = {'TRUE' if match.group(2) == '1' else 'FALSE'}",
+            query,
+            flags=re.IGNORECASE,
+        )
+    # Las consultas de esta aplicación no contienen signos ? literales.
+    return query.replace('?', '%s')
+
+
+class PostgreSQLCursor:
+    """Adaptador pequeño para conservar cursor.execute(sql, params) del código existente."""
+    def __init__(self, cursor):
+        self._cursor = cursor
+
+    def execute(self, query, params=None):
+        self._cursor.execute(_postgres_query(query), params)
+        return self
+
+    def __getattr__(self, name):
+        return getattr(self._cursor, name)
+
+
+class PostgreSQLConnection:
+    def __init__(self, connection):
+        self._connection = connection
+
+    def cursor(self):
+        return PostgreSQLCursor(self._connection.cursor())
+
+    def __getattr__(self, name):
+        return getattr(self._connection, name)
+
+
 def get_db_connection():
-    trusted = os.getenv('TRUSTED_CONNECTION', 'no').lower() == 'yes'
-    if trusted or not app.config['SQL_SERVER_PWD']:
-        connection_string = (
-            f"DRIVER={{{app.config['SQL_SERVER_DRIVER']}}};"
-            f"SERVER={app.config['SQL_SERVER_SERVER']};"
-            f"DATABASE={app.config['SQL_SERVER_DATABASE']};"
-            f"Trusted_Connection=yes;"
-            f"Encrypt={app.config['SQL_SERVER_ENCRYPT']};"
-            f"TrustServerCertificate={app.config['SQL_SERVER_TRUST_SERVER_CERTIFICATE']};"
-        )
+    database_url = os.getenv('DATABASE_URL')
+    if database_url:
+        connection = psycopg2.connect(database_url)
     else:
-        connection_string = (
-            f"DRIVER={{{app.config['SQL_SERVER_DRIVER']}}};"
-            f"SERVER={app.config['SQL_SERVER_SERVER']};"
-            f"DATABASE={app.config['SQL_SERVER_DATABASE']};"
-            f"UID={app.config['SQL_SERVER_UID']};"
-            f"PWD={app.config['SQL_SERVER_PWD']};"
-            f"Encrypt={app.config['SQL_SERVER_ENCRYPT']};"
-            f"TrustServerCertificate={app.config['SQL_SERVER_TRUST_SERVER_CERTIFICATE']};"
+        connection = psycopg2.connect(
+            host=app.config['DB_HOST'],
+            port=app.config['DB_PORT'],
+            dbname=app.config['DB_NAME'],
+            user=app.config['DB_USER'],
+            password=app.config['DB_PASSWORD'],
         )
-    return pyodbc.connect(connection_string)
+    return PostgreSQLConnection(connection)
 
 def execute_query(query, params=None, fetch=True):
     conn = get_db_connection()
@@ -655,9 +872,11 @@ def execute_query(query, params=None, fetch=True):
             cursor.execute(query)
         
         if fetch:
-            if query.strip().upper().startswith('SELECT'):
+            if cursor.description:
                 columns = [column[0] for column in cursor.description]
-                results = [dict(zip(columns, row)) for row in cursor.fetchall()]
+                results = [CaseInsensitiveDict(zip(columns, row)) for row in cursor.fetchall()]
+                if query.strip().upper().startswith(('INSERT', 'UPDATE', 'DELETE')):
+                    conn.commit()
                 return results
             elif query.strip().upper().startswith(('INSERT', 'UPDATE', 'DELETE')):
                 conn.commit()
@@ -729,9 +948,9 @@ def get_admin_actual():
 def index():
 
     vacantes = execute_query(
-    "SELECT TOP 3 v.*, e.Nombre as EmpresaNombre FROM Vacantes v "
+    "SELECT v.*, e.Nombre as EmpresaNombre FROM Vacantes v "
     "JOIN Empresas e ON v.EmpresaID = e.EmpresaID "
-    "WHERE v.Estatus = 'aprobada' ORDER BY v.FechaPublicacion DESC"
+    "WHERE v.Estatus = 'aprobada' ORDER BY v.FechaPublicacion DESC LIMIT 3"
 )
 
 
@@ -870,41 +1089,51 @@ def registro():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-
         if request.form.get('is_admin') == 'true':
-            email = request.form.get('email')
-            password = request.form.get('password')
-            
-
-            if email == 'Admin@upq.edu.mx' and password == 'Admin1234':
-                admin_user = {
-                    'id': 0,  
-                    'email': email,
-                    'rol': 'admin',
-                    'nombre': 'Administrador',
-                    'is_authenticated': True,
-                    'is_active': True,
-                    'is_anonymous': False
-                }
+            email = request.form.get('email', '').strip().lower()
+            password = request.form.get('password', '')
+            admins = execute_query(
+                """SELECT UsuarioID, Email, PasswordHash, TipoUsuario, Activo
+                   FROM Usuarios WHERE LOWER(Email) = ? AND TipoUsuario = 'admin'""",
+                (email,)
+            )
+            if admins and admins[0]['Activo'] and check_password_hash(admins[0]['PasswordHash'], password):
+                session['email'] = admins[0]['Email']
+                session['tipo'] = 'admin'
+                session['user_id'] = admins[0]['UsuarioID']
                 return redirect(url_for('admin_dashboard'))
             else:
                 flash('Credenciales administrativas incorrectas', 'error')
                 return redirect(url_for('login'))
         
-
         email = request.form['email']
         password = request.form['password']
         
-
         usuario = execute_query(
             "SELECT * FROM Usuarios WHERE Email = ?", 
             (email,)
         )
         
         if usuario and check_password_hash(usuario[0]['PasswordHash'], password):
+            # ===== USAR FLASK-LOGIN =====
+            from flask_login import login_user
+            
+            # Crear objeto User para Flask-Login
+            user_obj = User(
+                id=usuario[0]['UsuarioID'],
+                email=usuario[0]['Email'],
+                tipo=usuario[0]['TipoUsuario'],
+                activo=usuario[0].get('Activo', 1)
+            )
+            
+            # Autenticar con Flask-Login
+            login_user(user_obj)
+            
+            # También mantener la sesión para compatibilidad con código existente
             session['email'] = email
             session['tipo'] = usuario[0]['TipoUsuario']
             session['user_id'] = usuario[0]['UsuarioID']
+            
             flash('Inicio de sesión exitoso.', 'success')
             
             if usuario[0]['TipoUsuario'] == 'admin':
@@ -918,12 +1147,14 @@ def login():
     
     return render_template('login.html')
 
+
 @app.route('/logout')
 def logout():
+    from flask_login import logout_user
+    logout_user()  # Cerrar sesión de Flask-Login
     session.clear()
     flash('Has cerrado sesión correctamente.', 'info')
     return redirect(url_for('index'))
-
 
 @app.route('/candidato')
 @login_required
@@ -948,7 +1179,7 @@ def candidato_dashboard():
     
 
     experiencia_laboral = execute_query(
-        "SELECT TOP 1 * FROM ExperienciaLaboral WHERE CandidatoID = ? ORDER BY FechaIngreso DESC",
+        "SELECT * FROM ExperienciaLaboral WHERE CandidatoID = ? ORDER BY FechaIngreso DESC LIMIT 1",
         (candidato_id,)
     )
     
@@ -968,12 +1199,12 @@ def candidato_dashboard():
     
 
     postulaciones = execute_query(
-        "SELECT TOP 3 p.*, v.Puesto, e.Nombre as EmpresaNombre "
+        "SELECT p.*, v.Puesto, e.Nombre as EmpresaNombre "
         "FROM Postulaciones p "
         "JOIN Vacantes v ON p.VacanteID = v.VacanteID "
         "JOIN Empresas e ON v.EmpresaID = e.EmpresaID "
         "WHERE p.CandidatoID = ? "
-        "ORDER BY p.FechaPostulacion DESC",
+        "ORDER BY p.FechaPostulacion DESC LIMIT 3",
         (candidato_id,)
     )
     
@@ -1071,9 +1302,9 @@ def candidato_perfil():
                 'Nacionalidad': request.form['nacionalidad'],
                 'RFC': rfc,
                 'Direccion': request.form['direccion'],
-                'Reubicacion': 1 if 'reubicacion' in request.form else 0,
-                'Viajar': 1 if 'viajar' in request.form else 0,
-                'LicenciaConducir': 1 if 'licencia_conducir' in request.form else 0,
+                'Reubicacion': 'reubicacion' in request.form,
+                'Viajar': 'viajar' in request.form,
+                'LicenciaConducir': 'licencia_conducir' in request.form,
                 'ModalidadTrabajo': request.form['modalidad'],
                 'PuestoActual': request.form['puesto_actual'],
                 'PuestoSolicitado': request.form['puesto_solicitado'],
@@ -1852,20 +2083,18 @@ def candidato_ver_vacante(vacante_id):
             v.Beneficios as beneficios,
             e.Nombre as empresa_nombre,
             e.Logo as empresa_logo,
-            STUFF((
-                SELECT ', ' + h.Nombre
+            (
+                SELECT STRING_AGG(h.Nombre, ', ' ORDER BY h.Nombre)
                 FROM VacanteHabilidadesRequeridas vhr
                 JOIN Habilidades h ON vhr.HabilidadID = h.HabilidadID
                 WHERE vhr.VacanteID = v.VacanteID
-                FOR XML PATH('')
-            ), 1, 2, '') as habilidades_requeridas,
-            STUFF((
-                SELECT ', ' + h.Nombre
+            ) as habilidades_requeridas,
+            (
+                SELECT STRING_AGG(h.Nombre, ', ' ORDER BY h.Nombre)
                 FROM VacanteHabilidadesOpcionales vho
                 JOIN Habilidades h ON vho.HabilidadID = h.HabilidadID
                 WHERE vho.VacanteID = v.VacanteID
-                FOR XML PATH('')
-            ), 1, 2, '') as habilidades_opcionales,
+            ) as habilidades_opcionales,
             CASE WHEN EXISTS (
                 SELECT 1 FROM Postulaciones p 
                 WHERE p.VacanteID = v.VacanteID 
@@ -2013,12 +2242,41 @@ def candidato_cancelar_postulacion(postulacion_id):
 
 
 
-# ==================== CHATBOT INTELIGENTE ====================
+
+# ==================== CHATBOT INTELIGENTE MEJORADO v2 ====================
+#
+# Cambios respecto a la versión anterior:
+#   1. Fix: "analizar otra vacante" ahora funciona (memoria de conversación en sesión).
+#   2. Fix: respuesta_default ahora compara en minúsculas correctamente.
+#   3. Fix: se elimina el patrón de "compatibilidad" muerto dentro de self.respuestas
+#      (nunca se alcanzaba porque procesar_mensaje ya lo intercepta antes).
+#   4. Fix: import random movido al principio del archivo.
+#   5. Seguridad: todo dato dinámico (puesto, habilidades, nombres) se escapa con
+#      html.escape antes de insertarse en las respuestas, y el frontend además
+#      escapa cualquier HTML antes de aplicar el formato tipo markdown -> defensa
+#      en profundidad contra XSS almacenado (p. ej. una empresa que registre un
+#      puesto con <img src=x onerror=...>).
+#   6. Normalización de acentos para que "qué", "cómo", etc. also disparen los
+#      patrones (que están escritos sin tilde).
+#   7. Precómputo de stems de las habilidades del candidato (ya no se recalculan
+#      en cada iteración del bucle anidado).
+#   8. Se puede pedir el análisis de una vacante específica por nombre de puesto
+#      ("analiza mi compatibilidad con Analista de Datos"), y no solo la más
+#      reciente.
+#   9. Validación de longitud de mensaje también en el servidor (antes solo
+#      existía en el cliente).
+#  10. Memoria de conversación básica en sesión: recuerda las últimas vacantes
+#      mostradas para poder avanzar con "analizar otra vacante".
+
+import random
+import re
+import unicodedata
+import html
+from difflib import SequenceMatcher
 
 import nltk
 from nltk.stem import SnowballStemmer
-import re
-import json
+from flask import session
 
 # Descargar recursos de NLTK (solo primera vez)
 try:
@@ -2026,13 +2284,70 @@ try:
 except LookupError:
     nltk.download('punkt')
 
+MAX_MENSAJE_LEN = 500
+
+
+def normalizar_texto(texto):
+    """Quita acentos y pasa a minúsculas, para que los patrones sin tilde
+    (ej. 'que tan compatible') también capturen 'qué tan compatible'."""
+    texto = texto.lower().strip()
+    texto_sin_acentos = unicodedata.normalize('NFKD', texto)
+    texto_sin_acentos = ''.join(c for c in texto_sin_acentos if not unicodedata.combining(c))
+    return texto_sin_acentos
+
+
+def texto_seguro(valor):
+    """Escapa cualquier dato que provenga de la base de datos (puesto,
+    nombre de habilidad, nombre de candidato, etc.) antes de insertarlo en
+    una respuesta que el frontend va a renderizar como HTML. Defensa en
+    profundidad: aunque el frontend también sanitiza, esto evita que una
+    empresa inyecte HTML/JS a través del nombre de una vacante o habilidad."""
+    if valor is None:
+        return ''
+    return html.escape(str(valor), quote=True)
+
+
 class ChatbotInteligente:
     def __init__(self):
         self.stemmer = SnowballStemmer('spanish')
         self.respuestas = self.cargar_respuestas()
-        
+        self.habilidades_base = {
+            'python': ['programación', 'desarrollo', 'backend', 'data science', 'machine learning'],
+            'java': ['programación', 'desarrollo', 'backend', 'android', 'enterprise'],
+            'javascript': ['programación', 'frontend', 'web', 'react', 'angular', 'vue'],
+            'sql': ['base de datos', 'datos', 'análisis', 'consultas'],
+            'html': ['diseño web', 'frontend', 'maquetación'],
+            'css': ['diseño web', 'frontend', 'estilos'],
+            'flask': ['python', 'web', 'backend', 'api'],
+            'git': ['control de versiones', 'colaboración', 'código'],
+            'docker': ['contenedores', 'devops', 'despliegue'],
+            'aws': ['nube', 'cloud', 'infraestructura'],
+            'machine learning': ['ia', 'inteligencia artificial', 'datos', 'modelos'],
+            'analisis de datos': ['datos', 'estadística', 'visualización', 'power bi'],
+            'trabajo en equipo': ['colaboración', 'comunicación', 'liderazgo'],
+            'comunicacion': ['presentaciones', 'escucha activa', 'negociación'],
+            'liderazgo': ['gestión', 'equipos', 'toma de decisiones'],
+            'resolucion de problemas': ['análisis', 'crítico', 'solución'],
+        }
+        self.palabras_clave_vacantes = {
+            'desarrollador': ['programación', 'código', 'software', 'python', 'java'],
+            'analista': ['datos', 'análisis', 'reportes', 'sql', 'excel'],
+            'administrador': ['gestión', 'organización', 'liderazgo', 'planeación'],
+            'diseñador': ['creativo', 'diseño', 'ux', 'ui', 'photoshop'],
+            'ingeniero': ['técnico', 'solución', 'mejora', 'procesos'],
+            'gerente': ['liderazgo', 'equipos', 'estrategia', 'resultados'],
+            'soporte': ['atención', 'usuarios', 'técnico', 'ayuda'],
+            'consultor': ['estrategia', 'mejora', 'optimización', 'recomendaciones'],
+            'marketing': ['estrategias', 'digital', 'redes', 'publicidad'],
+            'recursos humanos': ['reclutamiento', 'selección', 'gestión del talento'],
+            'finanzas': ['presupuestos', 'contabilidad', 'inversiones', 'análisis financiero'],
+        }
+
     def cargar_respuestas(self):
-        """Base de conocimientos del chatbot"""
+        """Base de conocimientos del chatbot.
+        Nota: ya NO incluye un patrón para 'compatibilidad' aquí, porque
+        procesar_mensaje intercepta esa intención antes de llegar a este
+        diccionario (el patrón anterior era código muerto)."""
         return {
             # Saludos
             r'\b(holla|hola|buenas|que tal|hey|saludos)\b': [
@@ -2040,146 +2355,465 @@ class ChatbotInteligente:
                 "¡Bienvenido/a! Estoy aquí para ayudarte con el proceso de búsqueda de empleo. ¿Qué necesitas?",
                 "¡Hola! ¿Cómo puedo asistirte hoy?"
             ],
-            
+
             # Cómo postularse
-            r'\b(postular|aplicar|candidatar|como aplicar)\b': [
-                "Para postularte a una vacante:\n1. Inicia sesión en tu cuenta\n2. Ve a la sección 'Vacantes'\n3. Busca la vacante que te interesa\n4. Haz clic en 'Postular'\n5. Completa tu perfil si no lo has hecho\n\n¿Necesitas ayuda con algún paso específico?",
-                "El proceso es sencillo: encuentra la vacante que te gusta y haz clic en 'Postular'. Asegúrate de tener tu CV actualizado en tu perfil."
+            r'\b(postul\w*|aplicar|candidatar|como aplicar)\b': [
+                "¡Con gusto te explico! Para postularte a una vacante:\n"
+                "1. 🔑 Inicia sesión en tu cuenta\n"
+                "2. 📝 Verifica que tu perfil esté completo (CV, experiencia y habilidades), un perfil incompleto reduce tus posibilidades\n"
+                "3. 🔍 Ve a la sección 'Vacantes' y usa los filtros (modalidad, área, grado) para encontrar algo que se ajuste a ti\n"
+                "4. 📖 Lee bien los requisitos antes de aplicar, así evitas postularte a algo que no encaje\n"
+                "5. ✅ Haz clic en 'Postular' dentro del detalle de la vacante\n"
+                "6. 📊 Da seguimiento desde 'Mis Postulaciones', ahí verás si está pendiente, aceptada o rechazada\n\n"
+                "💡 Tip: si quieres saber qué tan buen candidato eres antes de postularte, puedo analizar tu compatibilidad con la vacante, solo dime 'analiza mi compatibilidad'.\n\n"
+                "¿Te ayudo a revisar tu perfil o a buscar una vacante específica?"
             ],
-            
+
             # Crear vacante (empresa)
             r'\b(crear vacante|publicar vacante|nueva vacante)\b': [
                 "Para publicar una vacante:\n1. Ve a tu panel de empresa\n2. Haz clic en 'Nueva Vacante'\n3. Completa todos los campos (puesto, requisitos, etc.)\n4. Espera la aprobación del administrador\n\n¿Te ayudo con algún campo específico?"
             ],
-            
+
             # Requisitos para postular
             r'\b(requisitos|necesito|necesario|que se necesita)\b': [
                 "Los requisitos básicos son:\n✅ Tener un perfil completo\n✅ CV actualizado\n✅ Cumplir con los requisitos de la vacante\n✅ Ser estudiante o egresado UPQ\n\n¿Te gustaría saber más sobre algún requisito específico?"
             ],
-            
+
             # Estado de postulación
             r'\b(estado de mi postulacion|como va mi postulacion|revisar postulacion)\b': [
                 "Puedes revisar el estado de tus postulaciones en la sección 'Mis Postulaciones' de tu panel. Los estados posibles son:\n• Pendiente: La empresa aún no la revisa\n• Aceptado: ¡Felicidades! Te contactarán pronto\n• Rechazado: No te desanimes, hay más oportunidades"
             ],
-            
+
             # Entrevista
-            r'\b(entrevista|como prepararme|consejos entrevista)\b': [
-                "¡Excelente pregunta! Consejos para tu entrevista:\n🎯 Investiga sobre la empresa\n🎯 Prepara respuestas sobre tu experiencia\n🎯 Viste apropiadamente\n🎯 Llega puntual\n🎯 Prepara preguntas para el entrevistador\n\n¿Necesitas más consejos específicos?"
+            # Entrevista
+            r'\b(entrevista\w*|como prepararme)\b': [
+                "¡Vamos a prepararte bien! Aquí tienes consejos organizados por etapa:\n\n"
+                "📌 **Antes de la entrevista**\n"
+                "🎯 Investiga la empresa: qué hace, su misión y noticias recientes\n"
+                "🎯 Relee la descripción del puesto y ubica 3-4 puntos donde tu experiencia calce\n"
+                "🎯 Prepara 2-3 ejemplos concretos de logros usando el método STAR (Situación, Tarea, Acción, Resultado)\n"
+                "🎯 Ten listas tus preguntas para el entrevistador (sobre el equipo, el día a día, retos del puesto)\n\n"
+                "📌 **El día de la entrevista**\n"
+                "🎯 Llega (o conéctate) 10 minutos antes\n"
+                "🎯 Viste apropiado según la cultura de la empresa; ante la duda, formal es más seguro\n"
+                "🎯 Si es virtual: prueba cámara, micrófono e internet antes, y cuida el fondo/iluminación\n"
+                "🎯 Escucha con atención antes de responder, no hay prisa\n\n"
+                "📌 **Después de la entrevista**\n"
+                "🎯 Envía un correo de agradecimiento el mismo día o al siguiente\n"
+                "🎯 Anota qué preguntas te costaron más, te sirve para la próxima\n\n"
+                "¿Quieres que practiquemos alguna pregunta común, como '¿Cuáles son tus fortalezas y debilidades?' o '¿Por qué quieres trabajar aquí?'?"
             ],
-            
             # Currículum/CV
             r'\b(curriculum|cv|hoja de vida)\b': [
                 "Consejos para tu CV:\n📄 Manténlo de 1-2 páginas\n📄 Destaca logros, no solo tareas\n📄 Usa palabras clave de la industria\n📄 Revisa ortografía\n📄 Incluye habilidades técnicas y blandas\n\n¿Quieres que revise tu CV?"
             ],
-            
+
             # Habilidades
             r'\b(habilidades|que habilidades|competencias)\b': [
                 "Las habilidades más demandadas actualmente son:\n💻 Python, Java, SQL\n📊 Análisis de datos\n🤝 Trabajo en equipo\n🗣️ Comunicación efectiva\n🎯 Gestión de proyectos\n\n¿Te gustaría agregar habilidades a tu perfil?"
             ],
-            
+
             # Perfil
             r'\b(completar perfil|actualizar perfil|mi perfil)\b': [
                 "Para completar tu perfil:\n1. Ve a 'Mi Perfil'\n2. Completa tus datos personales\n3. Agrega tu experiencia laboral\n4. Sube tu CV y foto\n5. Añade tus habilidades\n\n¡Un perfil completo atrae más oportunidades!"
             ],
-            
+
             # Vacantes disponibles
             r'\b(vacantes disponibles|que vacantes hay|buscar trabajo|oportunidades)\b': [
                 "¡Claro! Puedes ver todas las vacantes disponibles en la sección 'Vacantes'. También puedes filtrar por:\n• Modalidad (presencial/remoto)\n• Tipo de contrato\n• Grado de estudios\n\n¿Te ayudo a buscar algo específico?"
             ],
-            
+
             # Salario
             r'\b(salario|sueldo|cuanto pagan)\b': [
                 "El salario varía según la empresa y el puesto. Puedes ver el rango salarial en cada vacante. ¿Te gustaría que te ayude a buscar vacantes dentro de tu rango esperado?"
             ],
-            
+
             # Tiempo de respuesta
             r'\b(cuanto tardan|tiempo respuesta|demoran)\b': [
                 "El tiempo de respuesta varía por empresa. Generalmente, las empresas responden entre 1-3 semanas. Puedes dar seguimiento desde 'Mis Postulaciones'."
             ],
-            
+
             # Despedida
             r'\b(gracias|graciass|muchas gracias|ok|excelente)\b': [
                 "¡De nada! ¿Necesitas ayuda con algo más? Estoy aquí para ti. 🤗",
                 "¡Con gusto! Recuerda que puedes preguntarme lo que necesites sobre el proceso de búsqueda de empleo."
             ],
-            
+
             # Ayuda general
             r'\b(ayuda|que puedes hacer|comandos|funciones)\b': [
-                "Puedo ayudarte con:\n💬 Preguntas sobre postulación\n📝 Consejos para entrevistas\n📄 Mejora de tu CV\n🔍 Información de vacantes\n📊 Estado de tus postulaciones\n\n¿Qué te gustaría saber?"
+                "Puedo ayudarte con:\n💬 Preguntas sobre postulación\n📝 Consejos para entrevistas\n📄 Mejora de tu CV\n🔍 Análisis de compatibilidad de vacantes\n📊 Estado de tus postulaciones\n\n¿Qué te gustaría saber?"
             ],
-            
+
             # Contacto
             r'\b(contacto|soporte|quejas|problemas)\b': [
                 "Puedes contactar a soporte:\n📧 Email: bolsa.trabajo@upq.edu.mx\n📞 Teléfono: (773) 108-7368\n\n¿Hay algo específico en lo que pueda ayudarte?"
             ]
         }
-    
-    def procesar_mensaje(self, mensaje):
-        """Procesa el mensaje del usuario y genera respuesta"""
-        mensaje = mensaje.lower().strip()
-        
-        # Buscar coincidencias con los patrones
+
+    # ------------------------------------------------------------------
+    # Cálculo de compatibilidad
+    # ------------------------------------------------------------------
+    def calcular_compatibilidad(self, habilidades_candidato, experiencia_candidato, vacante_data):
+        """Calcula el porcentaje de compatibilidad entre un candidato y una vacante."""
+        habilidades_requeridas = vacante_data.get('habilidades_requeridas', [])
+        experiencia_requerida = vacante_data.get('experiencia_requerida', 0)
+        puesto_vacante = vacante_data.get('puesto', '').lower()
+
+        # ===== Convertir experiencia_requerida a número =====
+        if isinstance(experiencia_requerida, str):
+            numeros = re.findall(r'\d+', experiencia_requerida)
+            experiencia_requerida = int(numeros[0]) if numeros else 0
+        elif not isinstance(experiencia_requerida, (int, float)):
+            experiencia_requerida = 0
+
+        # 1. Análisis de habilidades (60% del total)
+        habilidades_candidato_lower = [h.lower().strip() for h in habilidades_candidato]
+        habilidades_requeridas_lower = [h.lower().strip() for h in habilidades_requeridas]
+
+        # Precómputo de stems del candidato: antes se recalculaba en cada
+        # iteración del bucle anidado (uno por cada habilidad requerida).
+        stems_candidato = {cand: self.stemmer.stem(cand) for cand in habilidades_candidato_lower}
+
+        coincidencias_exactas = 0
+        coincidencias_parciales = 0
+
+        for req in habilidades_requeridas_lower:
+            req_stem = self.stemmer.stem(req)
+            for cand in habilidades_candidato_lower:
+                cand_stem = stems_candidato[cand]
+                if req == cand or req in cand or cand in req:
+                    coincidencias_exactas += 1
+                    break
+                elif req_stem == cand_stem or SequenceMatcher(None, req, cand).ratio() > 0.7:
+                    coincidencias_parciales += 0.5
+                    break
+
+        habilidades_faltantes = []
+        for req in habilidades_requeridas_lower:
+            encontrada = any(
+                req == cand or req in cand or cand in req
+                for cand in habilidades_candidato_lower
+            )
+            if not encontrada:
+                habilidades_faltantes.append(req)
+
+        max_habilidades = len(habilidades_requeridas_lower) if habilidades_requeridas_lower else 1
+        puntaje_habilidades = min(((coincidencias_exactas + coincidencias_parciales) / max_habilidades) * 60, 60)
+
+        # 2. Análisis de experiencia (20% del total)
+        if experiencia_requerida > 0:
+            if experiencia_candidato >= experiencia_requerida:
+                puntaje_experiencia = 20
+            else:
+                puntaje_experiencia = min((experiencia_candidato / experiencia_requerida) * 20, 20)
+        else:
+            puntaje_experiencia = 15
+
+        # 3. Análisis de puesto (20% del total)
+        palabras_candidato = set(habilidades_candidato_lower)
+        for h in habilidades_candidato_lower:
+            for palabra in h.split():
+                palabras_candidato.add(palabra)
+
+        palabras_puesto = set(puesto_vacante.split())
+
+        puntaje_puesto = 0
+        for palabra in palabras_puesto:
+            for clave, sinonimos in self.palabras_clave_vacantes.items():
+                if palabra in clave or clave in palabra:
+                    puntaje_puesto += 2
+                for sinonimo in sinonimos:
+                    if palabra in sinonimo or sinonimo in palabra:
+                        puntaje_puesto += 1
+
+        for hab in habilidades_candidato_lower:
+            for clave, sinonimos in self.palabras_clave_vacantes.items():
+                if hab in clave or clave in hab:
+                    puntaje_puesto += 1
+                for sinonimo in sinonimos:
+                    if hab in sinonimo or sinonimo in hab:
+                        puntaje_puesto += 0.5
+
+        puntaje_puesto = min(puntaje_puesto, 20)
+
+        total = min(puntaje_habilidades + puntaje_experiencia + puntaje_puesto, 100)
+
+        recomendaciones = []
+        if habilidades_faltantes:
+            recomendaciones.append(
+                f"💡 Te sugiero desarrollar estas habilidades: {', '.join(habilidades_faltantes[:3])}"
+            )
+        if puntaje_experiencia < 15:
+            recomendaciones.append("📈 Considera obtener más experiencia en proyectos relacionados o prácticas profesionales.")
+        if puntaje_puesto < 10:
+            recomendaciones.append("🎯 Ajusta tu perfil para destacar habilidades relacionadas con el puesto.")
+
+        if total >= 80:
+            nivel, mensaje = "Excelente", "¡Eres un candidato muy compatible! Tienes una gran oportunidad."
+        elif total >= 60:
+            nivel, mensaje = "Bueno", "Tienes buena compatibilidad. Considera las recomendaciones para mejorar."
+        elif total >= 40:
+            nivel, mensaje = "Regular", "Hay margen de mejora. Trabaja en las habilidades sugeridas."
+        else:
+            nivel, mensaje = "Bajo", "Te sugerimos enfocarte en desarrollar las habilidades requeridas para esta vacante."
+
+        return {
+            'porcentaje': round(total, 1),
+            'nivel': nivel,
+            'mensaje': mensaje,
+            'habilidades_coincidentes': [h for h in habilidades_requeridas_lower if h in habilidades_candidato_lower],
+            'habilidades_faltantes': habilidades_faltantes[:5],
+            'puntaje_habilidades': round(puntaje_habilidades, 1),
+            'puntaje_experiencia': round(puntaje_experiencia, 1),
+            'puntaje_puesto': round(puntaje_puesto, 1),
+            'recomendaciones': recomendaciones[:3]
+        }
+
+    # ------------------------------------------------------------------
+    # Helpers de acceso a datos
+    # ------------------------------------------------------------------
+    def _obtener_candidato(self, usuario_id):
+        candidato = execute_query(
+            "SELECT CandidatoID, Nombre, ApellidoPaterno FROM Candidatos WHERE UsuarioID = ?",
+            [usuario_id]
+        )
+        return candidato[0] if candidato else None
+
+    def _obtener_habilidades_candidato(self, candidato_id):
+        habilidades = execute_query("""
+            SELECT h.Nombre
+            FROM CandidatoHabilidades ch
+            JOIN Habilidades h ON ch.HabilidadID = h.HabilidadID
+            WHERE ch.CandidatoID = ?
+        """, [candidato_id])
+        return [h['Nombre'] for h in habilidades]
+
+    def _obtener_anios_experiencia(self, candidato_id):
+        experiencia = execute_query("""
+            SELECT COALESCE(
+                EXTRACT(YEAR FROM AGE(CURRENT_DATE, MIN(FechaIngreso)))::INTEGER,
+                0
+            ) as Anios
+            FROM ExperienciaLaboral
+            WHERE CandidatoID = ?
+        """, [candidato_id])
+        return experiencia[0]['Anios'] if experiencia else 0
+
+    def _obtener_vacantes_activas(self):
+        """Trae hasta 5 vacantes aprobadas (antes solo 3), para tener margen
+        al recorrerlas con 'analizar otra vacante'."""
+        return execute_query("""
+            SELECT
+                v.VacanteID,
+                v.Puesto,
+                v.ExperienciaRequerida,
+                (
+                    SELECT STRING_AGG(h.Nombre, ', ' ORDER BY h.Nombre)
+                    FROM VacanteHabilidadesRequeridas vh
+                    JOIN Habilidades h ON vh.HabilidadID = h.HabilidadID
+                    WHERE vh.VacanteID = v.VacanteID
+                ) as HabilidadesRequeridas
+            FROM Vacantes v
+            WHERE v.Estatus = 'aprobada'
+            ORDER BY v.FechaPublicacion DESC
+            LIMIT 5
+        """)
+
+    def _formatear_resultado(self, vacante, resultado):
+        """Construye el texto de respuesta escapando cualquier dato dinámico
+        (puesto, habilidades) para evitar XSS almacenado si una empresa
+        registró texto malicioso en esos campos."""
+        puesto_seguro = texto_seguro(vacante['Puesto'])
+
+        respuesta = f"""🔍 **Análisis de compatibilidad con la vacante: {puesto_seguro}**
+
+📊 **Porcentaje de compatibilidad: {resultado['porcentaje']}%** ({resultado['nivel']})
+
+📈 **Desglose:**
+• Habilidades: {resultado['puntaje_habilidades']}/60
+• Experiencia: {resultado['puntaje_experiencia']}/20
+• Alineación con puesto: {resultado['puntaje_puesto']}/20
+
+🎯 {texto_seguro(resultado['mensaje'])}
+
+"""
+        if resultado['habilidades_faltantes']:
+            faltantes_seguras = ', '.join(texto_seguro(h) for h in resultado['habilidades_faltantes'])
+            respuesta += f"\n⚠️ **Habilidades a desarrollar:**\n• {faltantes_seguras}"
+
+        if resultado['recomendaciones']:
+            recomendaciones_seguras = "\n• ".join(texto_seguro(r) for r in resultado['recomendaciones'])
+            respuesta += f"\n\n💡 **Recomendaciones:**\n• {recomendaciones_seguras}"
+
+        respuesta += "\n\n📌 ¿Te gustaría analizar otra vacante? Solo dime 'analizar otra vacante'."
+        return respuesta
+
+    # ------------------------------------------------------------------
+    # Lógica de compatibilidad con memoria de conversación
+    # ------------------------------------------------------------------
+    def _analizar_vacante_por_indice(self, candidato, habilidades_lista, anios_experiencia, vacantes, indice):
+        """Analiza la vacante en `indice` de la lista y guarda el progreso
+        en sesión para que 'analizar otra vacante' avance correctamente."""
+        if indice >= len(vacantes):
+            return ("Ya te mostré el análisis de todas las vacantes activas disponibles por ahora. "
+                    "¿Te gustaría que te ayude a buscar otras oportunidades o mejorar tu perfil? 😊")
+
+        vacante = vacantes[indice]
+        habilidades_requeridas = vacante['HabilidadesRequeridas'].split(', ') if vacante['HabilidadesRequeridas'] else []
+
+        vacante_data = {
+            'habilidades_requeridas': habilidades_requeridas,
+            'experiencia_requerida': vacante['ExperienciaRequerida'],
+            'puesto': vacante['Puesto']
+        }
+
+        resultado = self.calcular_compatibilidad(habilidades_lista, anios_experiencia, vacante_data)
+
+        # Guardar contexto de conversación en sesión para soportar
+        # "analizar otra vacante" en el siguiente mensaje.
+        session['chatbot_vacante_ids'] = [v['VacanteID'] for v in vacantes]
+        session['chatbot_indice_actual'] = indice + 1
+
+        return self._formatear_resultado(vacante, resultado)
+
+    def _buscar_vacante_por_nombre(self, vacantes, mensaje_normalizado):
+        """Permite pedir el análisis de una vacante específica por nombre
+        de puesto, ej: 'analiza mi compatibilidad con analista de datos'."""
+        mejor_indice = None
+        mejor_score = 0.0
+        for i, vacante in enumerate(vacantes):
+            puesto_normalizado = normalizar_texto(vacante['Puesto'])
+            if puesto_normalizado and puesto_normalizado in mensaje_normalizado:
+                return i
+            score = SequenceMatcher(None, puesto_normalizado, mensaje_normalizado).ratio()
+            if score > mejor_score:
+                mejor_score = score
+                mejor_indice = i
+        return mejor_indice if mejor_score > 0.4 else None
+
+    def _manejar_compatibilidad(self, mensaje_normalizado, usuario_id):
+        if not usuario_id:
+            return "No pude encontrar tu información de usuario. Asegúrate de haber iniciado sesión correctamente."
+
+        candidato = self._obtener_candidato(usuario_id)
+        if not candidato:
+            return "No encontré tu perfil de candidato. Asegúrate de haber completado tu registro como candidato."
+
+        habilidades_lista = self._obtener_habilidades_candidato(candidato['CandidatoID'])
+        anios_experiencia = self._obtener_anios_experiencia(candidato['CandidatoID'])
+        vacantes = self._obtener_vacantes_activas()
+
+        if not vacantes:
+            return "No encontré vacantes activas en el sistema para analizar tu compatibilidad. ¿Te gustaría explorar otras opciones?"
+
+        # ¿El usuario pide continuar con "otra vacante"?
+        pide_otra = bool(re.search(r'\b(otra vacante|siguiente vacante|otra mas|otra más)\b', mensaje_normalizado))
+
+        if pide_otra:
+            ids_previos = session.get('chatbot_vacante_ids')
+            indice_actual = session.get('chatbot_indice_actual', 0)
+            if ids_previos:
+                # Reconstruir la lista en el mismo orden que se mostró antes,
+                # usando los datos frescos de `vacantes` cuando sea posible.
+                vacantes_por_id = {v['VacanteID']: v for v in vacantes}
+                vacantes_ordenadas = [vacantes_por_id[i] for i in ids_previos if i in vacantes_por_id]
+                return self._analizar_vacante_por_indice(
+                    candidato, habilidades_lista, anios_experiencia, vacantes_ordenadas, indice_actual
+                )
+            # No había contexto previo: se comporta como una nueva consulta.
+            return self._analizar_vacante_por_indice(candidato, habilidades_lista, anios_experiencia, vacantes, 0)
+
+        # ¿El usuario menciona el nombre de una vacante específica?
+        indice_especifico = self._buscar_vacante_por_nombre(vacantes, mensaje_normalizado)
+        indice_inicial = indice_especifico if indice_especifico is not None else 0
+
+        return self._analizar_vacante_por_indice(candidato, habilidades_lista, anios_experiencia, vacantes, indice_inicial)
+
+    # ------------------------------------------------------------------
+    # Entrada principal
+    # ------------------------------------------------------------------
+    def procesar_mensaje(self, mensaje, usuario_id=None):
+        """Procesa el mensaje del usuario y genera respuesta."""
+        if not mensaje or not mensaje.strip():
+            return "Parece que enviaste un mensaje vacío. ¿En qué puedo ayudarte?"
+
+        if len(mensaje) > MAX_MENSAJE_LEN:
+            return f"⟫ Tu mensaje es demasiado largo (máximo {MAX_MENSAJE_LEN} caracteres). ¿Puedes resumirlo?"
+
+        mensaje_normalizado = normalizar_texto(mensaje)
+
+        # Verificar si es una consulta de compatibilidad (incluye seguimiento
+        # con "otra vacante" y búsqueda por nombre de puesto).
+        if re.search(r'\b(compatibilidad|que tan compatible|match|ajuste|otra vacante|siguiente vacante)\b', mensaje_normalizado):
+            return self._manejar_compatibilidad(mensaje_normalizado, usuario_id)
+
+        # Buscar coincidencias con los patrones generales
         for patron, respuestas in self.respuestas.items():
-            if re.search(patron, mensaje):
-                import random
+            if re.search(patron, mensaje_normalizado):
                 return random.choice(respuestas)
-        
-        # Si no hay coincidencia, respuesta por defecto
-        return self.respuesta_default(mensaje)
-    
-    def respuesta_default(self, mensaje):
-        """Respuesta cuando no entiende la pregunta"""
-        temas = ["postular", "vacante", "perfil", "CV", "entrevista", "habilidades", "salario"]
-        
+
+        return self.respuesta_default(mensaje_normalizado)
+
+    def respuesta_default(self, mensaje_normalizado):
+        """Respuesta cuando no entiende la pregunta.
+        Recibe el mensaje ya normalizado (minúsculas, sin acentos)."""
+        temas = ["postular", "vacante", "cv", "entrevista", "habilidades", "salario"]
+
         for tema in temas:
-            if tema in mensaje:
+            if tema in mensaje_normalizado:
                 return f"Parece que preguntas sobre '{tema}'. ¿Podrías ser más específico/a? Estoy aquí para ayudarte."
-        
+
         return """Lo siento, no entendí tu pregunta. Puedo ayudarte con:
+• Análisis de compatibilidad de vacantes
 • Proceso de postulación
 • Consejos para entrevistas
 • Mejora de tu CV
 • Información de vacantes
 
 Escribe "ayuda" para ver más opciones."""
-    
+
     def obtener_sugerencias(self):
         """Sugerencias rápidas para el usuario"""
         return [
             "¿Cómo me postulo a una vacante?",
+            "Analiza mi compatibilidad",
+            "Analizar otra vacante",
             "Consejos para entrevistas",
             "¿Cómo mejorar mi CV?",
-            "¿Qué vacantes hay disponibles?",
-            "¿Cómo actualizo mi perfil?"
+            "¿Qué vacantes hay disponibles?"
         ]
+
 
 # Instancia global del chatbot
 chatbot = ChatbotInteligente()
+
 
 @app.route('/chatbot', methods=['GET', 'POST'])
 @login_required
 def chatbot_view():
     """Vista del chatbot"""
     if request.method == 'POST':
-        data = request.get_json()
-        mensaje = data.get('mensaje', '')
-        
-        if mensaje:
-            respuesta = chatbot.procesar_mensaje(mensaje)
+        data = request.get_json(silent=True) or {}
+        mensaje = (data.get('mensaje') or '').strip()
+
+        if not mensaje:
+            return jsonify({'success': False, 'error': 'Mensaje vacío'})
+
+        if len(mensaje) > MAX_MENSAJE_LEN:
             return jsonify({
-                'success': True,
-                'respuesta': respuesta,
-                'sugerencias': chatbot.obtener_sugerencias()
+                'success': False,
+                'error': f'El mensaje excede el límite de {MAX_MENSAJE_LEN} caracteres'
             })
-        
-        return jsonify({'success': False, 'error': 'Mensaje vacío'})
-    
-    return render_template('chatbot.html', 
-                         sugerencias=chatbot.obtener_sugerencias())
 
+        respuesta = chatbot.procesar_mensaje(mensaje, current_user.id)
+        return jsonify({
+            'success': True,
+            'respuesta': respuesta,
+            'sugerencias': chatbot.obtener_sugerencias()
+        })
 
-
-
+    return render_template('chatbot.html',
+                           sugerencias=chatbot.obtener_sugerencias())
 
 
 
@@ -2194,7 +2828,7 @@ def empresa_dashboard():
 
     # Vacantes de la empresa
     vacantes_empresa = execute_query(
-        """SELECT TOP 3 v.*, 
+        """SELECT v.*, 
         (SELECT COUNT(*) FROM Postulaciones p WHERE p.VacanteID = v.VacanteID) as NumPostulaciones,
         CASE v.Estatus
             WHEN 'en_revision' THEN 'badge-warning'
@@ -2205,19 +2839,19 @@ def empresa_dashboard():
         END as EstadoClase
         FROM Vacantes v
         WHERE v.EmpresaID = ?
-        ORDER BY v.FechaPublicacion DESC""",
+        ORDER BY v.FechaPublicacion DESC LIMIT 3""",
         (empresa['EmpresaID'],)
     )
 
     # Postulaciones pendientes
     postulaciones_recientes = execute_query(
-        """SELECT TOP 3 p.*, c.Nombre as CandidatoNombre, 
+        """SELECT p.*, c.Nombre as CandidatoNombre, 
         c.ApellidoPaterno as CandidatoApellido, v.Puesto as VacantePuesto
         FROM Postulaciones p
         JOIN Candidatos c ON p.CandidatoID = c.CandidatoID
         JOIN Vacantes v ON p.VacanteID = v.VacanteID
         WHERE v.EmpresaID = ? AND p.Estatus = 'pendiente'
-        ORDER BY p.FechaPostulacion DESC""",
+        ORDER BY p.FechaPostulacion DESC LIMIT 3""",
         (empresa['EmpresaID'],)
     )
 
@@ -2235,7 +2869,7 @@ def empresa_dashboard():
     try:
         # Obtener las 5 conversaciones más recientes
         conversaciones_recientes = execute_query(
-            """SELECT TOP 5 
+            """SELECT
                c.ConversacionID,
                c.VacanteID,
                c.CandidatoID,
@@ -2244,12 +2878,12 @@ def empresa_dashboard():
                cand.Nombre as CandidatoNombre,
                cand.ApellidoPaterno as CandidatoApellido,
                cand.FotoPerfil as CandidatoFoto,
-               (SELECT TOP 1 Mensaje FROM Mensajes 
+               (SELECT Mensaje FROM Mensajes 
                 WHERE ConversacionID = c.ConversacionID 
-                ORDER BY FechaEnvio DESC) as UltimoMensaje,
-               (SELECT TOP 1 FechaEnvio FROM Mensajes 
+                ORDER BY FechaEnvio DESC LIMIT 1) as UltimoMensaje,
+               (SELECT FechaEnvio FROM Mensajes 
                 WHERE ConversacionID = c.ConversacionID 
-                ORDER BY FechaEnvio DESC) as UltimoMensajeFecha,
+                ORDER BY FechaEnvio DESC LIMIT 1) as UltimoMensajeFecha,
                (SELECT COUNT(*) FROM Mensajes 
                 WHERE ConversacionID = c.ConversacionID 
                 AND RemitenteTipo = 'candidato' 
@@ -2258,7 +2892,7 @@ def empresa_dashboard():
                JOIN Vacantes v ON c.VacanteID = v.VacanteID
                JOIN Candidatos cand ON c.CandidatoID = cand.CandidatoID
                WHERE c.EmpresaID = ? AND c.Activa = 1
-               ORDER BY UltimoMensajeFecha DESC""",
+               ORDER BY UltimoMensajeFecha DESC NULLS LAST LIMIT 5""",
             (empresa['EmpresaID'],)
         )
         
@@ -2285,6 +2919,9 @@ def empresa_dashboard():
                          num_notificaciones=num_notificaciones,
                          conversaciones_recientes=conversaciones_recientes,
                          no_leidos_empresa=no_leidos_empresa)  # Nuevas variables
+
+
+
 
 @app.route('/empresa/perfil', methods=['GET', 'POST'])
 @login_required
@@ -2421,7 +3058,7 @@ def empresa_nueva_vacante():
             
 
             nueva_vacante = execute_query(
-                "SELECT TOP 1 VacanteID FROM Vacantes WHERE EmpresaID = ? ORDER BY FechaPublicacion DESC",
+                "SELECT VacanteID FROM Vacantes WHERE EmpresaID = ? ORDER BY FechaPublicacion DESC LIMIT 1",
                 (empresa['EmpresaID'],)
             )
             vacante_id = nueva_vacante[0]['VacanteID']
@@ -2872,15 +3509,15 @@ def empresa_cambiar_estado_vacante(vacante_id, nuevo_estado):
     
     vacante = vacante[0]
     
-    estados_validos = ['abierta', 'cerrada']
+    estados_validos = ['aprobada', 'cerrada']
     if nuevo_estado not in estados_validos:
         flash('Estado no válido', 'error')
         return redirect(url_for('empresa_ver_vacante', vacante_id=vacante_id))
     
     try:
  
-        if (vacante['Estatus'] == 'aprobada' and nuevo_estado == 'abierta') or \
-           (vacante['Estatus'] == 'abierta' and nuevo_estado == 'cerrada'):
+        if (vacante['Estatus'] == 'cerrada' and nuevo_estado == 'aprobada') or \
+           (vacante['Estatus'] == 'aprobada' and nuevo_estado == 'cerrada'):
             
             execute_query(
                 "UPDATE Vacantes SET Estatus = ? WHERE VacanteID = ?",
@@ -2901,16 +3538,31 @@ def empresa_cambiar_estado_vacante(vacante_id, nuevo_estado):
 
 
 def crear_admin_inicial():
+    admin_email = os.getenv('INITIAL_ADMIN_EMAIL', '').strip().lower()
+    admin_password = os.getenv('INITIAL_ADMIN_PASSWORD', '')
+    if not admin_email or not admin_password:
+        current_app.logger.info('Administrador inicial no configurado por variables de entorno.')
+        return
     admin_existente = execute_query(
-        "SELECT 1 FROM Usuarios WHERE Email = 'Admin@upq.edu.mx'"
+        "SELECT 1 FROM Usuarios WHERE LOWER(Email) = ?",
+        (admin_email,)
     )
     
     if not admin_existente:
         execute_query(
-            """INSERT INTO Usuarios 
-            (Email, PasswordHash, Rol, Nombre, Activo) 
-            VALUES (?, ?, 'admin', 'Administrador', 1)""",
-            ('Admin@upq.edu.mx', generate_password_hash('Admin1234')),
+            """INSERT INTO Usuarios (Email, PasswordHash, TipoUsuario, Activo)
+            VALUES (?, ?, 'admin', TRUE)""",
+            (admin_email, generate_password_hash(admin_password)),
+            fetch=False
+        )
+        usuario = execute_query(
+            "SELECT UsuarioID FROM Usuarios WHERE Email = ?",
+            (admin_email,)
+        )[0]
+        execute_query(
+            """INSERT INTO Administradores (AdministradorID, UsuarioID)
+            VALUES ((SELECT COALESCE(MAX(AdministradorID), 0) + 1 FROM Administradores), ?)""",
+            (usuario['UsuarioID'],),
             fetch=False
         )
 
@@ -2927,10 +3579,15 @@ def admin_login():
         password = request.form.get('password')
 
 
-        if email == 'Admin@upq.edu.mx' and password == 'Admin1234':
-            session['email'] = email
+        admins = execute_query(
+            """SELECT UsuarioID, Email, PasswordHash, Activo FROM Usuarios
+               WHERE LOWER(Email) = ? AND TipoUsuario = 'admin'""",
+            ((email or '').strip().lower(),)
+        )
+        if admins and admins[0]['Activo'] and check_password_hash(admins[0]['PasswordHash'], password or ''):
+            session['email'] = admins[0]['Email']
             session['tipo'] = 'admin'
-            session['user_id'] = 0  
+            session['user_id'] = admins[0]['UsuarioID']
             flash('Bienvenido Administrador', 'success')
             return redirect(url_for('admin_dashboard'))
         else:
@@ -3169,6 +3826,7 @@ def admin_usuarios():
 
 
 
+
 # ==================== REPORTES Y ESTADÍSTICAS ====================
 
 @app.route('/admin/reportes')
@@ -3182,23 +3840,105 @@ def admin_reportes():
 @login_required
 @role_required('admin')
 def api_estadisticas():
-    """API para obtener datos estadísticos para gráficas"""
+    """API para obtener datos estadísticos con filtros"""
     try:
-        # Estadísticas generales
+        # Obtener parámetros de filtro
+        fecha_inicio = request.args.get('fecha_inicio')
+        fecha_fin = request.args.get('fecha_fin')
+        tipo_usuario = request.args.get('tipo_usuario')
+        estatus_vacante = request.args.get('estatus_vacante')
+        empresa_id = request.args.get('empresa_id')
+        
+        # Construir filtros para usuarios
+        usuario_filters = []
+        usuario_params = []
+        if fecha_inicio:
+            usuario_filters.append("FechaRegistro >= ?")
+            usuario_params.append(fecha_inicio)
+        if fecha_fin:
+            usuario_filters.append("FechaRegistro <= ?")
+            usuario_params.append(fecha_fin)
+        if tipo_usuario and tipo_usuario != 'todos':
+            usuario_filters.append("TipoUsuario = ?")
+            usuario_params.append(tipo_usuario)
+        
+        usuario_where = " AND ".join(usuario_filters) if usuario_filters else "1=1"
+        
+        # Estadísticas generales con filtros
         estadisticas = {
-            'total_usuarios': execute_query("SELECT COUNT(*) as Total FROM Usuarios")[0]['Total'],
+            'total_usuarios': execute_query(f"""
+                SELECT COUNT(*) as Total FROM Usuarios WHERE {usuario_where}
+            """, usuario_params)[0]['Total'],
             'total_empresas': execute_query("SELECT COUNT(*) as Total FROM Empresas")[0]['Total'],
             'total_candidatos': execute_query("SELECT COUNT(*) as Total FROM Candidatos")[0]['Total'],
-            'total_vacantes': execute_query("SELECT COUNT(*) as Total FROM Vacantes")[0]['Total'],
-            'total_postulaciones': execute_query("SELECT COUNT(*) as Total FROM Postulaciones")[0]['Total'],
-            'vacantes_aprobadas': execute_query("SELECT COUNT(*) as Total FROM Vacantes WHERE Estatus = 'aprobada'")[0]['Total'],
-            'vacantes_pendientes': execute_query("SELECT COUNT(*) as Total FROM Vacantes WHERE Estatus = 'en_revision'")[0]['Total'],
-            'vacantes_rechazadas': execute_query("SELECT COUNT(*) as Total FROM Vacantes WHERE Estatus = 'rechazada'")[0]['Total'],
-            'vacantes_cerradas': execute_query("SELECT COUNT(*) as Total FROM Vacantes WHERE Estatus = 'cerrada'")[0]['Total'],
         }
         
-        # Registros por mes (últimos 12 meses)
-        registros_mensuales = execute_query("""
+        # Filtros para vacantes
+        vacante_filters = []
+        vacante_params = []
+        if fecha_inicio:
+            vacante_filters.append("FechaPublicacion >= ?")
+            vacante_params.append(fecha_inicio)
+        if fecha_fin:
+            vacante_filters.append("FechaPublicacion <= ?")
+            vacante_params.append(fecha_fin)
+        if estatus_vacante and estatus_vacante != 'todos':
+            vacante_filters.append("Estatus = ?")
+            vacante_params.append(estatus_vacante)
+        if empresa_id and empresa_id != 'todas':
+            vacante_filters.append("EmpresaID = ?")
+            vacante_params.append(empresa_id)
+        
+        vacante_where = " AND ".join(vacante_filters) if vacante_filters else "1=1"
+        
+        estadisticas['total_vacantes'] = execute_query(f"""
+            SELECT COUNT(*) as Total FROM Vacantes WHERE {vacante_where}
+        """, vacante_params)[0]['Total']
+        
+        estadisticas['vacantes_aprobadas'] = execute_query(f"""
+            SELECT COUNT(*) as Total FROM Vacantes 
+            WHERE Estatus = 'aprobada' AND {vacante_where}
+        """, vacante_params)[0]['Total']
+        
+        estadisticas['vacantes_pendientes'] = execute_query(f"""
+            SELECT COUNT(*) as Total FROM Vacantes 
+            WHERE Estatus = 'en_revision' AND {vacante_where}
+        """, vacante_params)[0]['Total']
+        
+        estadisticas['vacantes_rechazadas'] = execute_query(f"""
+            SELECT COUNT(*) as Total FROM Vacantes 
+            WHERE Estatus = 'rechazada' AND {vacante_where}
+        """, vacante_params)[0]['Total']
+        
+        estadisticas['vacantes_cerradas'] = execute_query(f"""
+            SELECT COUNT(*) as Total FROM Vacantes 
+            WHERE Estatus = 'cerrada' AND {vacante_where}
+        """, vacante_params)[0]['Total']
+        
+        # Postulaciones con filtros
+        postulacion_filters = []
+        postulacion_params = []
+        if fecha_inicio:
+            postulacion_filters.append("p.FechaPostulacion >= ?")
+            postulacion_params.append(fecha_inicio)
+        if fecha_fin:
+            postulacion_filters.append("p.FechaPostulacion <= ?")
+            postulacion_params.append(fecha_fin)
+        if estatus_vacante and estatus_vacante != 'todos':
+            postulacion_filters.append("v.Estatus = ?")
+            postulacion_params.append(estatus_vacante)
+        
+        postulacion_where = " AND ".join(postulacion_filters) if postulacion_filters else "1=1"
+        
+        estadisticas['total_postulaciones'] = execute_query(f"""
+            SELECT COUNT(*) as Total 
+            FROM Postulaciones p
+            JOIN Vacantes v ON p.VacanteID = v.VacanteID
+            WHERE {postulacion_where}
+        """, postulacion_params)[0]['Total']
+        
+        # Registros por mes (últimos 12 meses) con filtros
+        registros_mensuales = execute_query(f"""
             SELECT 
                 FORMAT(FechaRegistro, 'yyyy-MM') as Mes,
                 COUNT(*) as Total,
@@ -3206,53 +3946,67 @@ def api_estadisticas():
                 SUM(CASE WHEN TipoUsuario = 'empresa' THEN 1 ELSE 0 END) as Empresas
             FROM Usuarios
             WHERE FechaRegistro >= DATEADD(MONTH, -12, GETDATE())
+            AND {usuario_where}
             GROUP BY FORMAT(FechaRegistro, 'yyyy-MM')
             ORDER BY Mes ASC
-        """)
+        """, usuario_params)
         
-        # Postulaciones por mes
-        postulaciones_mensuales = execute_query("""
+        # Postulaciones por mes con filtros
+        postulaciones_mensuales = execute_query(f"""
             SELECT 
-                FORMAT(FechaPostulacion, 'yyyy-MM') as Mes,
+                FORMAT(p.FechaPostulacion, 'yyyy-MM') as Mes,
                 COUNT(*) as Total,
-                SUM(CASE WHEN Estatus = 'aceptado' THEN 1 ELSE 0 END) as Aceptadas,
-                SUM(CASE WHEN Estatus = 'rechazado' THEN 1 ELSE 0 END) as Rechazadas,
-                SUM(CASE WHEN Estatus = 'pendiente' THEN 1 ELSE 0 END) as Pendientes
-            FROM Postulaciones
-            WHERE FechaPostulacion >= DATEADD(MONTH, -12, GETDATE())
-            GROUP BY FORMAT(FechaPostulacion, 'yyyy-MM')
+                SUM(CASE WHEN p.Estatus = 'aceptado' THEN 1 ELSE 0 END) as Aceptadas,
+                SUM(CASE WHEN p.Estatus = 'rechazado' THEN 1 ELSE 0 END) as Rechazadas,
+                SUM(CASE WHEN p.Estatus = 'pendiente' THEN 1 ELSE 0 END) as Pendientes
+            FROM Postulaciones p
+            JOIN Vacantes v ON p.VacanteID = v.VacanteID
+            WHERE p.FechaPostulacion >= DATEADD(MONTH, -12, GETDATE())
+            AND {postulacion_where}
+            GROUP BY FORMAT(p.FechaPostulacion, 'yyyy-MM')
             ORDER BY Mes ASC
-        """)
+        """, postulacion_params)
         
-        # Vacantes por empresa (top 10)
-        vacantes_por_empresa = execute_query("""
-            SELECT TOP 10
+        # Vacantes por empresa (top 10) con filtros
+        vacantes_por_empresa = execute_query(f"""
+            SELECT
                 e.Nombre as Empresa,
                 COUNT(v.VacanteID) as Total
             FROM Empresas e
             LEFT JOIN Vacantes v ON e.EmpresaID = v.EmpresaID
+            WHERE {vacante_where.replace('EmpresaID', 'e.EmpresaID')}
             GROUP BY e.Nombre
             ORDER BY Total DESC
-        """)
+            LIMIT 10
+        """, vacante_params)
         
-        # Habilidades más demandadas
-        habilidades_demandadas = execute_query("""
-            SELECT TOP 10
+        # Habilidades más demandadas con filtros
+        habilidades_demandadas = execute_query(f"""
+            SELECT
                 h.Nombre as Habilidad,
                 COUNT(vh.VacanteID) as TotalVacantes
             FROM Habilidades h
             LEFT JOIN VacanteHabilidadesRequeridas vh ON h.HabilidadID = vh.HabilidadID
+            LEFT JOIN Vacantes v ON vh.VacanteID = v.VacanteID
+            WHERE {vacante_where.replace('Vacantes', 'v')}
             GROUP BY h.Nombre
             ORDER BY TotalVacantes DESC
-        """)
+            LIMIT 10
+        """, vacante_params)
         
-        # Estado de vacantes
-        estado_vacantes = execute_query("""
+        # Estado de vacantes con filtros
+        estado_vacantes = execute_query(f"""
             SELECT 
                 Estatus,
                 COUNT(*) as Total
             FROM Vacantes
+            WHERE {vacante_where}
             GROUP BY Estatus
+        """, vacante_params)
+        
+        # Lista de empresas para el filtro
+        empresas = execute_query("""
+            SELECT EmpresaID, Nombre FROM Empresas ORDER BY Nombre
         """)
         
         return jsonify({
@@ -3262,81 +4016,181 @@ def api_estadisticas():
             'postulaciones_mensuales': postulaciones_mensuales,
             'vacantes_por_empresa': vacantes_por_empresa,
             'habilidades_demandadas': habilidades_demandadas,
-            'estado_vacantes': estado_vacantes
+            'estado_vacantes': estado_vacantes,
+            'empresas': empresas
         })
         
     except Exception as e:
         current_app.logger.error(f"Error en api_estadisticas: {str(e)}")
         return jsonify({'success': False, 'error': str(e)})
 
+@app.route('/admin/api/empresas')
+@login_required
+@role_required('admin')
+def api_empresas():
+    """API para obtener lista de empresas"""
+    empresas = execute_query("SELECT EmpresaID, Nombre FROM Empresas ORDER BY Nombre")
+    return jsonify({'success': True, 'empresas': empresas})
+
 @app.route('/admin/exportar_reporte/<tipo>')
 @login_required
 @role_required('admin')
 def exportar_reporte(tipo):
-    """Exportar reporte en PDF"""
+    """Exportar reporte en PDF con filtros aplicados"""
     from reportlab.lib import colors
-    from reportlab.lib.pagesizes import letter, landscape
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+    from reportlab.lib.pagesizes import letter, landscape, A4
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.units import inch
     from reportlab.lib.enums import TA_CENTER
     import io
     
+    # Obtener filtros de la URL
+    fecha_inicio = request.args.get('fecha_inicio')
+    fecha_fin = request.args.get('fecha_fin')
+    tipo_usuario = request.args.get('tipo_usuario')
+    estatus_vacante = request.args.get('estatus_vacante')
+    empresa_id = request.args.get('empresa_id')
+    
     buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=landscape(letter))
+    doc = SimpleDocTemplate(buffer, pagesize=landscape(A4), 
+                           leftMargin=0.5*inch, rightMargin=0.5*inch,
+                           topMargin=0.5*inch, bottomMargin=0.5*inch)
     styles = getSampleStyleSheet()
     story = []
     
-    # Título
+    # Estilos personalizados
     title_style = ParagraphStyle(
         'CustomTitle',
         parent=styles['Heading1'],
-        fontSize=24,
-        textColor=colors.HexColor('#2c3e50'),
+        fontSize=22,
+        textColor=colors.HexColor('#1e293b'),
         alignment=TA_CENTER,
-        spaceAfter=30
+        spaceAfter=6,
+        fontName='Helvetica-Bold'
     )
     
-    story.append(Paragraph(f"Reporte de {tipo.capitalize()} - TalentUPQ", title_style))
-    story.append(Spacer(1, 20))
+    subtitle_style = ParagraphStyle(
+        'CustomSubtitle',
+        parent=styles['Normal'],
+        fontSize=11,
+        textColor=colors.HexColor('#64748b'),
+        alignment=TA_CENTER,
+        spaceAfter=20
+    )
     
+    section_style = ParagraphStyle(
+        'SectionStyle',
+        parent=styles['Heading2'],
+        fontSize=14,
+        textColor=colors.HexColor('#2563eb'),
+        spaceAfter=10,
+        spaceBefore=15,
+        fontName='Helvetica-Bold'
+    )
+    
+    # Título del reporte
+    nombre_tipo = {
+        'usuarios': 'Usuarios',
+        'vacantes': 'Vacantes',
+        'postulaciones': 'Postulaciones',
+        'completo': 'Completo'
+    }.get(tipo, tipo.capitalize())
+    
+    story.append(Paragraph(f"Reporte de {nombre_tipo} - TalentUPQ", title_style))
+    story.append(Paragraph(f"Generado el {datetime.now().strftime('%d/%m/%Y %H:%M')}", subtitle_style))
+    
+    # Mostrar filtros aplicados
+    filtros_texto = []
+    if fecha_inicio:
+        filtros_texto.append(f"Desde: {fecha_inicio}")
+    if fecha_fin:
+        filtros_texto.append(f"Hasta: {fecha_fin}")
+    if tipo_usuario and tipo_usuario != 'todos':
+        filtros_texto.append(f"Tipo: {tipo_usuario}")
+    if estatus_vacante and estatus_vacante != 'todos':
+        filtros_texto.append(f"Estatus: {estatus_vacante}")
+    if empresa_id and empresa_id != 'todas':
+        empresa_nombre = execute_query(
+            "SELECT Nombre FROM Empresas WHERE EmpresaID = ?", 
+            [empresa_id]
+        )
+        if empresa_nombre:
+            filtros_texto.append(f"Empresa: {empresa_nombre[0]['Nombre']}")
+    
+    if filtros_texto:
+        story.append(Paragraph(f"Filtros aplicados: {', '.join(filtros_texto)}", subtitle_style))
+    
+    story.append(Spacer(1, 12))
+    
+    # Definir columnas según el tipo
     if tipo == 'usuarios':
-        # Datos de usuarios
-        usuarios = execute_query("""
-            SELECT Email, TipoUsuario, FechaRegistro 
-            FROM Usuarios 
-            ORDER BY FechaRegistro DESC
-        """)
+        usuario_filters = []
+        usuario_params = []
+        if fecha_inicio:
+            usuario_filters.append("FechaRegistro >= ?")
+            usuario_params.append(fecha_inicio)
+        if fecha_fin:
+            usuario_filters.append("FechaRegistro <= ?")
+            usuario_params.append(fecha_fin)
+        if tipo_usuario and tipo_usuario != 'todos':
+            usuario_filters.append("TipoUsuario = ?")
+            usuario_params.append(tipo_usuario)
         
-        data = [['Email', 'Tipo', 'Fecha Registro']]
+        usuario_where = " AND ".join(usuario_filters) if usuario_filters else "1=1"
+        
+        usuarios = execute_query(f"""
+            SELECT Email, TipoUsuario, FechaRegistro, 
+                   CASE WHEN Activo = 1 THEN 'Activo' ELSE 'Inactivo' END as Estatus
+            FROM Usuarios 
+            WHERE {usuario_where}
+            ORDER BY FechaRegistro DESC
+        """, usuario_params)
+        
+        data = [['Email', 'Tipo', 'Fecha Registro', 'Estatus']]
         for u in usuarios:
             data.append([
                 u['Email'],
                 u['TipoUsuario'],
-                u['FechaRegistro'].strftime('%d/%m/%Y')
+                u['FechaRegistro'].strftime('%d/%m/%Y'),
+                u['Estatus']
             ])
         
-        table = Table(data)
-        table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#3498db')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 12),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black)
-        ]))
-        story.append(table)
+        total_activos = sum(1 for u in usuarios if u['Estatus'] == 'Activo')
+        total_inactivos = len(usuarios) - total_activos
+        
+        story.append(Paragraph("Resumen de Usuarios", section_style))
+        story.append(Paragraph(f"• Total: {len(usuarios)} usuarios", styles['Normal']))
+        story.append(Paragraph(f"• Activos: {total_activos}", styles['Normal']))
+        story.append(Paragraph(f"• Inactivos: {total_inactivos}", styles['Normal']))
+        story.append(Spacer(1, 10))
         
     elif tipo == 'vacantes':
-        vacantes = execute_query("""
+        vacante_filters = []
+        vacante_params = []
+        if fecha_inicio:
+            vacante_filters.append("v.FechaPublicacion >= ?")
+            vacante_params.append(fecha_inicio)
+        if fecha_fin:
+            vacante_filters.append("v.FechaPublicacion <= ?")
+            vacante_params.append(fecha_fin)
+        if estatus_vacante and estatus_vacante != 'todos':
+            vacante_filters.append("v.Estatus = ?")
+            vacante_params.append(estatus_vacante)
+        if empresa_id and empresa_id != 'todas':
+            vacante_filters.append("v.EmpresaID = ?")
+            vacante_params.append(empresa_id)
+        
+        vacante_where = " AND ".join(vacante_filters) if vacante_filters else "1=1"
+        
+        vacantes = execute_query(f"""
             SELECT v.Puesto, e.Nombre as Empresa, v.Estatus, 
                    v.FechaPublicacion, v.PlazasDisponibles
             FROM Vacantes v
             JOIN Empresas e ON v.EmpresaID = e.EmpresaID
+            WHERE {vacante_where}
             ORDER BY v.FechaPublicacion DESC
-        """)
+        """, vacante_params)
         
         data = [['Puesto', 'Empresa', 'Estatus', 'Fecha', 'Plazas']]
         for v in vacantes:
@@ -3348,27 +4202,42 @@ def exportar_reporte(tipo):
                 str(v['PlazasDisponibles'])
             ])
         
-        table = Table(data)
-        table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2ecc71')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black)
-        ]))
-        story.append(table)
+        story.append(Paragraph("Resumen de Vacantes", section_style))
+        story.append(Paragraph(f"• Total: {len(vacantes)} vacantes", styles['Normal']))
+        aprobadas = sum(1 for v in vacantes if v['Estatus'] == 'aprobada')
+        pendientes = sum(1 for v in vacantes if v['Estatus'] == 'en_revision')
+        rechazadas = sum(1 for v in vacantes if v['Estatus'] == 'rechazada')
+        story.append(Paragraph(f"• Aprobadas: {aprobadas}", styles['Normal']))
+        story.append(Paragraph(f"• En revisión: {pendientes}", styles['Normal']))
+        story.append(Paragraph(f"• Rechazadas: {rechazadas}", styles['Normal']))
+        story.append(Spacer(1, 10))
         
     elif tipo == 'postulaciones':
-        postulaciones = execute_query("""
+        postulacion_filters = []
+        postulacion_params = []
+        if fecha_inicio:
+            postulacion_filters.append("p.FechaPostulacion >= ?")
+            postulacion_params.append(fecha_inicio)
+        if fecha_fin:
+            postulacion_filters.append("p.FechaPostulacion <= ?")
+            postulacion_params.append(fecha_fin)
+        if estatus_vacante and estatus_vacante != 'todos':
+            postulacion_filters.append("v.Estatus = ?")
+            postulacion_params.append(estatus_vacante)
+        
+        postulacion_where = " AND ".join(postulacion_filters) if postulacion_filters else "1=1"
+        
+        postulaciones = execute_query(f"""
             SELECT v.Puesto, e.Nombre as Empresa, 
-                   c.Nombre + ' ' + c.ApellidoPaterno as Candidato,
+                   CONCAT_WS(' ', c.Nombre, c.ApellidoPaterno) as Candidato,
                    p.Estatus, p.FechaPostulacion
             FROM Postulaciones p
             JOIN Vacantes v ON p.VacanteID = v.VacanteID
             JOIN Empresas e ON v.EmpresaID = e.EmpresaID
             JOIN Candidatos c ON p.CandidatoID = c.CandidatoID
+            WHERE {postulacion_where}
             ORDER BY p.FechaPostulacion DESC
-        """)
+        """, postulacion_params)
         
         data = [['Puesto', 'Empresa', 'Candidato', 'Estatus', 'Fecha']]
         for p in postulaciones:
@@ -3380,17 +4249,70 @@ def exportar_reporte(tipo):
                 p['FechaPostulacion'].strftime('%d/%m/%Y')
             ])
         
-        table = Table(data)
+        story.append(Paragraph("Resumen de Postulaciones", section_style))
+        story.append(Paragraph(f"• Total: {len(postulaciones)} postulaciones", styles['Normal']))
+        aceptadas = sum(1 for p in postulaciones if p['Estatus'] == 'aceptado')
+        rechazadas = sum(1 for p in postulaciones if p['Estatus'] == 'rechazado')
+        pendientes = sum(1 for p in postulaciones if p['Estatus'] == 'pendiente')
+        story.append(Paragraph(f"• Aceptadas: {aceptadas}", styles['Normal']))
+        story.append(Paragraph(f"• Rechazadas: {rechazadas}", styles['Normal']))
+        story.append(Paragraph(f"• Pendientes: {pendientes}", styles['Normal']))
+        story.append(Spacer(1, 10))
+        
+    else:  # completo
+        stats = execute_query("""
+            SELECT 
+                (SELECT COUNT(*) FROM Usuarios) as TotalUsuarios,
+                (SELECT COUNT(*) FROM Empresas) as TotalEmpresas,
+                (SELECT COUNT(*) FROM Candidatos) as TotalCandidatos,
+                (SELECT COUNT(*) FROM Vacantes) as TotalVacantes,
+                (SELECT COUNT(*) FROM Postulaciones) as TotalPostulaciones
+        """)[0]
+        
+        story.append(Paragraph("Resumen General del Sistema", section_style))
+        story.append(Paragraph(f"• Total Usuarios: {stats['TotalUsuarios']}", styles['Normal']))
+        story.append(Paragraph(f"• Total Empresas: {stats['TotalEmpresas']}", styles['Normal']))
+        story.append(Paragraph(f"• Total Candidatos: {stats['TotalCandidatos']}", styles['Normal']))
+        story.append(Paragraph(f"• Total Vacantes: {stats['TotalVacantes']}", styles['Normal']))
+        story.append(Paragraph(f"• Total Postulaciones: {stats['TotalPostulaciones']}", styles['Normal']))
+        story.append(Spacer(1, 10))
+        
+        data = [['Métrica', 'Valor']]
+        data.append(['Usuarios', str(stats['TotalUsuarios'])])
+        data.append(['Empresas', str(stats['TotalEmpresas'])])
+        data.append(['Candidatos', str(stats['TotalCandidatos'])])
+        data.append(['Vacantes', str(stats['TotalVacantes'])])
+        data.append(['Postulaciones', str(stats['TotalPostulaciones'])])
+    
+    # Crear tabla
+    if data:
+        table = Table(data, colWidths=[1.2*inch, 1.2*inch, 1.2*inch, 1.2*inch, 1.2*inch])
         table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#e74c3c')),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2563eb')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('FONTSIZE', (0, 1), (-1, -1), 8),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
         ]))
         story.append(table)
     
-    # Construir PDF
+    # Pie de página
+    story.append(Spacer(1, 20))
+    footer_style = ParagraphStyle(
+        'Footer',
+        parent=styles['Normal'],
+        fontSize=8,
+        textColor=colors.HexColor('#94a3b8'),
+        alignment=TA_CENTER
+    )
+    story.append(Paragraph("Reporte generado por TalentUPQ - Sistema de gestión de talento", footer_style))
+    
     doc.build(story)
     buffer.seek(0)
     
@@ -3400,6 +4322,291 @@ def exportar_reporte(tipo):
         download_name=f'reporte_{tipo}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf',
         mimetype='application/pdf'
     )
+
+@app.route('/admin/exportar_excel/<tipo>')
+@login_required
+@role_required('admin')
+def exportar_excel(tipo):
+    """Exportar reporte en Excel con filtros aplicados"""
+    try:
+        import io
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        from openpyxl.utils import get_column_letter
+        
+        # Obtener filtros de la URL
+        fecha_inicio = request.args.get('fecha_inicio')
+        fecha_fin = request.args.get('fecha_fin')
+        tipo_usuario = request.args.get('tipo_usuario')
+        estatus_vacante = request.args.get('estatus_vacante')
+        empresa_id = request.args.get('empresa_id')
+        
+        # Crear libro de Excel
+        wb = openpyxl.Workbook()
+        wb.remove(wb.active)
+        
+        # Hoja de datos
+        ws1 = wb.create_sheet("Datos")
+        
+        # Estilos
+        header_font = Font(bold=True, color="FFFFFF", size=11)
+        header_fill = PatternFill(start_color="2563eb", end_color="2563eb", fill_type="solid")
+        header_alignment = Alignment(horizontal="center", vertical="center")
+        cell_alignment = Alignment(horizontal="left", vertical="center")
+        border = Border(
+            left=Side(style='thin', color='D0D0D0'),
+            right=Side(style='thin', color='D0D0D0'),
+            top=Side(style='thin', color='D0D0D0'),
+            bottom=Side(style='thin', color='D0D0D0')
+        )
+        
+        if tipo == 'usuarios':
+            usuario_filters = []
+            usuario_params = []
+            if fecha_inicio:
+                usuario_filters.append("FechaRegistro >= ?")
+                usuario_params.append(fecha_inicio)
+            if fecha_fin:
+                usuario_filters.append("FechaRegistro <= ?")
+                usuario_params.append(fecha_fin)
+            if tipo_usuario and tipo_usuario != 'todos':
+                usuario_filters.append("TipoUsuario = ?")
+                usuario_params.append(tipo_usuario)
+            
+            usuario_where = " AND ".join(usuario_filters) if usuario_filters else "1=1"
+            
+            usuarios = execute_query(f"""
+                SELECT Email, TipoUsuario, FechaRegistro, 
+                       CASE WHEN Activo = 1 THEN 'Activo' ELSE 'Inactivo' END as Estatus
+                FROM Usuarios 
+                WHERE {usuario_where}
+                ORDER BY FechaRegistro DESC
+            """, usuario_params)
+            
+            headers = ['Email', 'Tipo de Usuario', 'Fecha Registro', 'Estatus']
+            for col, header in enumerate(headers, 1):
+                cell = ws1.cell(row=1, column=col, value=header)
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = header_alignment
+                cell.border = border
+            
+            for row, usuario in enumerate(usuarios, 2):
+                ws1.cell(row=row, column=1, value=usuario['Email']).alignment = cell_alignment
+                ws1.cell(row=row, column=2, value=usuario['TipoUsuario']).alignment = cell_alignment
+                ws1.cell(row=row, column=3, value=usuario['FechaRegistro'].strftime('%d/%m/%Y')).alignment = cell_alignment
+                ws1.cell(row=row, column=4, value=usuario['Estatus']).alignment = cell_alignment
+                for col in range(1, 5):
+                    ws1.cell(row=row, column=col).border = border
+            
+            for col in range(1, 5):
+                ws1.column_dimensions[get_column_letter(col)].width = 25
+            
+            # Hoja de resumen
+            ws2 = wb.create_sheet("Resumen")
+            ws2.cell(row=1, column=1, value="Métrica").font = Font(bold=True, size=12)
+            ws2.cell(row=1, column=2, value="Valor").font = Font(bold=True, size=12)
+            ws2.cell(row=2, column=1, value="Total Usuarios")
+            ws2.cell(row=2, column=2, value=len(usuarios))
+            activos = sum(1 for u in usuarios if u['Estatus'] == 'Activo')
+            ws2.cell(row=3, column=1, value="Usuarios Activos")
+            ws2.cell(row=3, column=2, value=activos)
+            ws2.cell(row=4, column=1, value="Usuarios Inactivos")
+            ws2.cell(row=4, column=2, value=len(usuarios) - activos)
+            ws2.column_dimensions['A'].width = 25
+            ws2.column_dimensions['B'].width = 15
+            
+        elif tipo == 'vacantes':
+            vacante_filters = []
+            vacante_params = []
+            if fecha_inicio:
+                vacante_filters.append("v.FechaPublicacion >= ?")
+                vacante_params.append(fecha_inicio)
+            if fecha_fin:
+                vacante_filters.append("v.FechaPublicacion <= ?")
+                vacante_params.append(fecha_fin)
+            if estatus_vacante and estatus_vacante != 'todos':
+                vacante_filters.append("v.Estatus = ?")
+                vacante_params.append(estatus_vacante)
+            if empresa_id and empresa_id != 'todas':
+                vacante_filters.append("v.EmpresaID = ?")
+                vacante_params.append(empresa_id)
+            
+            vacante_where = " AND ".join(vacante_filters) if vacante_filters else "1=1"
+            
+            vacantes = execute_query(f"""
+                SELECT v.Puesto, e.Nombre as Empresa, v.Estatus, 
+                       v.FechaPublicacion, v.PlazasDisponibles
+                FROM Vacantes v
+                JOIN Empresas e ON v.EmpresaID = e.EmpresaID
+                WHERE {vacante_where}
+                ORDER BY v.FechaPublicacion DESC
+            """, vacante_params)
+            
+            headers = ['Puesto', 'Empresa', 'Estatus', 'Fecha Publicación', 'Plazas']
+            for col, header in enumerate(headers, 1):
+                cell = ws1.cell(row=1, column=col, value=header)
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = header_alignment
+                cell.border = border
+            
+            for row, vacante in enumerate(vacantes, 2):
+                ws1.cell(row=row, column=1, value=vacante['Puesto']).alignment = cell_alignment
+                ws1.cell(row=row, column=2, value=vacante['Empresa']).alignment = cell_alignment
+                ws1.cell(row=row, column=3, value=vacante['Estatus']).alignment = cell_alignment
+                ws1.cell(row=row, column=4, value=vacante['FechaPublicacion'].strftime('%d/%m/%Y')).alignment = cell_alignment
+                ws1.cell(row=row, column=5, value=vacante['PlazasDisponibles']).alignment = cell_alignment
+                for col in range(1, 6):
+                    ws1.cell(row=row, column=col).border = border
+            
+            ws1.column_dimensions['A'].width = 25
+            ws1.column_dimensions['B'].width = 25
+            ws1.column_dimensions['C'].width = 18
+            ws1.column_dimensions['D'].width = 20
+            ws1.column_dimensions['E'].width = 12
+            
+            ws2 = wb.create_sheet("Resumen")
+            ws2.cell(row=1, column=1, value="Métrica").font = Font(bold=True, size=12)
+            ws2.cell(row=1, column=2, value="Valor").font = Font(bold=True, size=12)
+            ws2.cell(row=2, column=1, value="Total Vacantes")
+            ws2.cell(row=2, column=2, value=len(vacantes))
+            aprobadas = sum(1 for v in vacantes if v['Estatus'] == 'aprobada')
+            pendientes = sum(1 for v in vacantes if v['Estatus'] == 'en_revision')
+            rechazadas = sum(1 for v in vacantes if v['Estatus'] == 'rechazada')
+            ws2.cell(row=3, column=1, value="Aprobadas")
+            ws2.cell(row=3, column=2, value=aprobadas)
+            ws2.cell(row=4, column=1, value="En Revisión")
+            ws2.cell(row=4, column=2, value=pendientes)
+            ws2.cell(row=5, column=1, value="Rechazadas")
+            ws2.cell(row=5, column=2, value=rechazadas)
+            ws2.column_dimensions['A'].width = 25
+            ws2.column_dimensions['B'].width = 15
+            
+        elif tipo == 'postulaciones':
+            postulacion_filters = []
+            postulacion_params = []
+            if fecha_inicio:
+                postulacion_filters.append("p.FechaPostulacion >= ?")
+                postulacion_params.append(fecha_inicio)
+            if fecha_fin:
+                postulacion_filters.append("p.FechaPostulacion <= ?")
+                postulacion_params.append(fecha_fin)
+            if estatus_vacante and estatus_vacante != 'todos':
+                postulacion_filters.append("v.Estatus = ?")
+                postulacion_params.append(estatus_vacante)
+            
+            postulacion_where = " AND ".join(postulacion_filters) if postulacion_filters else "1=1"
+            
+            postulaciones = execute_query(f"""
+                SELECT v.Puesto, e.Nombre as Empresa, 
+                       CONCAT_WS(' ', c.Nombre, c.ApellidoPaterno) as Candidato,
+                       p.Estatus, p.FechaPostulacion
+                FROM Postulaciones p
+                JOIN Vacantes v ON p.VacanteID = v.VacanteID
+                JOIN Empresas e ON v.EmpresaID = e.EmpresaID
+                JOIN Candidatos c ON p.CandidatoID = c.CandidatoID
+                WHERE {postulacion_where}
+                ORDER BY p.FechaPostulacion DESC
+            """, postulacion_params)
+            
+            headers = ['Puesto', 'Empresa', 'Candidato', 'Estatus', 'Fecha Postulación']
+            for col, header in enumerate(headers, 1):
+                cell = ws1.cell(row=1, column=col, value=header)
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = header_alignment
+                cell.border = border
+            
+            for row, postulacion in enumerate(postulaciones, 2):
+                ws1.cell(row=row, column=1, value=postulacion['Puesto']).alignment = cell_alignment
+                ws1.cell(row=row, column=2, value=postulacion['Empresa']).alignment = cell_alignment
+                ws1.cell(row=row, column=3, value=postulacion['Candidato']).alignment = cell_alignment
+                ws1.cell(row=row, column=4, value=postulacion['Estatus']).alignment = cell_alignment
+                ws1.cell(row=row, column=5, value=postulacion['FechaPostulacion'].strftime('%d/%m/%Y')).alignment = cell_alignment
+                for col in range(1, 6):
+                    ws1.cell(row=row, column=col).border = border
+            
+            ws1.column_dimensions['A'].width = 25
+            ws1.column_dimensions['B'].width = 25
+            ws1.column_dimensions['C'].width = 30
+            ws1.column_dimensions['D'].width = 18
+            ws1.column_dimensions['E'].width = 20
+            
+            ws2 = wb.create_sheet("Resumen")
+            ws2.cell(row=1, column=1, value="Métrica").font = Font(bold=True, size=12)
+            ws2.cell(row=1, column=2, value="Valor").font = Font(bold=True, size=12)
+            ws2.cell(row=2, column=1, value="Total Postulaciones")
+            ws2.cell(row=2, column=2, value=len(postulaciones))
+            aceptadas = sum(1 for p in postulaciones if p['Estatus'] == 'aceptado')
+            rechazadas = sum(1 for p in postulaciones if p['Estatus'] == 'rechazado')
+            pendientes = sum(1 for p in postulaciones if p['Estatus'] == 'pendiente')
+            ws2.cell(row=3, column=1, value="Aceptadas")
+            ws2.cell(row=3, column=2, value=aceptadas)
+            ws2.cell(row=4, column=1, value="Rechazadas")
+            ws2.cell(row=4, column=2, value=rechazadas)
+            ws2.cell(row=5, column=1, value="Pendientes")
+            ws2.cell(row=5, column=2, value=pendientes)
+            ws2.column_dimensions['A'].width = 25
+            ws2.column_dimensions['B'].width = 15
+        
+        else:  # completo
+            stats = execute_query("""
+                SELECT 
+                    (SELECT COUNT(*) FROM Usuarios) as TotalUsuarios,
+                    (SELECT COUNT(*) FROM Empresas) as TotalEmpresas,
+                    (SELECT COUNT(*) FROM Candidatos) as TotalCandidatos,
+                    (SELECT COUNT(*) FROM Vacantes) as TotalVacantes,
+                    (SELECT COUNT(*) FROM Postulaciones) as TotalPostulaciones
+            """)[0]
+            
+            headers = ['Métrica', 'Valor']
+            for col, header in enumerate(headers, 1):
+                cell = ws1.cell(row=1, column=col, value=header)
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = header_alignment
+                cell.border = border
+            
+            metricas = [
+                ('Total Usuarios', stats['TotalUsuarios']),
+                ('Total Empresas', stats['TotalEmpresas']),
+                ('Total Candidatos', stats['TotalCandidatos']),
+                ('Total Vacantes', stats['TotalVacantes']),
+                ('Total Postulaciones', stats['TotalPostulaciones'])
+            ]
+            
+            for row, (metrica, valor) in enumerate(metricas, 2):
+                ws1.cell(row=row, column=1, value=metrica).alignment = cell_alignment
+                ws1.cell(row=row, column=2, value=valor).alignment = cell_alignment
+                ws1.cell(row=row, column=1).border = border
+                ws1.cell(row=row, column=2).border = border
+            
+            ws1.column_dimensions['A'].width = 30
+            ws1.column_dimensions['B'].width = 20
+        
+        # Guardar el archivo
+        buffer = io.BytesIO()
+        wb.save(buffer)
+        buffer.seek(0)
+        
+        return send_file(
+            buffer,
+            as_attachment=True,
+            download_name=f'reporte_{tipo}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx',
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        
+    except ImportError as e:
+        current_app.logger.error(f"Error de importación: {str(e)}")
+        return jsonify({
+            'success': False, 
+            'error': 'La librería openpyxl no está instalada. Ejecute: pip install openpyxl'
+        })
+    except Exception as e:
+        current_app.logger.error(f"Error en exportar_excel: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)})
+
 
 
 
@@ -3568,7 +4775,7 @@ def admin_empresas():
     empresas_list = []
     columns = [column[0] for column in cursor.description]
     for empresa in empresas:
-        empresas_list.append(dict(zip(columns, empresa)))
+        empresas_list.append(CaseInsensitiveDict(zip(columns, empresa)))
     
     return render_template('admin/empresas.html', empresas=empresas_list)
 
@@ -3676,7 +4883,7 @@ def editar_empresa(empresa_id):
         return redirect(url_for('admin_empresas'))
     
     columns = [column[0] for column in cursor.description]
-    empresa_dict = dict(zip(columns, empresa))
+    empresa_dict = CaseInsensitiveDict(zip(columns, empresa))
     
     return render_template('admin/editar_empresa.html', empresa=empresa_dict)
 
@@ -3722,7 +4929,7 @@ def admin_candidatos():
     candidatos_list = []
     columns = [column[0] for column in cursor.description]
     for candidato in candidatos:
-        candidatos_list.append(dict(zip(columns, candidato)))
+        candidatos_list.append(CaseInsensitiveDict(zip(columns, candidato)))
     
     return render_template('admin/candidatos.html', candidatos=candidatos_list)
 
@@ -3741,9 +4948,9 @@ def crear_candidato():
         nacionalidad = request.form.get('nacionalidad', '')
         rfc = request.form.get('rfc', '')
         direccion = request.form.get('direccion', '')
-        reubicacion = 1 if request.form.get('reubicacion') == 'on' else 0
-        viajar = 1 if request.form.get('viajar') == 'on' else 0
-        licencia = 1 if request.form.get('licencia') == 'on' else 0
+        reubicacion = request.form.get('reubicacion') == 'on'
+        viajar = request.form.get('viajar') == 'on'
+        licencia = request.form.get('licencia') == 'on'
         modalidad_trabajo = request.form.get('modalidad_trabajo', '')
         puesto_actual = request.form.get('puesto_actual', '')
         puesto_solicitado = request.form.get('puesto_solicitado', '')
@@ -3820,9 +5027,9 @@ def editar_candidato(candidato_id):
         nacionalidad = request.form.get('nacionalidad', '')
         rfc = request.form.get('rfc', '')
         direccion = request.form.get('direccion', '')
-        reubicacion = 1 if request.form.get('reubicacion') == 'on' else 0
-        viajar = 1 if request.form.get('viajar') == 'on' else 0
-        licencia = 1 if request.form.get('licencia') == 'on' else 0
+        reubicacion = request.form.get('reubicacion') == 'on'
+        viajar = request.form.get('viajar') == 'on'
+        licencia = request.form.get('licencia') == 'on'
         modalidad_trabajo = request.form.get('modalidad_trabajo', '')
         puesto_actual = request.form.get('puesto_actual', '')
         puesto_solicitado = request.form.get('puesto_solicitado', '')
@@ -3897,7 +5104,7 @@ def editar_candidato(candidato_id):
     
    
     columns = [column[0] for column in cursor.description]
-    candidato_dict = dict(zip(columns, candidato))
+    candidato_dict = CaseInsensitiveDict(zip(columns, candidato))
     
 
     if candidato_dict['FechaNacimiento']:
@@ -3949,7 +5156,7 @@ def admin_vacantes():
     
 
     columns = [column[0] for column in cursor.description]
-    vacantes = [dict(zip(columns, vacante)) for vacante in vacantes]
+    vacantes = [CaseInsensitiveDict(zip(columns, vacante)) for vacante in vacantes]
     
     conn.close()
     return render_template('admin/vacantes.html', vacantes=vacantes)
@@ -4063,7 +5270,7 @@ def editar_vacante(vacante_id):
     
 
     columns = [column[0] for column in cursor.description]
-    vacante_dict = dict(zip(columns, vacante))
+    vacante_dict = CaseInsensitiveDict(zip(columns, vacante))
     
 
     if vacante_dict['FechaCierre']:
@@ -4298,12 +5505,12 @@ def mis_conversaciones():
                v.Puesto as VacantePuesto,
                cand.Nombre as CandidatoNombre,
                cand.ApellidoPaterno as CandidatoApellido,
-               (SELECT TOP 1 Mensaje FROM Mensajes 
+               (SELECT Mensaje FROM Mensajes 
                 WHERE ConversacionID = c.ConversacionID 
-                ORDER BY FechaEnvio DESC) as UltimoMensaje,
-               (SELECT TOP 1 FechaEnvio FROM Mensajes 
+                ORDER BY FechaEnvio DESC LIMIT 1) as UltimoMensaje,
+               (SELECT FechaEnvio FROM Mensajes 
                 WHERE ConversacionID = c.ConversacionID 
-                ORDER BY FechaEnvio DESC) as UltimoMensajeFecha,
+                ORDER BY FechaEnvio DESC LIMIT 1) as UltimoMensajeFecha,
                (SELECT COUNT(*) FROM Mensajes 
                 WHERE ConversacionID = c.ConversacionID 
                 AND RemitenteTipo = 'candidato' 
@@ -4326,12 +5533,12 @@ def mis_conversaciones():
             """SELECT c.*, 
                v.Puesto as VacantePuesto,
                e.Nombre as EmpresaNombre,
-               (SELECT TOP 1 Mensaje FROM Mensajes 
+               (SELECT Mensaje FROM Mensajes 
                 WHERE ConversacionID = c.ConversacionID 
-                ORDER BY FechaEnvio DESC) as UltimoMensaje,
-               (SELECT TOP 1 FechaEnvio FROM Mensajes 
+                ORDER BY FechaEnvio DESC LIMIT 1) as UltimoMensaje,
+               (SELECT FechaEnvio FROM Mensajes 
                 WHERE ConversacionID = c.ConversacionID 
-                ORDER BY FechaEnvio DESC) as UltimoMensajeFecha,
+                ORDER BY FechaEnvio DESC LIMIT 1) as UltimoMensajeFecha,
                (SELECT COUNT(*) FROM Mensajes 
                 WHERE ConversacionID = c.ConversacionID 
                 AND RemitenteTipo = 'empresa' 
@@ -4411,12 +5618,831 @@ def obtener_no_leidos():
 
 
 
-# ==================== API PÚBLICA PARA REACT ====================
+# ==================== API COMPARTIDA: WEB Y APP MÓVIL ====================
 # Agregar CORS para permitir peticiones desde React
 from flask_cors import CORS
 
-# Habilitar CORS para React
-CORS(app, origins=['http://localhost:3000'])
+# Las apps nativas no están sujetas a CORS. Esta lista protege a los clientes web.
+api_origins = [
+    origin.strip()
+    for origin in os.getenv(
+        'CORS_ORIGINS',
+        'http://localhost:3000,http://127.0.0.1:3000'
+    ).split(',')
+    if origin.strip()
+]
+CORS(app, resources={r"/api/*": {"origins": api_origins}})
+
+
+def api_error(message, status=400):
+    return jsonify({'error': message}), status
+
+
+def validate_api_fields(data, required=(), phone_fields=(), date_fields=(), max_lengths=None):
+    """Validación común del servidor para todos los formularios que escriben en BD."""
+    if not isinstance(data, dict):
+        return 'El cuerpo de la solicitud debe ser un objeto JSON.'
+    missing = [field for field in required if not str(data.get(field, '')).strip()]
+    if missing:
+        return f"Campos obligatorios: {', '.join(missing)}."
+    for field in phone_fields:
+        value = str(data.get(field, '') or '').strip()
+        if value and not re.fullmatch(r'\d{10}', value):
+            return f'{field} debe contener exactamente 10 dígitos.'
+    for field in date_fields:
+        value = data.get(field)
+        if value:
+            try:
+                datetime.strptime(str(value)[:10], '%Y-%m-%d')
+            except ValueError:
+                return f'{field} debe tener formato AAAA-MM-DD.'
+    for field, limit in (max_lengths or {}).items():
+        if len(str(data.get(field, '') or '')) > limit:
+            return f'{field} no puede exceder {limit} caracteres.'
+    return None
+
+
+def validate_date_order(data, start_field, end_field):
+    start, end = data.get(start_field), data.get(end_field)
+    if start and end and str(end)[:10] < str(start)[:10]:
+        return f'{end_field} no puede ser anterior a {start_field}.'
+    return None
+
+
+def current_api_user():
+    user_id = int(get_jwt_identity())
+    users = execute_query(
+        "SELECT UsuarioID, Email, TipoUsuario, Activo FROM Usuarios WHERE UsuarioID = ?",
+        (user_id,)
+    )
+    return users[0] if users else None
+
+
+def current_candidate_id():
+    user = current_api_user()
+    if not user or user['TipoUsuario'] != 'candidato':
+        return None
+    rows = execute_query(
+        "SELECT CandidatoID FROM Candidatos WHERE UsuarioID = ?",
+        (user['UsuarioID'],)
+    )
+    return rows[0]['CandidatoID'] if rows else None
+
+
+@app.route('/api/v1/health', methods=['GET'])
+def api_health():
+    """Health check de aplicación y conectividad con PostgreSQL."""
+    try:
+        execute_query("SELECT 1 AS ok")
+        DB_HEALTH.set(1)
+        return jsonify({'status': 'ok', 'database': 'ok'})
+    except Exception:
+        DB_HEALTH.set(0)
+        return jsonify({'status': 'error', 'database': 'unavailable'}), 503
+
+
+@app.route('/metrics', methods=['GET'])
+def prometheus_metrics():
+    """Métricas internas; el gateway público bloquea esta ruta."""
+    return current_app.response_class(generate_latest(), mimetype=CONTENT_TYPE_LATEST)
+
+
+@app.route('/api/v1/chatbot', methods=['POST'])
+@jwt_required()
+def api_chatbot():
+    """Expone en móvil el mismo motor inteligente y análisis de compatibilidad de la web."""
+    data = request.get_json(silent=True) or {}
+    message = str(data.get('mensaje', '')).strip()
+    if not message:
+        return api_error('Escribe un mensaje.')
+    if len(message) > MAX_MENSAJE_LEN:
+        return api_error(f'El mensaje no puede exceder {MAX_MENSAJE_LEN} caracteres.')
+
+    user = current_api_user()
+    if not user or not user['Activo']:
+        return api_error('Usuario no disponible.', 401)
+    return jsonify({
+        'respuesta': chatbot.procesar_mensaje(message, user['UsuarioID']),
+        'sugerencias': chatbot.obtener_sugerencias(),
+    })
+
+
+@app.route('/api/v1/auth/login', methods=['POST'])
+def api_login():
+    data = request.get_json(silent=True) or {}
+    email = str(data.get('email', '')).strip().lower()
+    password = str(data.get('password', ''))
+
+    if not email or not password:
+        return api_error('Correo y contraseña son obligatorios.')
+
+    users = execute_query(
+        """SELECT UsuarioID, Email, PasswordHash, TipoUsuario, Activo
+           FROM Usuarios WHERE LOWER(Email) = ?""",
+        (email,)
+    )
+    if not users or not users[0]['Activo'] or not check_password_hash(users[0]['PasswordHash'], password):
+        return api_error('Credenciales incorrectas.', 401)
+
+    user = users[0]
+    identity = str(user['UsuarioID'])
+    return jsonify({
+        'access_token': create_access_token(
+            identity=identity,
+            additional_claims={'tipo': user['TipoUsuario']}
+        ),
+        'refresh_token': create_refresh_token(identity=identity),
+        'usuario': {
+            'UsuarioID': user['UsuarioID'],
+            'Email': user['Email'],
+            'TipoUsuario': user['TipoUsuario'],
+        }
+    })
+
+
+@app.route('/api/v1/auth/refresh', methods=['POST'])
+@jwt_required(refresh=True)
+def api_refresh():
+    user = current_api_user()
+    if not user or not user['Activo']:
+        return api_error('Usuario no disponible.', 401)
+    return jsonify({
+        'access_token': create_access_token(
+            identity=str(user['UsuarioID']),
+            additional_claims={'tipo': user['TipoUsuario']}
+        )
+    })
+
+
+@app.route('/api/v1/auth/register', methods=['POST'])
+def api_register():
+    data = request.get_json(silent=True) or {}
+    nombre = str(data.get('nombre', '')).strip()
+    apellido = str(data.get('apellido', '')).strip()
+    email = str(data.get('email', '')).strip().lower()
+    password = str(data.get('password', ''))
+
+    if not nombre or not apellido or not email or not password:
+        return api_error('Nombre, apellido, correo y contraseña son obligatorios.')
+    if not re.fullmatch(r'[^@\s]+@[^@\s]+\.[^@\s]+', email):
+        return api_error('El correo electrónico no es válido.')
+    if len(password) < 8 or not re.search(r'[A-Za-z]', password) or not re.search(r'\d', password):
+        return api_error('La contraseña debe tener al menos 8 caracteres, una letra y un número.')
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT 1 FROM Usuarios WHERE LOWER(Email) = ?", (email,))
+        if cursor.fetchone():
+            return api_error('El correo ya está registrado.', 409)
+
+        cursor.execute(
+            """INSERT INTO Usuarios (Email, PasswordHash, TipoUsuario, Activo)
+               VALUES (?, ?, 'candidato', TRUE)
+               RETURNING UsuarioID""",
+            (email, generate_password_hash(password))
+        )
+        user_id = cursor.fetchone()[0]
+        cursor.execute(
+            """INSERT INTO Candidatos
+               (CandidatoID, UsuarioID, Nombre, ApellidoPaterno)
+               VALUES (?, ?, ?, ?)""",
+            (user_id, user_id, nombre, apellido)
+        )
+        conn.commit()
+    except Exception as exc:
+        conn.rollback()
+        current_app.logger.error(f"API register error: {exc}")
+        return api_error('No fue posible crear la cuenta.', 500)
+    finally:
+        cursor.close()
+        conn.close()
+
+    # El registro móvil comparte el mismo correo HTML de bienvenida que la web.
+    # Si SMTP falla, la cuenta permanece creada y el usuario puede iniciar sesión.
+    full_name = f'{nombre} {apellido}'.strip()
+    welcome_email_sent = enviar_correo_bienvenida(email, full_name, 'candidato')
+    if not welcome_email_sent:
+        current_app.logger.warning(
+            'La cuenta móvil fue creada, pero no se pudo enviar el correo de bienvenida a %s.',
+            email
+        )
+
+    identity = str(user_id)
+    return jsonify({
+        'access_token': create_access_token(
+            identity=identity,
+            additional_claims={'tipo': 'candidato'}
+        ),
+        'refresh_token': create_refresh_token(identity=identity),
+        'usuario': {
+            'UsuarioID': user_id,
+            'Email': email,
+            'TipoUsuario': 'candidato',
+        },
+        'welcome_email_sent': welcome_email_sent,
+        'welcome_email': email,
+    }), 201
+
+
+@app.route('/api/v1/auth/me', methods=['GET'])
+@jwt_required()
+def api_me():
+    user = current_api_user()
+    if not user or not user['Activo']:
+        return api_error('Usuario no disponible.', 401)
+    return jsonify(user)
+
+
+@app.route('/api/v1/auth/password/forgot', methods=['POST'])
+def api_password_forgot():
+    """Envía un código temporal sin revelar si el correo está registrado."""
+    data = request.get_json(silent=True) or {}
+    email = str(data.get('email', '')).strip().lower()
+    if not re.fullmatch(r'[^@\s]+@[^@\s]+\.[^@\s]+', email):
+        return api_error('Ingresa un correo electrónico válido.')
+
+    users = execute_query(
+        "SELECT UsuarioID, Email FROM Usuarios WHERE LOWER(Email) = ?",
+        (email,)
+    )
+    if users:
+        code = generar_codigo_recuperacion()
+        execute_query(
+            """UPDATE Usuarios SET ResetToken = ?,
+               ResetTokenExpira = CURRENT_TIMESTAMP + INTERVAL '10 minutes'
+               WHERE UsuarioID = ?""",
+            (encrypt_sensitive(code), users[0]['UsuarioID']),
+            fetch=False
+        )
+        if not enviar_codigo_recuperacion(users[0]['Email'], code):
+            current_app.logger.error('No fue posible enviar el código de recuperación móvil.')
+            return api_error('No fue posible enviar el código. Intenta más tarde.', 503)
+
+    return jsonify({
+        'message': 'Si el correo está registrado, recibirás un código de 6 dígitos.'
+    })
+
+
+@app.route('/api/v1/auth/password/verify', methods=['POST'])
+def api_password_verify():
+    """Intercambia el código de correo por un JWT de restablecimiento de 10 minutos."""
+    data = request.get_json(silent=True) or {}
+    email = str(data.get('email', '')).strip().lower()
+    code = str(data.get('code', '')).strip()
+    if not re.fullmatch(r'\d{6}', code):
+        return api_error('El código debe contener 6 dígitos.')
+
+    users = execute_query(
+        """SELECT UsuarioID, ResetToken FROM Usuarios
+           WHERE LOWER(Email) = ? AND ResetTokenExpira IS NOT NULL
+             AND ResetTokenExpira >= CURRENT_TIMESTAMP""",
+        (email,)
+    )
+    if not users or not secure_equals_encrypted(users[0]['ResetToken'], code):
+        return api_error('El código es incorrecto o ya expiró.', 401)
+
+    reset_token = create_access_token(
+        identity=str(users[0]['UsuarioID']),
+        additional_claims={'purpose': 'password_reset'},
+        expires_delta=timedelta(minutes=10)
+    )
+    return jsonify({'reset_token': reset_token})
+
+
+@app.route('/api/v1/auth/password/reset', methods=['POST'])
+@jwt_required()
+def api_password_reset():
+    """Cambia la contraseña únicamente con un JWT emitido para recuperación."""
+    if get_jwt().get('purpose') != 'password_reset':
+        return api_error('Token de recuperación no válido.', 403)
+
+    data = request.get_json(silent=True) or {}
+    password = str(data.get('password', ''))
+    if (len(password) < 8 or not re.search(r'[A-Z]', password)
+            or not re.search(r'[a-z]', password) or not re.search(r'\d', password)):
+        return api_error(
+            'La contraseña debe tener 8 caracteres, mayúscula, minúscula y número.'
+        )
+
+    execute_query(
+        """UPDATE Usuarios SET PasswordHash = ?, ResetToken = NULL,
+           ResetTokenExpira = NULL WHERE UsuarioID = ?""",
+        (generate_password_hash(password), int(get_jwt_identity())),
+        fetch=False
+    )
+    return jsonify({'message': 'Contraseña actualizada correctamente.'})
+
+
+@app.route('/api/v1/perfil', methods=['GET', 'PUT'])
+@jwt_required()
+def api_perfil():
+    user = current_api_user()
+    if not user or user['TipoUsuario'] != 'candidato':
+        return api_error('Este recurso es exclusivo para candidatos.', 403)
+
+    profiles = execute_query(
+        """SELECT c.*, u.Email
+           FROM Candidatos c
+           JOIN Usuarios u ON c.UsuarioID = u.UsuarioID
+           WHERE c.UsuarioID = ?""",
+        (user['UsuarioID'],)
+    )
+    if not profiles:
+        return api_error('Perfil no encontrado.', 404)
+
+    if request.method == 'GET':
+        return jsonify(profiles[0])
+
+    data = request.get_json(silent=True) or {}
+    def pick(*keys, default=''):
+        for key in keys:
+            if key in data:
+                return data[key]
+        return default
+
+    nombre = str(pick('nombre', 'Nombre')).strip()
+    apellido = str(pick('apellido', 'ApellidoPaterno')).strip()
+    email = str(pick('email', 'Email', default=user['Email'])).strip().lower()
+    telefono = str(pick('telefono', 'Telefono')).strip()
+    direccion = str(pick('direccion', 'Direccion')).strip()
+    puesto = str(pick('puestoSolicitado', 'PuestoSolicitado')).strip()
+    apellido_materno = str(pick('apellidoMaterno', 'ApellidoMaterno')).strip()
+    fecha_nacimiento = pick('fechaNacimiento', 'FechaNacimiento') or None
+    sexo = str(pick('sexo', 'Sexo')).strip()
+    estado_civil = str(pick('estadoCivil', 'EstadoCivil')).strip()
+    nacionalidad = str(pick('nacionalidad', 'Nacionalidad')).strip()
+    rfc = str(pick('rfc', 'RFC')).strip().upper()
+    modalidad = str(pick('modalidad', 'ModalidadTrabajo')).strip()
+    puesto_actual = str(pick('puestoActual', 'PuestoActual')).strip()
+    resumen = str(pick('resumen', 'ResumenProfesional')).strip()
+    reubicacion = bool(pick('reubicacion', 'Reubicacion', default=False))
+    viajar = bool(pick('viajar', 'Viajar', default=False))
+    licencia = bool(pick('licencia', 'LicenciaConducir', default=False))
+
+    if not nombre or not apellido or not email:
+        return api_error('Nombre, apellido y correo son obligatorios.')
+    if not re.fullmatch(r'[^@\s]+@[^@\s]+\.[^@\s]+', email):
+        return api_error('El correo electrónico no es válido.')
+    if telefono and not re.fullmatch(r'\d{10}', telefono):
+        return api_error('El teléfono debe contener 10 dígitos.')
+    if rfc and not re.fullmatch(r'[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}', rfc):
+        return api_error('El RFC debe tener 12 o 13 caracteres con formato válido.')
+    if fecha_nacimiento:
+        try:
+            parsed_birth_date = datetime.strptime(str(fecha_nacimiento)[:10], '%Y-%m-%d').date()
+            if parsed_birth_date > date.today():
+                return api_error('La fecha de nacimiento no puede estar en el futuro.')
+        except ValueError:
+            return api_error('La fecha de nacimiento debe tener formato AAAA-MM-DD.')
+    limits = {
+        'Nombre': (nombre, 100), 'Apellido': (apellido, 100),
+        'Dirección': (direccion, 250), 'Puesto solicitado': (puesto, 150),
+        'Resumen profesional': (resumen, 3000),
+    }
+    for label, (value, limit) in limits.items():
+        if len(value) > limit:
+            return api_error(f'{label} no puede exceder {limit} caracteres.')
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "SELECT 1 FROM Usuarios WHERE LOWER(Email) = ? AND UsuarioID <> ?",
+            (email, user['UsuarioID'])
+        )
+        if cursor.fetchone():
+            return api_error('El correo ya está registrado.', 409)
+        cursor.execute(
+            "UPDATE Usuarios SET Email = ? WHERE UsuarioID = ?",
+            (email, user['UsuarioID'])
+        )
+        cursor.execute(
+            """UPDATE Candidatos SET Nombre = ?, ApellidoPaterno = ?,
+               ApellidoMaterno = ?, Telefono = ?, Direccion = ?,
+               FechaNacimiento = ?, Sexo = ?, EstadoCivil = ?, Nacionalidad = ?,
+               RFC = ?, ModalidadTrabajo = ?, PuestoActual = ?, PuestoSolicitado = ?,
+               ResumenProfesional = ?, Reubicacion = ?, Viajar = ?, LicenciaConducir = ?
+               WHERE UsuarioID = ?""",
+            (nombre, apellido, apellido_materno or None, telefono or None,
+             direccion or None, fecha_nacimiento, sexo or None, estado_civil or None,
+             nacionalidad or None, rfc or None, modalidad or None,
+             puesto_actual or None, puesto or None, resumen or None,
+             reubicacion, viajar, licencia, user['UsuarioID'])
+        )
+        conn.commit()
+    except Exception as exc:
+        conn.rollback()
+        current_app.logger.error(f"API profile error: {exc}")
+        return api_error('No fue posible actualizar el perfil.', 500)
+    finally:
+        cursor.close()
+        conn.close()
+
+    updated = execute_query(
+        """SELECT c.*, u.Email FROM Candidatos c
+           JOIN Usuarios u ON c.UsuarioID = u.UsuarioID
+           WHERE c.UsuarioID = ?""",
+        (user['UsuarioID'],)
+    )[0]
+    return jsonify(updated)
+
+
+@app.route('/api/v1/experiencias', methods=['GET', 'POST'])
+@jwt_required()
+def api_experiencias():
+    candidate_id = current_candidate_id()
+    if not candidate_id:
+        return api_error('Perfil de candidato no encontrado.', 403)
+    if request.method == 'GET':
+        return jsonify(execute_query(
+            "SELECT * FROM ExperienciaLaboral WHERE CandidatoID = ? ORDER BY FechaIngreso DESC",
+            (candidate_id,)
+        ))
+    data = request.get_json(silent=True) or {}
+    required = ('Empresa', 'Puesto', 'FechaIngreso', 'Funciones')
+    validation_error = validate_api_fields(
+        data, required, ('Telefono',), ('FechaIngreso', 'FechaSalida'),
+        {'Empresa': 100, 'Puesto': 100, 'Funciones': 2000}
+    ) or validate_date_order(data, 'FechaIngreso', 'FechaSalida')
+    if validation_error:
+        return api_error(validation_error)
+    row = execute_query(
+        """INSERT INTO ExperienciaLaboral
+           (CandidatoID, Empresa, Domicilio, Telefono, Puesto, FechaIngreso,
+            FechaSalida, Funciones, SueldoInicial, SueldoFinal, MotivoSeparacion)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING ExperienciaID""",
+        (candidate_id, data['Empresa'], data.get('Domicilio'), data.get('Telefono'),
+         data['Puesto'], data['FechaIngreso'], data.get('FechaSalida'), data['Funciones'],
+         data.get('SueldoInicial'), data.get('SueldoFinal'), data.get('MotivoSeparacion'))
+    )
+    return jsonify({'ExperienciaID': row[0]['ExperienciaID']}), 201
+
+
+@app.route('/api/v1/experiencias/<int:item_id>', methods=['PUT', 'DELETE'])
+@jwt_required()
+def api_experiencia_item(item_id):
+    candidate_id = current_candidate_id()
+    owned = execute_query(
+        "SELECT 1 FROM ExperienciaLaboral WHERE ExperienciaID = ? AND CandidatoID = ?",
+        (item_id, candidate_id)
+    ) if candidate_id else []
+    if not owned:
+        return api_error('Experiencia no encontrada.', 404)
+    if request.method == 'DELETE':
+        execute_query("DELETE FROM ExperienciaLaboral WHERE ExperienciaID = ?", (item_id,), fetch=False)
+        return jsonify({'message': 'Experiencia eliminada.'})
+    data = request.get_json(silent=True) or {}
+    validation_error = validate_api_fields(
+        data, ('Empresa', 'Puesto', 'FechaIngreso', 'Funciones'), ('Telefono',),
+        ('FechaIngreso', 'FechaSalida'), {'Empresa': 100, 'Puesto': 100, 'Funciones': 2000}
+    ) or validate_date_order(data, 'FechaIngreso', 'FechaSalida')
+    if validation_error:
+        return api_error(validation_error)
+    execute_query(
+        """UPDATE ExperienciaLaboral SET Empresa=?, Domicilio=?, Telefono=?, Puesto=?,
+           FechaIngreso=?, FechaSalida=?, Funciones=?, SueldoInicial=?, SueldoFinal=?,
+           MotivoSeparacion=? WHERE ExperienciaID=?""",
+        (data.get('Empresa'), data.get('Domicilio'), data.get('Telefono'), data.get('Puesto'),
+         data.get('FechaIngreso'), data.get('FechaSalida'), data.get('Funciones'),
+         data.get('SueldoInicial'), data.get('SueldoFinal'), data.get('MotivoSeparacion'), item_id),
+        fetch=False
+    )
+    return jsonify({'message': 'Experiencia actualizada.'})
+
+
+@app.route('/api/v1/preparaciones', methods=['GET', 'POST'])
+@jwt_required()
+def api_preparaciones():
+    candidate_id = current_candidate_id()
+    if not candidate_id:
+        return api_error('Perfil de candidato no encontrado.', 403)
+    if request.method == 'GET':
+        return jsonify(execute_query(
+            "SELECT * FROM PreparacionAcademica WHERE CandidatoID = ? ORDER BY FechaInicio DESC",
+            (candidate_id,)
+        ))
+    data = request.get_json(silent=True) or {}
+    required = ('Grado', 'Estatus', 'Institucion', 'Pais', 'FechaInicio')
+    validation_error = validate_api_fields(
+        data, required, date_fields=('FechaInicio', 'FechaFin'),
+        max_lengths={'Grado': 100, 'Estatus': 30, 'Institucion': 150, 'Pais': 80}
+    ) or validate_date_order(data, 'FechaInicio', 'FechaFin')
+    if validation_error:
+        return api_error(validation_error)
+    rows = execute_query(
+        """INSERT INTO PreparacionAcademica
+           (CandidatoID, Grado, Cedula, Estatus, Institucion, Pais, FechaInicio, FechaFin)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING PreparacionID""",
+        (candidate_id, data['Grado'], data.get('Cedula'), data['Estatus'],
+         data['Institucion'], data['Pais'], data['FechaInicio'], data.get('FechaFin'))
+    )
+    return jsonify({'PreparacionID': rows[0]['PreparacionID']}), 201
+
+
+@app.route('/api/v1/preparaciones/<int:item_id>', methods=['PUT', 'DELETE'])
+@jwt_required()
+def api_preparacion_item(item_id):
+    candidate_id = current_candidate_id()
+    owned = execute_query(
+        "SELECT 1 FROM PreparacionAcademica WHERE PreparacionID=? AND CandidatoID=?",
+        (item_id, candidate_id)
+    ) if candidate_id else []
+    if not owned:
+        return api_error('Preparación académica no encontrada.', 404)
+    if request.method == 'DELETE':
+        execute_query("DELETE FROM PreparacionAcademica WHERE PreparacionID=?", (item_id,), fetch=False)
+        return jsonify({'message': 'Preparación eliminada.'})
+    data = request.get_json(silent=True) or {}
+    validation_error = validate_api_fields(
+        data, ('Grado', 'Estatus', 'Institucion', 'Pais', 'FechaInicio'),
+        date_fields=('FechaInicio', 'FechaFin'),
+        max_lengths={'Grado': 100, 'Estatus': 30, 'Institucion': 150, 'Pais': 80}
+    ) or validate_date_order(data, 'FechaInicio', 'FechaFin')
+    if validation_error:
+        return api_error(validation_error)
+    execute_query(
+        """UPDATE PreparacionAcademica SET Grado=?, Cedula=?, Estatus=?, Institucion=?,
+           Pais=?, FechaInicio=?, FechaFin=? WHERE PreparacionID=?""",
+        (data.get('Grado'), data.get('Cedula'), data.get('Estatus'), data.get('Institucion'),
+         data.get('Pais'), data.get('FechaInicio'), data.get('FechaFin'), item_id), fetch=False
+    )
+    return jsonify({'message': 'Preparación actualizada.'})
+
+
+@app.route('/api/v1/referencias', methods=['GET', 'POST'])
+@jwt_required()
+def api_referencias():
+    candidate_id = current_candidate_id()
+    if not candidate_id:
+        return api_error('Perfil de candidato no encontrado.', 403)
+    if request.method == 'GET':
+        return jsonify(execute_query("SELECT * FROM Referencias WHERE CandidatoID=?", (candidate_id,)))
+    data = request.get_json(silent=True) or {}
+    validation_error = validate_api_fields(
+        data, ('Nombre', 'Ocupacion', 'Telefono', 'AnosConocer'), ('Telefono',),
+        max_lengths={'Nombre': 150, 'Ocupacion': 100, 'Empresa': 150}
+    )
+    if validation_error:
+        return api_error(validation_error)
+    try:
+        if not 0 <= int(data['AnosConocer']) <= 80:
+            raise ValueError
+    except (TypeError, ValueError):
+        return api_error('AnosConocer debe ser un número entre 0 y 80.')
+    rows = execute_query(
+        """INSERT INTO Referencias
+           (CandidatoID, Nombre, Ocupacion, Telefono, AnosConocer, Empresa, Documento)
+           VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING ReferenciaID""",
+        (candidate_id, data['Nombre'], data['Ocupacion'], data['Telefono'],
+         data['AnosConocer'], data.get('Empresa'), data.get('Documento'))
+    )
+    return jsonify({'ReferenciaID': rows[0]['ReferenciaID']}), 201
+
+
+@app.route('/api/v1/referencias/<int:item_id>', methods=['PUT', 'DELETE'])
+@jwt_required()
+def api_referencia_item(item_id):
+    candidate_id = current_candidate_id()
+    owned = execute_query(
+        "SELECT 1 FROM Referencias WHERE ReferenciaID=? AND CandidatoID=?",
+        (item_id, candidate_id)
+    ) if candidate_id else []
+    if not owned:
+        return api_error('Referencia no encontrada.', 404)
+    if request.method == 'DELETE':
+        execute_query("DELETE FROM Referencias WHERE ReferenciaID=?", (item_id,), fetch=False)
+        return jsonify({'message': 'Referencia eliminada.'})
+    data = request.get_json(silent=True) or {}
+    validation_error = validate_api_fields(
+        data, ('Nombre', 'Ocupacion', 'Telefono', 'AnosConocer'), ('Telefono',),
+        max_lengths={'Nombre': 150, 'Ocupacion': 100, 'Empresa': 150}
+    )
+    if validation_error:
+        return api_error(validation_error)
+    try:
+        if not 0 <= int(data['AnosConocer']) <= 80:
+            raise ValueError
+    except (TypeError, ValueError):
+        return api_error('AnosConocer debe ser un número entre 0 y 80.')
+    execute_query(
+        """UPDATE Referencias SET Nombre=?, Ocupacion=?, Telefono=?, AnosConocer=?,
+           Empresa=?, Documento=COALESCE(?, Documento) WHERE ReferenciaID=?""",
+        (data.get('Nombre'), data.get('Ocupacion'), data.get('Telefono'), data.get('AnosConocer'),
+         data.get('Empresa'), data.get('Documento'), item_id), fetch=False
+    )
+    return jsonify({'message': 'Referencia actualizada.'})
+
+
+@app.route('/api/v1/perfil/habilidades', methods=['GET', 'PUT'])
+@jwt_required()
+def api_perfil_habilidades():
+    candidate_id = current_candidate_id()
+    if not candidate_id:
+        return api_error('Perfil de candidato no encontrado.', 403)
+    if request.method == 'GET':
+        habilidades = execute_query("SELECT * FROM Habilidades ORDER BY Nombre")
+        competencias = execute_query("SELECT * FROM Competencias ORDER BY Nombre")
+        selected_h = execute_query(
+            "SELECT HabilidadID FROM CandidatoHabilidades WHERE CandidatoID=?", (candidate_id,)
+        )
+        selected_c = execute_query(
+            "SELECT CompetenciaID FROM CandidatoCompetencias WHERE CandidatoID=?", (candidate_id,)
+        )
+        return jsonify({
+            'habilidades': habilidades,
+            'competencias': competencias,
+            'habilidadesActuales': [row['HabilidadID'] for row in selected_h],
+            'competenciasActuales': [row['CompetenciaID'] for row in selected_c],
+        })
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data.get('habilidades', []), list) or not isinstance(data.get('competencias', []), list):
+        return api_error('Habilidades y competencias deben enviarse como listas.')
+    try:
+        habilidad_ids = list(dict.fromkeys(int(value) for value in data.get('habilidades', [])))
+        competencia_ids = list(dict.fromkeys(int(value) for value in data.get('competencias', [])))
+    except (TypeError, ValueError):
+        return api_error('Los identificadores de habilidades y competencias deben ser enteros.')
+    if len(habilidad_ids) > 50 or len(competencia_ids) > 50:
+        return api_error('No se permiten más de 50 elementos por catálogo.')
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("DELETE FROM CandidatoHabilidades WHERE CandidatoID=?", (candidate_id,))
+        for item_id in habilidad_ids:
+            cursor.execute(
+                "INSERT INTO CandidatoHabilidades(CandidatoID,HabilidadID) VALUES(?,?)",
+                (candidate_id, int(item_id))
+            )
+        cursor.execute("DELETE FROM CandidatoCompetencias WHERE CandidatoID=?", (candidate_id,))
+        for item_id in competencia_ids:
+            cursor.execute(
+                "INSERT INTO CandidatoCompetencias(CandidatoID,CompetenciaID) VALUES(?,?)",
+                (candidate_id, int(item_id))
+            )
+        conn.commit()
+    except Exception as exc:
+        conn.rollback()
+        current_app.logger.error(f"API skills error: {exc}")
+        return api_error('No fue posible actualizar las habilidades.', 500)
+    finally:
+        cursor.close()
+        conn.close()
+    return jsonify({'message': 'Habilidades actualizadas correctamente.'})
+
+
+@app.route('/api/v1/postulaciones', methods=['GET'])
+@jwt_required()
+def api_postulaciones():
+    user = current_api_user()
+    if not user or user['TipoUsuario'] != 'candidato':
+        return api_error('Este recurso es exclusivo para candidatos.', 403)
+    rows = execute_query(
+        """SELECT p.PostulacionID, p.FechaPostulacion, p.Estatus, p.Comentarios,
+                  v.VacanteID, v.Puesto, v.Modalidad, v.Ubicacion, v.Salario,
+                  e.Nombre AS EmpresaNombre
+           FROM Postulaciones p
+           JOIN Candidatos c ON p.CandidatoID = c.CandidatoID
+           JOIN Vacantes v ON p.VacanteID = v.VacanteID
+           JOIN Empresas e ON v.EmpresaID = e.EmpresaID
+           WHERE c.UsuarioID = ?
+           ORDER BY p.FechaPostulacion DESC""",
+        (user['UsuarioID'],)
+    )
+    return jsonify(rows)
+
+
+@app.route('/api/v1/conversaciones', methods=['GET'])
+@jwt_required()
+def api_conversaciones():
+    candidate_id = current_candidate_id()
+    if not candidate_id:
+        return api_error('Perfil de candidato no encontrado.', 403)
+    rows = execute_query(
+        """SELECT c.ConversacionID, c.VacanteID, c.CandidatoID,
+                  v.Puesto AS VacantePuesto, e.Nombre AS EmpresaNombre,
+                  (SELECT Mensaje FROM Mensajes m WHERE m.ConversacionID=c.ConversacionID
+                   ORDER BY FechaEnvio DESC LIMIT 1) AS UltimoMensaje,
+                  (SELECT FechaEnvio FROM Mensajes m WHERE m.ConversacionID=c.ConversacionID
+                   ORDER BY FechaEnvio DESC LIMIT 1) AS UltimoMensajeFecha,
+                  (SELECT COUNT(*) FROM Mensajes m WHERE m.ConversacionID=c.ConversacionID
+                   AND RemitenteTipo='empresa' AND Leido=FALSE) AS NoLeidos
+           FROM Conversaciones c
+           JOIN Vacantes v ON c.VacanteID=v.VacanteID
+           JOIN Empresas e ON c.EmpresaID=e.EmpresaID
+           WHERE c.CandidatoID=? AND c.Activa=TRUE
+           ORDER BY UltimoMensajeFecha DESC NULLS LAST""",
+        (candidate_id,)
+    )
+    return jsonify(rows)
+
+
+@app.route('/api/v1/conversaciones/<int:conversation_id>', methods=['GET'])
+@jwt_required()
+def api_conversacion_detalle(conversation_id):
+    candidate_id = current_candidate_id()
+    conversations = execute_query(
+        """SELECT c.ConversacionID, c.VacanteID, c.CandidatoID,
+                  v.Puesto, e.Nombre AS EmpresaNombre
+           FROM Conversaciones c JOIN Vacantes v ON c.VacanteID=v.VacanteID
+           JOIN Empresas e ON c.EmpresaID=e.EmpresaID
+           WHERE c.ConversacionID=? AND c.CandidatoID=?""",
+        (conversation_id, candidate_id)
+    ) if candidate_id else []
+    if not conversations:
+        return api_error('Conversación no encontrada.', 404)
+    messages = execute_query(
+        "SELECT * FROM Mensajes WHERE ConversacionID=? ORDER BY FechaEnvio ASC",
+        (conversation_id,)
+    )
+    execute_query(
+        """UPDATE Mensajes SET Leido=TRUE, FechaLectura=CURRENT_TIMESTAMP
+           WHERE ConversacionID=? AND RemitenteTipo='empresa' AND Leido=FALSE""",
+        (conversation_id,), fetch=False
+    )
+    return jsonify({'conversacion': conversations[0], 'mensajes': messages})
+
+
+@app.route('/api/v1/conversaciones/<int:conversation_id>/mensajes', methods=['POST'])
+@jwt_required()
+def api_enviar_mensaje(conversation_id):
+    candidate_id = current_candidate_id()
+    if not candidate_id or not execute_query(
+        "SELECT 1 FROM Conversaciones WHERE ConversacionID=? AND CandidatoID=?",
+        (conversation_id, candidate_id)
+    ):
+        return api_error('Conversación no encontrada.', 404)
+    message = str((request.get_json(silent=True) or {}).get('mensaje', '')).strip()
+    if not message or len(message) > 2000:
+        return api_error('El mensaje debe contener entre 1 y 2000 caracteres.')
+    execute_query(
+        """INSERT INTO Mensajes(ConversacionID,RemitenteID,RemitenteTipo,Mensaje)
+           VALUES(?,?,'candidato',?)""",
+        (conversation_id, candidate_id, message), fetch=False
+    )
+    return jsonify({'message': 'Mensaje enviado correctamente.'}), 201
+
+
+@app.route('/api/v1/postulaciones/<int:postulacion_id>', methods=['DELETE'])
+@jwt_required()
+def api_cancelar_postulacion(postulacion_id):
+    user = current_api_user()
+    if not user or user['TipoUsuario'] != 'candidato':
+        return api_error('Este recurso es exclusivo para candidatos.', 403)
+    rows = execute_query(
+        """SELECT p.PostulacionID, p.Estatus
+           FROM Postulaciones p
+           JOIN Candidatos c ON p.CandidatoID = c.CandidatoID
+           WHERE p.PostulacionID = ? AND c.UsuarioID = ?""",
+        (postulacion_id, user['UsuarioID'])
+    )
+    if not rows:
+        return api_error('Postulación no encontrada.', 404)
+    if rows[0]['Estatus'] != 'pendiente':
+        return api_error('Sólo se pueden cancelar postulaciones pendientes.', 409)
+    execute_query(
+        "DELETE FROM Postulaciones WHERE PostulacionID = ?",
+        (postulacion_id,),
+        fetch=False
+    )
+    return jsonify({'message': 'Postulación cancelada correctamente.'})
+
+
+@app.route('/api/v1/vacantes/<int:vacante_id>/postular', methods=['POST'])
+@jwt_required()
+def api_postular_vacante(vacante_id):
+    user = current_api_user()
+    if not user or user['TipoUsuario'] != 'candidato':
+        return api_error('Este recurso es exclusivo para candidatos.', 403)
+
+    candidates = execute_query(
+        "SELECT CandidatoID FROM Candidatos WHERE UsuarioID = ?",
+        (user['UsuarioID'],)
+    )
+    if not candidates:
+        return api_error('Perfil de candidato no encontrado.', 404)
+    candidate_id = candidates[0]['CandidatoID']
+
+    vacancies = execute_query(
+        """SELECT VacanteID FROM Vacantes
+           WHERE VacanteID = ? AND Estatus = 'aprobada' AND PlazasDisponibles > 0""",
+        (vacante_id,)
+    )
+    if not vacancies:
+        return api_error('La vacante no está disponible.', 404)
+    if execute_query(
+        "SELECT 1 FROM Postulaciones WHERE VacanteID = ? AND CandidatoID = ?",
+        (vacante_id, candidate_id)
+    ):
+        return api_error('Ya te postulaste a esta vacante.', 409)
+
+    execute_query(
+        """INSERT INTO Postulaciones (VacanteID, CandidatoID, Estatus)
+           VALUES (?, ?, 'pendiente')""",
+        (vacante_id, candidate_id),
+        fetch=False
+    )
+    return jsonify({'message': 'Postulación registrada correctamente.'}), 201
 
 @app.route('/api/v1/vacantes', methods=['GET', 'OPTIONS'])
 def api_vacantes():
@@ -4462,6 +6488,8 @@ def api_vacantes():
     try:
         vacantes = execute_query("""
             SELECT v.VacanteID, v.Puesto, v.Modalidad, v.Salario, v.Ubicacion,
+                   v.GradoEstudios, v.TipoContrato, v.Resumen, v.FechaPublicacion,
+                   v.ExperienciaRequerida, v.Beneficios, v.PlazasDisponibles,
                    e.Nombre as EmpresaNombre
             FROM Vacantes v
             JOIN Empresas e ON v.EmpresaID = e.EmpresaID
@@ -4519,7 +6547,16 @@ def api_vacante_detalle(vacante_id):
     
     try:
         vacante = execute_query("""
-            SELECT v.*, e.Nombre as EmpresaNombre, e.Descripcion as EmpresaDescripcion
+            SELECT v.*, e.Nombre as EmpresaNombre, e.Descripcion as EmpresaDescripcion,
+                   e.Logo,
+                   (SELECT STRING_AGG(h.Nombre, ', ' ORDER BY h.Nombre)
+                    FROM VacanteHabilidadesRequeridas vh
+                    JOIN Habilidades h ON vh.HabilidadID = h.HabilidadID
+                    WHERE vh.VacanteID = v.VacanteID) AS HabilidadesRequeridas,
+                   (SELECT STRING_AGG(h.Nombre, ', ' ORDER BY h.Nombre)
+                    FROM VacanteHabilidadesOpcionales vh
+                    JOIN Habilidades h ON vh.HabilidadID = h.HabilidadID
+                    WHERE vh.VacanteID = v.VacanteID) AS HabilidadesOpcionales
             FROM Vacantes v
             JOIN Empresas e ON v.EmpresaID = e.EmpresaID
             WHERE v.VacanteID = ? AND v.Estatus = 'aprobada'
@@ -4646,5 +6683,8 @@ if __name__ == '__main__':
         print(f"❌ Error al conectar a la base de datos: {str(e)}")
         exit(1)
     
-    app.run(debug=True)
-
+    app.run(
+        host=os.getenv('FLASK_HOST', '0.0.0.0'),
+        port=int(os.getenv('PORT', '5001')),
+        debug=os.getenv('FLASK_DEBUG', 'false').lower() == 'true'
+    )

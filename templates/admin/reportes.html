@@ -17,18 +17,102 @@
             </div>
         </div>
         <div class="header-actions">
-            <button onclick="exportarReporte('usuarios')" class="btn-export usuarios">
-                <i class="fas fa-file-pdf"></i> Exportar Usuarios
-            </button>
-            <button onclick="exportarReporte('vacantes')" class="btn-export vacantes">
-                <i class="fas fa-file-pdf"></i> Exportar Vacantes
-            </button>
-            <button onclick="exportarReporte('postulaciones')" class="btn-export postulaciones">
-                <i class="fas fa-file-pdf"></i> Exportar Postulaciones
-            </button>
             <button onclick="window.print()" class="btn-print">
                 <i class="fas fa-print"></i> Imprimir
             </button>
+        </div>
+    </div>
+
+    <!-- Panel de Filtros -->
+    <div class="filtros-panel">
+        <div class="filtros-header">
+            <h3><i class="fas fa-filter"></i> Filtros de Reporte</h3>
+            <div class="filtros-actions">
+                <button onclick="aplicarFiltros()" class="btn-filtrar">
+                    <i class="fas fa-search"></i> Aplicar Filtros
+                </button>
+                <button onclick="limpiarFiltros()" class="btn-limpiar">
+                    <i class="fas fa-undo"></i> Limpiar
+                </button>
+            </div>
+        </div>
+        <div class="filtros-body">
+            <div class="filtro-grupo">
+                <label for="fecha_inicio"><i class="fas fa-calendar-alt"></i> Fecha Inicio</label>
+                <input type="date" id="fecha_inicio" class="filtro-input">
+            </div>
+            <div class="filtro-grupo">
+                <label for="fecha_fin"><i class="fas fa-calendar-alt"></i> Fecha Fin</label>
+                <input type="date" id="fecha_fin" class="filtro-input">
+            </div>
+            <div class="filtro-grupo">
+                <label for="tipo_usuario"><i class="fas fa-user"></i> Tipo Usuario</label>
+                <select id="tipo_usuario" class="filtro-select">
+                    <option value="todos">Todos</option>
+                    <option value="candidato">Candidatos</option>
+                    <option value="empresa">Empresas</option>
+                </select>
+            </div>
+            <div class="filtro-grupo">
+                <label for="estatus_vacante"><i class="fas fa-circle"></i> Estatus Vacante</label>
+                <select id="estatus_vacante" class="filtro-select">
+                    <option value="todos">Todos</option>
+                    <option value="en_revision">En Revisión</option>
+                    <option value="aprobada">Aprobada</option>
+                    <option value="rechazada">Rechazada</option>
+                    <option value="cerrada">Cerrada</option>
+                </select>
+            </div>
+            <div class="filtro-grupo">
+                <label for="empresa_id"><i class="fas fa-building"></i> Empresa</label>
+                <select id="empresa_id" class="filtro-select">
+                    <option value="todas">Todas las empresas</option>
+                </select>
+            </div>
+        </div>
+        <div class="filtros-footer">
+            <span id="filtros_aplicados" class="filtros-info">
+                <i class="fas fa-info-circle"></i> No hay filtros aplicados
+            </span>
+            <div class="filtros-export-actions">
+                <!-- Botones de exportación con filtros integrados -->
+                <div class="export-group">
+                    <span class="export-label">Usuarios:</span>
+                    <button onclick="exportarReporte('usuarios', 'pdf')" class="btn-export-sm pdf">
+                        <i class="fas fa-file-pdf"></i> PDF
+                    </button>
+                    <button onclick="exportarReporte('usuarios', 'excel')" class="btn-export-sm excel">
+                        <i class="fas fa-file-excel"></i> Excel
+                    </button>
+                </div>
+                <div class="export-group">
+                    <span class="export-label">Vacantes:</span>
+                    <button onclick="exportarReporte('vacantes', 'pdf')" class="btn-export-sm pdf">
+                        <i class="fas fa-file-pdf"></i> PDF
+                    </button>
+                    <button onclick="exportarReporte('vacantes', 'excel')" class="btn-export-sm excel">
+                        <i class="fas fa-file-excel"></i> Excel
+                    </button>
+                </div>
+                <div class="export-group">
+                    <span class="export-label">Postulaciones:</span>
+                    <button onclick="exportarReporte('postulaciones', 'pdf')" class="btn-export-sm pdf">
+                        <i class="fas fa-file-pdf"></i> PDF
+                    </button>
+                    <button onclick="exportarReporte('postulaciones', 'excel')" class="btn-export-sm excel">
+                        <i class="fas fa-file-excel"></i> Excel
+                    </button>
+                </div>
+                <div class="export-group completo">
+                    <span class="export-label">Completo:</span>
+                    <button onclick="exportarReporte('completo', 'pdf')" class="btn-export-sm pdf">
+                        <i class="fas fa-file-pdf"></i> PDF
+                    </button>
+                    <button onclick="exportarReporte('completo', 'excel')" class="btn-export-sm excel">
+                        <i class="fas fa-file-excel"></i> Excel
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -41,9 +125,6 @@
             <div class="stat-info">
                 <h3 id="total_usuarios">0</h3>
                 <p>Usuarios Totales</p>
-                <span class="stat-trend">
-                    <i class="fas fa-chart-line"></i> +12%
-                </span>
             </div>
         </div>
         <div class="stat-card">
@@ -53,9 +134,6 @@
             <div class="stat-info">
                 <h3 id="total_empresas">0</h3>
                 <p>Empresas</p>
-                <span class="stat-trend">
-                    <i class="fas fa-chart-line"></i> +8%
-                </span>
             </div>
         </div>
         <div class="stat-card">
@@ -65,9 +143,6 @@
             <div class="stat-info">
                 <h3 id="total_candidatos">0</h3>
                 <p>Candidatos</p>
-                <span class="stat-trend">
-                    <i class="fas fa-chart-line"></i> +15%
-                </span>
             </div>
         </div>
         <div class="stat-card">
@@ -77,9 +152,6 @@
             <div class="stat-info">
                 <h3 id="total_vacantes">0</h3>
                 <p>Vacantes</p>
-                <span class="stat-trend">
-                    <i class="fas fa-chart-line"></i> +23%
-                </span>
             </div>
         </div>
         <div class="stat-card">
@@ -89,9 +161,6 @@
             <div class="stat-info">
                 <h3 id="total_postulaciones">0</h3>
                 <p>Postulaciones</p>
-                <span class="stat-trend">
-                    <i class="fas fa-chart-line"></i> +31%
-                </span>
             </div>
         </div>
         <div class="stat-card">
@@ -101,9 +170,31 @@
             <div class="stat-info">
                 <h3 id="vacantes_aprobadas">0</h3>
                 <p>Vacantes Aprobadas</p>
-                <span class="stat-trend">
-                    <i class="fas fa-chart-line"></i> +18%
-                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sub-estadísticas de vacantes -->
+    <div class="sub-stats-grid">
+        <div class="sub-stat-card pendientes">
+            <i class="fas fa-clock"></i>
+            <div>
+                <span class="sub-stat-value" id="vacantes_pendientes">0</span>
+                <span class="sub-stat-label">En Revisión</span>
+            </div>
+        </div>
+        <div class="sub-stat-card rechazadas">
+            <i class="fas fa-times-circle"></i>
+            <div>
+                <span class="sub-stat-value" id="vacantes_rechazadas">0</span>
+                <span class="sub-stat-label">Rechazadas</span>
+            </div>
+        </div>
+        <div class="sub-stat-card cerradas">
+            <i class="fas fa-check-circle"></i>
+            <div>
+                <span class="sub-stat-value" id="vacantes_cerradas">0</span>
+                <span class="sub-stat-label">Cerradas</span>
             </div>
         </div>
     </div>
@@ -151,7 +242,7 @@
                 <div class="chart-icon">
                     <i class="fas fa-chart-bar"></i>
                 </div>
-                <h3>Top 10 Empresas con más Vacantes</h3>
+                <h3>Top Empresas con más Vacantes</h3>
             </div>
             <div class="chart-body">
                 <canvas id="empresasVacantesChart"></canvas>
@@ -185,7 +276,7 @@
 </div>
 
 <style>
-/* Variables */
+/* ===== ESTILOS MEJORADOS ===== */
 :root {
     --primary-color: #2563eb;
     --primary-dark: #1d4ed8;
@@ -204,7 +295,6 @@
     --transition: all 0.3s ease;
 }
 
-/* Dashboard Principal */
 .reportes-dashboard {
     max-width: 1400px;
     margin: 0 auto;
@@ -216,7 +306,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
     padding-bottom: 1rem;
     border-bottom: 2px solid var(--gray-border);
     flex-wrap: wrap;
@@ -258,14 +348,13 @@
     font-size: 0.85rem;
 }
 
-/* Botones de acción */
 .header-actions {
     display: flex;
     gap: 0.75rem;
     flex-wrap: wrap;
 }
 
-.btn-export, .btn-print {
+.btn-print {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
@@ -277,70 +366,253 @@
     transition: var(--transition);
     border: none;
     color: white;
+    background: linear-gradient(135deg, #64748b, #475569);
 }
 
-.btn-export.usuarios { background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); }
-.btn-export.vacantes { background: linear-gradient(135deg, var(--success-color), #059669); }
-.btn-export.postulaciones { background: linear-gradient(135deg, var(--danger-color), #dc2626); }
-.btn-print { background: linear-gradient(135deg, #64748b, #475569); }
-
-.btn-export:hover, .btn-print:hover {
+.btn-print:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
 }
 
-/* Tarjetas de estadísticas */
+/* ===== PANEL DE FILTROS ===== */
+.filtros-panel {
+    background: white;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--gray-border);
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+
+.filtros-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1.25rem;
+    background: var(--gray-light);
+    border-bottom: 1px solid var(--gray-border);
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.filtros-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--dark-color);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.filtros-header h3 i {
+    color: var(--primary-color);
+}
+
+.filtros-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-filtrar {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0.4rem 1rem;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.85rem;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.btn-filtrar:hover {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+}
+
+.btn-limpiar {
+    background: transparent;
+    color: #64748b;
+    border: 1px solid var(--gray-border);
+    padding: 0.4rem 1rem;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.85rem;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.btn-limpiar:hover {
+    background: var(--gray-light);
+    border-color: #94a3b8;
+}
+
+.filtros-body {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    padding: 1.25rem;
+}
+
+.filtro-grupo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.filtro-grupo label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.filtro-grupo label i {
+    font-size: 0.7rem;
+    color: var(--primary-color);
+}
+
+.filtro-input, .filtro-select {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--gray-border);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    transition: var(--transition);
+    background: white;
+}
+
+.filtro-input:focus, .filtro-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.filtros-footer {
+    padding: 0.75rem 1.25rem;
+    border-top: 1px solid var(--gray-border);
+    background: var(--gray-light);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.filtros-info {
+    font-size: 0.8rem;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.filtros-info i {
+    color: var(--primary-color);
+}
+
+.filtros-export-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.export-group {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: white;
+    padding: 0.2rem 0.5rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--gray-border);
+}
+
+.export-group.completo {
+    background: rgba(124, 58, 237, 0.05);
+    border-color: #7c3aed;
+}
+
+.export-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #64748b;
+    margin-right: 0.2rem;
+}
+
+.btn-export-sm {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+    border: none;
+    color: white;
+}
+
+.btn-export-sm.pdf {
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+}
+
+.btn-export-sm.excel {
+    background: linear-gradient(135deg, #059669, #047857);
+}
+
+.btn-export-sm:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+/* ===== TARJETAS DE ESTADÍSTICAS ===== */
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 2rem;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
 }
 
 .stat-card {
     background: white;
     border-radius: var(--radius-lg);
-    padding: 1.25rem;
+    padding: 1rem 1.25rem;
     display: flex;
     align-items: center;
     gap: 1rem;
     border: 1px solid var(--gray-border);
     transition: var(--transition);
-    position: relative;
-    overflow: hidden;
 }
 
 .stat-card:hover {
-    transform: translateY(-4px);
+    transform: translateY(-2px);
     box-shadow: var(--shadow-md);
 }
 
-.stat-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 4px;
-    height: 100%;
-}
-
-.stat-card:hover::before {
-    width: 100%;
-    opacity: 0.05;
-    transition: var(--transition);
-}
-
 .stat-icon-wrapper {
-    width: 56px;
-    height: 56px;
+    width: 48px;
+    height: 48px;
     border-radius: var(--radius-md);
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
 }
 
 .stat-icon-wrapper i {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     color: white;
 }
 
@@ -353,38 +625,67 @@
 
 .stat-info {
     flex: 1;
+    min-width: 0;
 }
 
 .stat-info h3 {
     margin: 0;
-    font-size: 2rem;
+    font-size: 1.5rem;
     font-weight: 700;
     color: var(--dark-color);
 }
 
 .stat-info p {
     margin: 0;
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     color: #64748b;
 }
 
-.stat-trend {
-    display: inline-flex;
+/* ===== SUB-ESTADÍSTICAS ===== */
+.sub-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.sub-stat-card {
+    display: flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-md);
+    background: white;
+    border: 1px solid var(--gray-border);
+    transition: var(--transition);
+}
+
+.sub-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+.sub-stat-card i {
+    font-size: 1.25rem;
+}
+
+.sub-stat-card.pendientes i { color: var(--warning-color); }
+.sub-stat-card.rechazadas i { color: var(--danger-color); }
+.sub-stat-card.cerradas i { color: var(--success-color); }
+
+.sub-stat-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--dark-color);
+    display: block;
+}
+
+.sub-stat-label {
     font-size: 0.7rem;
-    color: var(--success-color);
-    background: rgba(16, 185, 129, 0.1);
-    padding: 0.2rem 0.5rem;
-    border-radius: 20px;
-    margin-top: 0.5rem;
+    color: #64748b;
 }
 
-.stat-trend i {
-    font-size: 0.65rem;
-}
-
-/* Gráficas */
+/* ===== GRÁFICAS ===== */
 .charts-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -407,7 +708,7 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    padding: 1rem 1.25rem;
+    padding: 0.75rem 1.25rem;
     background: var(--gray-light);
     border-bottom: 1px solid var(--gray-border);
 }
@@ -423,31 +724,35 @@
 }
 
 .chart-icon i {
-    font-size: 1rem;
+    font-size: 0.9rem;
     color: var(--primary-color);
 }
 
 .chart-header h3 {
     margin: 0;
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: 600;
     color: var(--dark-color);
 }
 
 .chart-body {
-    padding: 1.25rem;
+    padding: 1rem;
 }
 
 .chart-body canvas {
-    max-height: 300px;
+    max-height: 280px;
     width: 100%;
 }
 
-/* Responsive */
+/* ===== RESPONSIVE ===== */
 @media (max-width: 1024px) {
     .charts-grid {
         grid-template-columns: 1fr;
         gap: 1rem;
+    }
+    
+    .sub-stats-grid {
+        grid-template-columns: repeat(3, 1fr);
     }
 }
 
@@ -470,31 +775,68 @@
         justify-content: flex-start;
     }
     
-    .btn-export, .btn-print {
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+    
+    .stat-card {
+        padding: 0.75rem 1rem;
+    }
+    
+    .stat-icon-wrapper {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .stat-icon-wrapper i {
+        font-size: 1rem;
+    }
+    
+    .stat-info h3 {
+        font-size: 1.25rem;
+    }
+    
+    .sub-stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .filtros-body {
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+        padding: 1rem;
+    }
+    
+    .filtros-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .filtros-actions {
+        width: 100%;
+    }
+    
+    .filtros-actions button {
         flex: 1;
         justify-content: center;
     }
     
-    .stats-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 1rem;
+    .filtros-footer {
+        flex-direction: column;
+        align-items: stretch;
     }
     
-    .stat-card {
-        padding: 1rem;
+    .filtros-export-actions {
+        flex-direction: column;
+        gap: 0.5rem;
     }
     
-    .stat-icon-wrapper {
-        width: 48px;
-        height: 48px;
+    .export-group {
+        justify-content: center;
     }
     
-    .stat-icon-wrapper i {
-        font-size: 1.2rem;
-    }
-    
-    .stat-info h3 {
-        font-size: 1.5rem;
+    .chart-header h3 {
+        font-size: 0.85rem;
     }
 }
 
@@ -503,20 +845,8 @@
         grid-template-columns: 1fr;
     }
     
-    .header-actions {
-        flex-direction: column;
-    }
-    
-    .btn-export, .btn-print {
-        width: 100%;
-    }
-    
-    .chart-header {
-        padding: 0.875rem 1rem;
-    }
-    
-    .chart-body {
-        padding: 1rem;
+    .filtros-body {
+        grid-template-columns: 1fr;
     }
 }
 </style>
@@ -524,18 +854,98 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 let charts = {};
+let filtrosActuales = {};
 
-// Cargar datos estadísticos
-async function cargarEstadisticas() {
+// Cargar empresas para el filtro
+async function cargarEmpresas() {
     try {
-        const response = await fetch('/admin/api/estadisticas');
+        const response = await fetch('/admin/api/empresas');
         const data = await response.json();
         
         if (data.success) {
-            // Animar los números de las tarjetas
+            const select = document.getElementById('empresa_id');
+            data.empresas.forEach(empresa => {
+                const option = document.createElement('option');
+                option.value = empresa.EmpresaID;
+                option.textContent = empresa.Nombre;
+                select.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error cargando empresas:', error);
+    }
+}
+
+// Aplicar filtros
+function aplicarFiltros() {
+    const fecha_inicio = document.getElementById('fecha_inicio').value;
+    const fecha_fin = document.getElementById('fecha_fin').value;
+    const tipo_usuario = document.getElementById('tipo_usuario').value;
+    const estatus_vacante = document.getElementById('estatus_vacante').value;
+    const empresa_id = document.getElementById('empresa_id').value;
+    
+    filtrosActuales = { fecha_inicio, fecha_fin, tipo_usuario, estatus_vacante, empresa_id };
+    cargarEstadisticas(filtrosActuales);
+    
+    // Mostrar filtros aplicados
+    const filtrosInfo = document.getElementById('filtros_aplicados');
+    const activos = [];
+    if (fecha_inicio) activos.push(`Desde: ${fecha_inicio}`);
+    if (fecha_fin) activos.push(`Hasta: ${fecha_fin}`);
+    if (tipo_usuario && tipo_usuario !== 'todos') activos.push(`Tipo: ${tipo_usuario}`);
+    if (estatus_vacante && estatus_vacante !== 'todos') activos.push(`Estatus: ${estatus_vacante}`);
+    if (empresa_id && empresa_id !== 'todas') {
+        const select = document.getElementById('empresa_id');
+        const option = select.options[select.selectedIndex];
+        activos.push(`Empresa: ${option.textContent}`);
+    }
+    
+    if (activos.length > 0) {
+        filtrosInfo.innerHTML = `<i class="fas fa-check-circle" style="color:#10b981;"></i> Filtros aplicados: ${activos.join(' · ')}`;
+    } else {
+        filtrosInfo.innerHTML = `<i class="fas fa-info-circle"></i> No hay filtros aplicados`;
+    }
+}
+
+// Limpiar filtros
+function limpiarFiltros() {
+    document.getElementById('fecha_inicio').value = '';
+    document.getElementById('fecha_fin').value = '';
+    document.getElementById('tipo_usuario').value = 'todos';
+    document.getElementById('estatus_vacante').value = 'todos';
+    document.getElementById('empresa_id').value = 'todas';
+    filtrosActuales = {};
+    cargarEstadisticas({});
+    document.getElementById('filtros_aplicados').innerHTML = `<i class="fas fa-info-circle"></i> No hay filtros aplicados`;
+}
+
+// Cargar datos estadísticos con filtros
+async function cargarEstadisticas(filtros = {}) {
+    try {
+        const params = new URLSearchParams();
+        if (filtros.fecha_inicio) params.append('fecha_inicio', filtros.fecha_inicio);
+        if (filtros.fecha_fin) params.append('fecha_fin', filtros.fecha_fin);
+        if (filtros.tipo_usuario && filtros.tipo_usuario !== 'todos') params.append('tipo_usuario', filtros.tipo_usuario);
+        if (filtros.estatus_vacante && filtros.estatus_vacante !== 'todos') params.append('estatus_vacante', filtros.estatus_vacante);
+        if (filtros.empresa_id && filtros.empresa_id !== 'todas') params.append('empresa_id', filtros.empresa_id);
+        
+        const response = await fetch(`/admin/api/estadisticas?${params.toString()}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            // Destruir gráficas anteriores
+            Object.values(charts).forEach(chart => {
+                if (chart) chart.destroy();
+            });
+            charts = {};
+            
             animarNumeros(data.estadisticas);
             
-            // Crear gráficas
+            // Actualizar sub-estadísticas
+            document.getElementById('vacantes_pendientes').textContent = data.estadisticas.vacantes_pendientes || 0;
+            document.getElementById('vacantes_rechazadas').textContent = data.estadisticas.vacantes_rechazadas || 0;
+            document.getElementById('vacantes_cerradas').textContent = data.estadisticas.vacantes_cerradas || 0;
+            
             crearGraficaRegistros(data.registros_mensuales);
             crearGraficaPostulaciones(data.postulaciones_mensuales);
             crearGraficaVacantesEstado(data.estado_vacantes);
@@ -551,19 +961,19 @@ async function cargarEstadisticas() {
 // Animación de números
 function animarNumeros(estadisticas) {
     const elementos = {
-        total_usuarios: estadisticas.total_usuarios,
-        total_empresas: estadisticas.total_empresas,
-        total_candidatos: estadisticas.total_candidatos,
-        total_vacantes: estadisticas.total_vacantes,
-        total_postulaciones: estadisticas.total_postulaciones,
-        vacantes_aprobadas: estadisticas.vacantes_aprobadas
+        total_usuarios: estadisticas.total_usuarios || 0,
+        total_empresas: estadisticas.total_empresas || 0,
+        total_candidatos: estadisticas.total_candidatos || 0,
+        total_vacantes: estadisticas.total_vacantes || 0,
+        total_postulaciones: estadisticas.total_postulaciones || 0,
+        vacantes_aprobadas: estadisticas.vacantes_aprobadas || 0
     };
     
     for (const [id, target] of Object.entries(elementos)) {
         const elemento = document.getElementById(id);
         if (elemento) {
             let current = 0;
-            const increment = target / 50;
+            const increment = Math.max(target / 40, 1);
             const timer = setInterval(() => {
                 current += increment;
                 if (current >= target) {
@@ -579,7 +989,9 @@ function animarNumeros(estadisticas) {
 
 // Gráfica de registros por mes
 function crearGraficaRegistros(data) {
-    const ctx = document.getElementById('registrosChart').getContext('2d');
+    const ctx = document.getElementById('registrosChart');
+    if (!ctx) return;
+    
     const meses = data.map(d => d.Mes);
     const candidatos = data.map(d => d.Candidatos);
     const empresas = data.map(d => d.Empresas);
@@ -595,7 +1007,8 @@ function crearGraficaRegistros(data) {
                     borderColor: '#2563eb',
                     backgroundColor: 'rgba(37, 99, 235, 0.1)',
                     fill: true,
-                    tension: 0.4
+                    tension: 0.4,
+                    pointRadius: 4
                 },
                 {
                     label: 'Empresas',
@@ -603,7 +1016,8 @@ function crearGraficaRegistros(data) {
                     borderColor: '#10b981',
                     backgroundColor: 'rgba(16, 185, 129, 0.1)',
                     fill: true,
-                    tension: 0.4
+                    tension: 0.4,
+                    pointRadius: 4
                 }
             ]
         },
@@ -611,7 +1025,10 @@ function crearGraficaRegistros(data) {
             responsive: true,
             maintainAspectRatio: true,
             plugins: {
-                legend: { position: 'top' }
+                legend: { position: 'top', labels: { font: { size: 11 } } }
+            },
+            scales: {
+                y: { beginAtZero: true }
             }
         }
     });
@@ -619,7 +1036,9 @@ function crearGraficaRegistros(data) {
 
 // Gráfica de postulaciones por mes
 function crearGraficaPostulaciones(data) {
-    const ctx = document.getElementById('postulacionesChart').getContext('2d');
+    const ctx = document.getElementById('postulacionesChart');
+    if (!ctx) return;
+    
     const meses = data.map(d => d.Mes);
     const aceptadas = data.map(d => d.Aceptadas);
     const rechazadas = data.map(d => d.Rechazadas);
@@ -634,19 +1053,19 @@ function crearGraficaPostulaciones(data) {
                     label: 'Aceptadas',
                     data: aceptadas,
                     backgroundColor: '#10b981',
-                    borderRadius: 6
+                    borderRadius: 4
                 },
                 {
                     label: 'Rechazadas',
                     data: rechazadas,
                     backgroundColor: '#ef4444',
-                    borderRadius: 6
+                    borderRadius: 4
                 },
                 {
                     label: 'Pendientes',
                     data: pendientes,
                     backgroundColor: '#f59e0b',
-                    borderRadius: 6
+                    borderRadius: 4
                 }
             ]
         },
@@ -654,7 +1073,7 @@ function crearGraficaPostulaciones(data) {
             responsive: true,
             maintainAspectRatio: true,
             plugins: {
-                legend: { position: 'top' }
+                legend: { position: 'top', labels: { font: { size: 11 } } }
             },
             scales: {
                 x: { stacked: true },
@@ -666,12 +1085,9 @@ function crearGraficaPostulaciones(data) {
 
 // Gráfica de estado de vacantes
 function crearGraficaVacantesEstado(data) {
-    const ctx = document.getElementById('vacantesEstadoChart').getContext('2d');
-    const estados = data.map(d => {
-        const nombre = d.Estatus.replace('_', ' ');
-        return nombre.charAt(0).toUpperCase() + nombre.slice(1);
-    });
-    const totales = data.map(d => d.Total);
+    const ctx = document.getElementById('vacantesEstadoChart');
+    if (!ctx) return;
+    
     const colores = {
         'en_revision': '#f59e0b',
         'aprobada': '#10b981',
@@ -679,12 +1095,17 @@ function crearGraficaVacantesEstado(data) {
         'cerrada': '#64748b'
     };
     
+    const estados = data.map(d => {
+        const nombre = d.Estatus.replace('_', ' ');
+        return nombre.charAt(0).toUpperCase() + nombre.slice(1);
+    });
+    
     charts.vacantesEstado = new Chart(ctx, {
         type: 'pie',
         data: {
             labels: estados,
             datasets: [{
-                data: totales,
+                data: data.map(d => d.Total),
                 backgroundColor: data.map(d => colores[d.Estatus] || '#2563eb'),
                 borderWidth: 0
             }]
@@ -693,7 +1114,7 @@ function crearGraficaVacantesEstado(data) {
             responsive: true,
             maintainAspectRatio: true,
             plugins: {
-                legend: { position: 'bottom' }
+                legend: { position: 'bottom', labels: { font: { size: 11 } } }
             }
         }
     });
@@ -701,9 +1122,11 @@ function crearGraficaVacantesEstado(data) {
 
 // Gráfica de empresas con más vacantes
 function crearGraficaEmpresasVacantes(data) {
-    const ctx = document.getElementById('empresasVacantesChart').getContext('2d');
-    const empresas = data.slice(0, 10).map(d => d.Empresa);
-    const vacantes = data.slice(0, 10).map(d => d.Total);
+    const ctx = document.getElementById('empresasVacantesChart');
+    if (!ctx) return;
+    
+    const empresas = data.map(d => d.Empresa);
+    const vacantes = data.map(d => d.Total);
     
     charts.empresas = new Chart(ctx, {
         type: 'bar',
@@ -713,7 +1136,7 @@ function crearGraficaEmpresasVacantes(data) {
                 label: 'Número de Vacantes',
                 data: vacantes,
                 backgroundColor: '#2563eb',
-                borderRadius: 6
+                borderRadius: 4
             }]
         },
         options: {
@@ -722,6 +1145,9 @@ function crearGraficaEmpresasVacantes(data) {
             indexAxis: 'y',
             plugins: {
                 legend: { display: false }
+            },
+            scales: {
+                x: { beginAtZero: true }
             }
         }
     });
@@ -729,9 +1155,11 @@ function crearGraficaEmpresasVacantes(data) {
 
 // Gráfica de habilidades más demandadas
 function crearGraficaHabilidades(data) {
-    const ctx = document.getElementById('habilidadesChart').getContext('2d');
-    const habilidades = data.slice(0, 10).map(d => d.Habilidad);
-    const vacantes = data.slice(0, 10).map(d => d.TotalVacantes);
+    const ctx = document.getElementById('habilidadesChart');
+    if (!ctx) return;
+    
+    const habilidades = data.map(d => d.Habilidad);
+    const vacantes = data.map(d => d.TotalVacantes);
     
     charts.habilidades = new Chart(ctx, {
         type: 'bar',
@@ -741,7 +1169,7 @@ function crearGraficaHabilidades(data) {
                 label: 'Vacantes que la requieren',
                 data: vacantes,
                 backgroundColor: '#06b6d4',
-                borderRadius: 6
+                borderRadius: 4
             }]
         },
         options: {
@@ -750,6 +1178,9 @@ function crearGraficaHabilidades(data) {
             indexAxis: 'y',
             plugins: {
                 legend: { display: false }
+            },
+            scales: {
+                x: { beginAtZero: true }
             }
         }
     });
@@ -757,7 +1188,9 @@ function crearGraficaHabilidades(data) {
 
 // Gráfica de evolución de postulaciones
 function crearGraficaEvolucion(data) {
-    const ctx = document.getElementById('evolucionPostulacionesChart').getContext('2d');
+    const ctx = document.getElementById('evolucionPostulacionesChart');
+    if (!ctx) return;
+    
     const meses = data.map(d => d.Mes);
     const totales = data.map(d => d.Total);
     
@@ -771,25 +1204,50 @@ function crearGraficaEvolucion(data) {
                 borderColor: '#ef4444',
                 backgroundColor: 'rgba(239, 68, 68, 0.1)',
                 fill: true,
-                tension: 0.4
+                tension: 0.4,
+                pointRadius: 4
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: true,
             plugins: {
-                legend: { position: 'top' }
+                legend: { position: 'top', labels: { font: { size: 11 } } }
+            },
+            scales: {
+                y: { beginAtZero: true }
             }
         }
     });
 }
 
-// Exportar reporte PDF
-function exportarReporte(tipo) {
-    window.location.href = `/admin/exportar_reporte/${tipo}`;
+// Exportar reporte (PDF o Excel) - CON FILTROS INTEGRADOS
+function exportarReporte(tipo, formato = 'pdf') {
+    // Obtener los valores actuales de los filtros
+    const fecha_inicio = document.getElementById('fecha_inicio').value;
+    const fecha_fin = document.getElementById('fecha_fin').value;
+    const tipo_usuario = document.getElementById('tipo_usuario').value;
+    const estatus_vacante = document.getElementById('estatus_vacante').value;
+    const empresa_id = document.getElementById('empresa_id').value;
+    
+    const params = new URLSearchParams();
+    if (fecha_inicio) params.append('fecha_inicio', fecha_inicio);
+    if (fecha_fin) params.append('fecha_fin', fecha_fin);
+    if (tipo_usuario && tipo_usuario !== 'todos') params.append('tipo_usuario', tipo_usuario);
+    if (estatus_vacante && estatus_vacante !== 'todos') params.append('estatus_vacante', estatus_vacante);
+    if (empresa_id && empresa_id !== 'todas') params.append('empresa_id', empresa_id);
+    
+    if (formato === 'excel') {
+        window.location.href = `/admin/exportar_excel/${tipo}?${params.toString()}`;
+    } else {
+        window.location.href = `/admin/exportar_reporte/${tipo}?${params.toString()}`;
+    }
 }
 
 // Inicializar
-document.addEventListener('DOMContentLoaded', cargarEstadisticas);
+document.addEventListener('DOMContentLoaded', function() {
+    cargarEmpresas();
+    cargarEstadisticas({});
+});
 </script>
 {% endblock %}

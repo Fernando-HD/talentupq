@@ -35,7 +35,7 @@
                     <div class="message-text">
                         <div class="welcome-message">
                             <i class="fas fa-microchip"></i>
-                            <strong>Sistema Iniciado: Asistente IA v2.0</strong>
+                            <strong>Sistema Iniciado: Asistente IA v3.0</strong>
                         </div>
                         <p>Bienvenido al sistema de asistencia inteligente de TalentUPQ.</p>
                         <div class="features-grid-chat">
@@ -51,6 +51,9 @@
                             <div class="feature-chip">
                                 <i class="fas fa-bolt"></i> Respuesta instantánea
                             </div>
+                            <div class="feature-chip">
+                                <i class="fas fa-percent"></i> Compatibilidad
+                            </div>
                         </div>
                         <p class="mt-2">Sistema listo. ¿En qué puedo asistirle?</p>
                     </div>
@@ -64,9 +67,9 @@
                 <i class="fas fa-microchip"></i>
                 <span>Comandos rápidos</span>
             </div>
-            <div class="sugerencias-buttons">
+            <div class="sugerencias-buttons" id="sugerenciasContainer">
                 {% for sugerencia in sugerencias %}
-                    <button class="sugerencia-btn" onclick="enviarSugerencia('{{ sugerencia }}')">
+                    <button class="sugerencia-btn" data-sugerencia="{{ sugerencia }}">
                         <i class="fas fa-terminal"></i>
                         {{ sugerencia }}
                     </button>
@@ -78,7 +81,7 @@
             <form id="chatForm" class="input-form">
                 <div class="input-wrapper">
                     <i class="fas fa-code input-icon"></i>
-                    <input type="text" id="mensajeInput" class="chat-input" 
+                    <input type="text" id="mensajeInput" class="chat-input" maxlength="500"
                            placeholder="Ingrese su consulta..." autocomplete="off">
                     <button type="submit" class="send-btn">
                         <i class="fas fa-paper-plane"></i>
@@ -120,7 +123,6 @@
     --transition: all 0.2s ease;
 }
 
-/* Dashboard Principal */
 .chatbot-dashboard {
     max-width: 1000px;
     margin: 0 auto;
@@ -143,7 +145,6 @@
     min-height: 600px;
 }
 
-/* Header - Estilo Futurista */
 .chatbot-header-modern {
     display: flex;
     justify-content: space-between;
@@ -186,14 +187,8 @@
 }
 
 @keyframes pulse {
-    0%, 100% {
-        opacity: 1;
-        transform: scale(1);
-    }
-    50% {
-        opacity: 0.6;
-        transform: scale(0.9);
-    }
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(0.9); }
 }
 
 .bot-info h2 {
@@ -218,10 +213,7 @@
     gap: 0.25rem;
 }
 
-.bot-status i {
-    font-size: 0.5rem;
-    color: var(--secondary-color);
-}
+.bot-status i { font-size: 0.5rem; color: var(--secondary-color); }
 
 .btn-clear {
     background: rgba(255, 255, 255, 0.05);
@@ -239,7 +231,6 @@
     transform: scale(1.05);
 }
 
-/* Messages Area */
 .chatbot-messages {
     flex: 1;
     overflow-y: auto;
@@ -257,23 +248,12 @@
 }
 
 @keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
-.bot-message {
-    justify-content: flex-start;
-}
-
-.user-message {
-    justify-content: flex-end;
-}
+.bot-message { justify-content: flex-start; }
+.user-message { justify-content: flex-end; }
 
 .message-avatar {
     width: 36px;
@@ -296,23 +276,23 @@
     color: white;
 }
 
-.message-content {
-    max-width: 75%;
-}
+.message-content { max-width: 85%; }
 
 .message-text {
     background: white;
     padding: 0.85rem 1rem;
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-sm);
-    line-height: 1.5;
+    line-height: 1.6;
     font-size: 0.9rem;
     color: var(--dark-color);
+    white-space: pre-wrap;
+    word-break: break-word;
 }
 
 .bot-message .message-text {
     border-bottom-left-radius: 4px;
-    border-left: 2px solid var(--primary-color);
+    border-left: 3px solid var(--primary-color);
 }
 
 .user-message .message-text {
@@ -320,6 +300,40 @@
     color: white;
     border-bottom-right-radius: 4px;
 }
+
+.compatibilidad-result {
+    background: rgba(14, 165, 233, 0.05);
+    border: 1px solid rgba(14, 165, 233, 0.2);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    margin: 0.5rem 0;
+}
+
+.compatibilidad-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.compatibilidad-porcentaje { font-size: 1.5rem; font-weight: 700; }
+.compatibilidad-porcentaje.alto { color: var(--success-color); }
+.compatibilidad-porcentaje.medio { color: var(--warning-color); }
+.compatibilidad-porcentaje.bajo { color: var(--danger-color); }
+
+.compatibilidad-bar {
+    width: 100%;
+    height: 8px;
+    background: var(--gray-border);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 0.5rem 0;
+}
+
+.compatibilidad-bar-fill { height: 100%; border-radius: 4px; transition: width 1s ease; }
+.compatibilidad-bar-fill.alto { background: var(--success-color); }
+.compatibilidad-bar-fill.medio { background: var(--warning-color); }
+.compatibilidad-bar-fill.bajo { background: var(--danger-color); }
 
 .welcome-message {
     display: flex;
@@ -329,10 +343,7 @@
     font-size: 0.95rem;
 }
 
-.welcome-message i {
-    font-size: 1.1rem;
-    color: var(--primary-color);
-}
+.welcome-message i { font-size: 1.1rem; color: var(--primary-color); }
 
 .features-grid-chat {
     display: flex;
@@ -354,21 +365,10 @@
     font-weight: 500;
 }
 
-.message-time {
-    font-size: 0.65rem;
-    color: #94a3b8;
-    margin-top: 0.25rem;
-}
+.message-time { font-size: 0.65rem; color: #94a3b8; margin-top: 0.25rem; }
+.user-message .message-time { text-align: right; }
+.mt-2 { margin-top: 0.5rem; }
 
-.user-message .message-time {
-    text-align: right;
-}
-
-.mt-2 {
-    margin-top: 0.5rem;
-}
-
-/* Sugerencias */
 .chatbot-sugerencias {
     padding: 1rem 1.5rem;
     background: white;
@@ -387,16 +387,9 @@
     letter-spacing: 1px;
 }
 
-.sugerencias-header i {
-    color: var(--primary-color);
-    font-size: 0.9rem;
-}
+.sugerencias-header i { color: var(--primary-color); font-size: 0.9rem; }
 
-.sugerencias-buttons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.6rem;
-}
+.sugerencias-buttons { display: flex; flex-wrap: wrap; gap: 0.6rem; }
 
 .sugerencia-btn {
     display: inline-flex;
@@ -413,10 +406,7 @@
     font-family: monospace;
 }
 
-.sugerencia-btn i {
-    font-size: 0.7rem;
-    color: var(--primary-color);
-}
+.sugerencia-btn i { font-size: 0.7rem; color: var(--primary-color); }
 
 .sugerencia-btn:hover {
     background: var(--primary-color);
@@ -426,27 +416,11 @@
     box-shadow: var(--shadow-glow);
 }
 
-.sugerencia-btn:hover i {
-    color: white;
-}
+.sugerencia-btn:hover i { color: white; }
 
-/* Input Area - Estilo Futurista */
-.chatbot-input-modern {
-    padding: 1rem 1.5rem;
-    background: white;
-}
-
-.input-form {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.input-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
-}
+.chatbot-input-modern { padding: 1rem 1.5rem; background: white; }
+.input-form { display: flex; flex-direction: column; gap: 0.5rem; }
+.input-wrapper { position: relative; display: flex; align-items: center; }
 
 .input-icon {
     position: absolute;
@@ -486,10 +460,8 @@
     transition: var(--transition);
 }
 
-.send-btn:hover {
-    transform: scale(1.05);
-    box-shadow: var(--shadow-glow);
-}
+.send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.send-btn:hover:not(:disabled) { transform: scale(1.05); box-shadow: var(--shadow-glow); }
 
 .input-footer {
     display: flex;
@@ -500,22 +472,10 @@
     font-family: monospace;
 }
 
-.input-footer i {
-    margin-right: 0.25rem;
-    color: var(--primary-color);
-}
+.input-footer i { margin-right: 0.25rem; color: var(--primary-color); }
+.char-counter { font-family: monospace; }
 
-.char-counter {
-    font-family: monospace;
-}
-
-/* Typing Indicator - Estilo Futurista */
-.typing-indicator {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.5rem 0;
-}
+.typing-indicator { display: flex; align-items: center; gap: 0.25rem; padding: 0.5rem 0; }
 
 .typing-indicator span {
     width: 8px;
@@ -530,257 +490,292 @@
 .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
 
 @keyframes typing {
-    0%, 60%, 100% {
-        transform: translateY(0);
-        opacity: 0.5;
-    }
-    30% {
-        transform: translateY(-6px);
-        opacity: 1;
-    }
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+    30% { transform: translateY(-6px); opacity: 1; }
 }
 
-/* Scrollbar Personalizado */
-.chatbot-messages::-webkit-scrollbar {
-    width: 4px;
-}
+.chatbot-messages::-webkit-scrollbar { width: 4px; }
+.chatbot-messages::-webkit-scrollbar-track { background: var(--gray-border); }
+.chatbot-messages::-webkit-scrollbar-thumb { background: var(--primary-color); border-radius: 4px; }
 
-.chatbot-messages::-webkit-scrollbar-track {
-    background: var(--gray-border);
-}
+.error-message .message-text { border-left-color: var(--danger-color); }
 
-.chatbot-messages::-webkit-scrollbar-thumb {
-    background: var(--primary-color);
-    border-radius: 4px;
-}
-
-/* Responsive */
 @media (max-width: 768px) {
-    .chatbot-dashboard {
-        padding: 1rem;
-    }
-    
-    .chatbot-card {
-        height: calc(100vh - 80px);
-        min-height: 500px;
-    }
-    
-    .message-content {
-        max-width: 85%;
-    }
-    
-    .sugerencias-buttons {
-        flex-direction: column;
-    }
-    
-    .sugerencia-btn {
-        width: 100%;
-        justify-content: flex-start;
-    }
-    
-    .features-grid-chat {
-        flex-direction: column;
-    }
-    
-    .feature-chip {
-        width: fit-content;
-    }
-    
-    .chatbot-header-modern {
-        padding: 0.875rem 1rem;
-    }
-    
-    .chatbot-messages {
-        padding: 1rem;
-    }
-    
-    .chatbot-sugerencias {
-        padding: 0.875rem 1rem;
-    }
-    
-    .chatbot-input-modern {
-        padding: 0.875rem 1rem;
-    }
+    .chatbot-dashboard { padding: 1rem; }
+    .chatbot-card { height: calc(100vh - 80px); min-height: 500px; }
+    .message-content { max-width: 90%; }
+    .sugerencias-buttons { flex-direction: column; }
+    .sugerencia-btn { width: 100%; justify-content: flex-start; }
+    .features-grid-chat { flex-direction: column; }
+    .feature-chip { width: fit-content; }
+    .chatbot-header-modern { padding: 0.875rem 1rem; }
+    .chatbot-messages { padding: 1rem; }
+    .chatbot-sugerencias { padding: 0.875rem 1rem; }
+    .chatbot-input-modern { padding: 0.875rem 1rem; }
 }
 
 @media (max-width: 480px) {
-    .bot-info h2 {
-        font-size: 1rem;
-    }
-    
-    .message-text {
-        font-size: 0.85rem;
-    }
-    
-    .input-footer {
-        flex-direction: column;
-        gap: 0.25rem;
-        text-align: center;
-    }
+    .bot-info h2 { font-size: 1rem; }
+    .message-text { font-size: 0.85rem; }
+    .input-footer { flex-direction: column; gap: 0.25rem; text-align: center; }
 }
 </style>
 
 <script>
-const chatMessages = document.getElementById('chatMessages');
-const chatForm = document.getElementById('chatForm');
-const mensajeInput = document.getElementById('mensajeInput');
-const charCounter = document.getElementById('charCounter');
-const maxLength = 500;
+(function () {
+    const chatMessages = document.getElementById('chatMessages');
+    const chatForm = document.getElementById('chatForm');
+    const mensajeInput = document.getElementById('mensajeInput');
+    const charCounter = document.getElementById('charCounter');
+    const sugerenciasContainer = document.getElementById('sugerenciasContainer');
+    const maxLength = 500;
+    let enviando = false;
 
-// Contador de caracteres
-mensajeInput.addEventListener('input', function() {
-    const length = this.value.length;
-    charCounter.textContent = `${length}/${maxLength}`;
-    
-    if (length > maxLength) {
-        charCounter.style.color = 'var(--danger-color)';
-        this.style.borderColor = 'var(--danger-color)';
-    } else {
-        charCounter.style.color = '';
-        this.style.borderColor = '';
+    // ------------------------------------------------------------------
+    // Seguridad: SIEMPRE se escapa el texto antes de convertirlo a HTML.
+    // Esto evita XSS almacenado si, por ejemplo, el nombre de una vacante
+    // o una habilidad registrada por una empresa contuviera HTML/JS.
+    // El backend también escapa esos campos, pero esta es una segunda
+    // capa de defensa independiente (defensa en profundidad).
+    // ------------------------------------------------------------------
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
     }
-});
 
-// Función para agregar mensaje al chat
-function agregarMensaje(texto, esUsuario = false) {
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `message ${esUsuario ? 'user-message' : 'bot-message'}`;
-    
-    const avatar = document.createElement('div');
-    avatar.className = 'message-avatar';
-    avatar.innerHTML = esUsuario ? '<i class="fas fa-user-astronaut"></i>' : '<i class="fas fa-microchip"></i>';
-    if (!esUsuario) avatar.classList.add('bot-avatar-small');
-    
-    const content = document.createElement('div');
-    content.className = 'message-content';
-    
-    const text = document.createElement('div');
-    text.className = 'message-text';
-    text.innerHTML = texto.replace(/\n/g, '<br>');
-    
-    const time = document.createElement('div');
-    time.className = 'message-time';
-    const now = new Date();
-    time.textContent = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    
-    content.appendChild(text);
-    content.appendChild(time);
-    messageDiv.appendChild(avatar);
-    messageDiv.appendChild(content);
-    
-    chatMessages.appendChild(messageDiv);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-}
+    // Aplica un formato tipo "markdown" muy limitado (negritas con ** y
+    // saltos de línea) SOLO sobre texto ya escapado, así cualquier
+    // etiqueta inyectada queda convertida en texto inerte (&lt;script&gt;)
+    // en vez de ejecutarse.
+    function formatearTextoSeguro(textoOriginal) {
+        const escapado = escapeHtml(textoOriginal);
+        let formateado = escapado
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\n/g, '<br>');
+        return formateado;
+    }
 
-// Función para mostrar que el bot está escribiendo
-function mostrarEscribiendo() {
-    const escribiendoDiv = document.createElement('div');
-    escribiendoDiv.className = 'message bot-message';
-    escribiendoDiv.id = 'typingIndicator';
-    escribiendoDiv.innerHTML = `
-        <div class="message-avatar bot-avatar-small">
-            <i class="fas fa-microchip"></i>
-        </div>
-        <div class="message-content">
-            <div class="message-text">
-                <div class="typing-indicator">
-                    <span></span><span></span><span></span>
+    function construirBarraCompatibilidad(porcentaje) {
+        let nivel = 'medio';
+        if (porcentaje >= 80) nivel = 'alto';
+        else if (porcentaje < 40) nivel = 'bajo';
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'compatibilidad-result';
+
+        const header = document.createElement('div');
+        header.className = 'compatibilidad-header';
+        header.innerHTML = `<span>Compatibilidad</span>`;
+
+        const porcentajeSpan = document.createElement('span');
+        porcentajeSpan.className = `compatibilidad-porcentaje ${nivel}`;
+        porcentajeSpan.textContent = `${porcentaje}%`; // textContent, no innerHTML
+        header.appendChild(porcentajeSpan);
+
+        const bar = document.createElement('div');
+        bar.className = 'compatibilidad-bar';
+        const barFill = document.createElement('div');
+        barFill.className = `compatibilidad-bar-fill ${nivel}`;
+        barFill.style.width = '0%';
+        bar.appendChild(barFill);
+
+        wrapper.appendChild(header);
+        wrapper.appendChild(bar);
+
+        // Animar la barra tras insertarse en el DOM
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                barFill.style.width = `${Math.min(porcentaje, 100)}%`;
+            });
+        });
+
+        return wrapper;
+    }
+
+    function agregarMensaje(texto, esUsuario = false, esError = false) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${esUsuario ? 'user-message' : 'bot-message'}${esError ? ' error-message' : ''}`;
+
+        const avatar = document.createElement('div');
+        avatar.className = 'message-avatar' + (esUsuario ? '' : ' bot-avatar-small');
+        avatar.innerHTML = esUsuario
+            ? '<i class="fas fa-user-astronaut"></i>'
+            : '<i class="fas fa-microchip"></i>';
+
+        const content = document.createElement('div');
+        content.className = 'message-content';
+
+        const text = document.createElement('div');
+        text.className = 'message-text';
+
+        if (!esUsuario && texto.includes('🔍 **Análisis de compatibilidad')) {
+            text.innerHTML = formatearTextoSeguro(texto);
+
+            const match = texto.match(/(\d+\.?\d*)%/);
+            if (match) {
+                const porcentaje = parseFloat(match[1]);
+                const barra = construirBarraCompatibilidad(porcentaje);
+                // Insertarla justo después del primer <br><br> (tras el encabezado)
+                const brTags = text.querySelectorAll('br');
+                if (brTags.length > 1) {
+                    brTags[1].insertAdjacentElement('afterend', barra);
+                } else {
+                    text.appendChild(barra);
+                }
+            }
+        } else {
+            // Mensajes normales (incluido lo que escribe el usuario):
+            // siempre texto escapado, nunca HTML crudo.
+            text.innerHTML = formatearTextoSeguro(texto);
+        }
+
+        const time = document.createElement('div');
+        time.className = 'message-time';
+        const now = new Date();
+        time.textContent = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+        content.appendChild(text);
+        content.appendChild(time);
+        messageDiv.appendChild(avatar);
+        messageDiv.appendChild(content);
+
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function mostrarEscribiendo() {
+        const escribiendoDiv = document.createElement('div');
+        escribiendoDiv.className = 'message bot-message';
+        escribiendoDiv.id = 'typingIndicator';
+        escribiendoDiv.innerHTML = `
+            <div class="message-avatar bot-avatar-small">
+                <i class="fas fa-microchip"></i>
+            </div>
+            <div class="message-content">
+                <div class="message-text">
+                    <div class="typing-indicator">
+                        <span></span><span></span><span></span>
+                    </div>
                 </div>
             </div>
-        </div>
-    `;
-    chatMessages.appendChild(escribiendoDiv);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-}
-
-function ocultarEscribiendo() {
-    const indicator = document.getElementById('typingIndicator');
-    if (indicator) indicator.remove();
-}
-
-// Limpiar chat
-function limpiarChat() {
-    if (confirm('⟫ ¿Limpiar historial de conversación?')) {
-        const messages = chatMessages.querySelectorAll('.message');
-        messages.forEach(msg => {
-            if (!msg.querySelector('.welcome-message')) {
-                msg.remove();
-            }
-        });
-        agregarMensaje('⟫ Historial limpiado. Sistema listo para nueva consulta.', false);
+        `;
+        chatMessages.appendChild(escribiendoDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
     }
-}
 
-// Enviar mensaje
-async function enviarMensaje(mensaje) {
-    if (!mensaje.trim()) return;
-    if (mensaje.length > maxLength) {
-        agregarMensaje(`⟫ Error: Mensaje excede límite de ${maxLength} caracteres.`, false);
-        return;
+    function ocultarEscribiendo() {
+        const indicator = document.getElementById('typingIndicator');
+        if (indicator) indicator.remove();
     }
-    
-    // Agregar mensaje del usuario
-    agregarMensaje(mensaje, true);
-    mensajeInput.value = '';
-    charCounter.textContent = `0/${maxLength}`;
-    
-    // Mostrar indicador de escritura
-    mostrarEscribiendo();
-    
-    try {
-        const response = await fetch('/chatbot', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ mensaje: mensaje })
-        });
-        
-        const data = await response.json();
-        
-        ocultarEscribiendo();
-        
-        if (data.success) {
-            agregarMensaje(data.respuesta, false);
-        } else {
-            agregarMensaje('⟫ Error: No se pudo procesar la solicitud. Intente nuevamente.', false);
+
+    function limpiarChat() {
+        if (confirm('⟫ ¿Limpiar historial de conversación?')) {
+            const messages = chatMessages.querySelectorAll('.message');
+            messages.forEach(msg => {
+                if (!msg.querySelector('.welcome-message')) {
+                    msg.remove();
+                }
+            });
+            agregarMensaje('⟫ Historial limpiado. Sistema listo para nueva consulta.', false);
         }
-    } catch (error) {
-        ocultarEscribiendo();
-        console.error('Error:', error);
-        agregarMensaje('⟫ Error de conexión. Verifique su red e intente de nuevo.', false);
     }
-}
+    window.limpiarChat = limpiarChat;
 
-// Enviar sugerencia
-function enviarSugerencia(sugerencia) {
-    mensajeInput.value = sugerencia;
-    charCounter.textContent = `${sugerencia.length}/${maxLength}`;
-    enviarMensaje(sugerencia);
-}
+    async function enviarMensaje(mensaje) {
+        if (enviando) return; // evita doble envío mientras espera respuesta
+        mensaje = mensaje.trim();
+        if (!mensaje) return;
+        if (mensaje.length > maxLength) {
+            agregarMensaje(`⟫ Error: Mensaje excede límite de ${maxLength} caracteres.`, false, true);
+            return;
+        }
 
-// Event listeners
-chatForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    enviarMensaje(mensajeInput.value);
-});
+        enviando = true;
+        chatForm.querySelector('.send-btn').disabled = true;
 
-// Enviar con Enter
-mensajeInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+        agregarMensaje(mensaje, true);
+        mensajeInput.value = '';
+        charCounter.textContent = `0/${maxLength}`;
+
+        mostrarEscribiendo();
+
+        try {
+            const response = await fetch('/chatbot', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mensaje: mensaje })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+            ocultarEscribiendo();
+
+            if (data.success) {
+                agregarMensaje(data.respuesta, false);
+            } else {
+                agregarMensaje(`⟫ ${data.error || 'No se pudo procesar la solicitud. Intente nuevamente.'}`, false, true);
+            }
+        } catch (error) {
+            ocultarEscribiendo();
+            console.error('Error:', error);
+            agregarMensaje('⟫ Error de conexión. Verifique su red e intente de nuevo.', false, true);
+        } finally {
+            enviando = false;
+            chatForm.querySelector('.send-btn').disabled = false;
+            mensajeInput.focus();
+        }
+    }
+
+    function enviarSugerencia(sugerencia) {
+        mensajeInput.value = sugerencia;
+        charCounter.textContent = `${sugerencia.length}/${maxLength}`;
+        enviarMensaje(sugerencia);
+    }
+
+    // Delegación de eventos en vez de onclick inline con la sugerencia
+    // interpolada directamente en el HTML (mejor separación y evita
+    // problemas de escape de comillas si una sugerencia las contuviera).
+    sugerenciasContainer.addEventListener('click', (e) => {
+        const btn = e.target.closest('.sugerencia-btn');
+        if (btn) enviarSugerencia(btn.dataset.sugerencia);
+    });
+
+    mensajeInput.addEventListener('input', function () {
+        const length = this.value.length;
+        charCounter.textContent = `${length}/${maxLength}`;
+        if (length > maxLength) {
+            charCounter.style.color = 'var(--danger-color)';
+            this.style.borderColor = 'var(--danger-color)';
+        } else {
+            charCounter.style.color = '';
+            this.style.borderColor = '';
+        }
+    });
+
+    chatForm.addEventListener('submit', (e) => {
         e.preventDefault();
         enviarMensaje(mensajeInput.value);
-    }
-});
+    });
 
-// Establecer hora de bienvenida
-document.addEventListener('DOMContentLoaded', () => {
-    const welcomeTime = document.getElementById('welcomeTime');
-    if (welcomeTime) {
-        const now = new Date();
-        welcomeTime.textContent = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    }
-    mensajeInput.focus();
-});
+    mensajeInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            enviarMensaje(mensajeInput.value);
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const welcomeTime = document.getElementById('welcomeTime');
+        if (welcomeTime) {
+            const now = new Date();
+            welcomeTime.textContent = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+        mensajeInput.focus();
+    });
+})();
 </script>
 {% endblock %}
