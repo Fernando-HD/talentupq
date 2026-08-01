@@ -178,7 +178,7 @@ CREATE TABLE public.candidatos (
     modalidadtrabajo character varying(50),
     puestoactual character varying(100),
     puestosolicitado character varying(100),
-    fotoperfil character varying(255),
+    fotoperfil text,
     cv character varying(255),
     resumenprofesional text
 );
@@ -1203,4 +1203,3 @@ ALTER TABLE ONLY public.vacantesrevision
 --
 
 \unrestrict TbnWtklaug4PNPbJBBbMDLz8Kh1natNfIxKmAxRz5HWVWWCzOTfCdtxYEbPX5bi
-

@@ -19,6 +19,16 @@ class SecurityTests(unittest.TestCase):
 
 
 class ValidationTests(unittest.TestCase):
+    def test_candidate_registration_requires_upq_email(self):
+        response = hello.app.test_client().post('/api/v1/auth/register', json={
+            'nombre': 'Alumno',
+            'apellido': 'Prueba',
+            'email': 'alumno@gmail.com',
+            'password': 'Password1',
+        })
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('@upq.edu.mx', response.get_json()['error'])
+
     def test_rejects_invalid_phone_and_date(self):
         phone_error = hello.validate_api_fields({'Telefono': '123'}, phone_fields=('Telefono',))
         date_error = hello.validate_api_fields({'FechaInicio': '28/07/2026'}, date_fields=('FechaInicio',))

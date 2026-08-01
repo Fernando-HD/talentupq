@@ -16,6 +16,34 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
+let refreshPromise = null;
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const original = error.config;
+    const jwtMessage = error.response?.data?.msg;
+    if (error.response?.status === 401 && jwtMessage === 'Token has expired' && original && !original._retried) {
+      original._retried = true;
+      if (!refreshPromise) {
+        refreshPromise = (async () => {
+          const refreshToken = await SecureStore.getItemAsync('refresh_token');
+          if (!refreshToken) throw error;
+          const client = create({ baseURL: API_URL, timeout: 15000 });
+          const { data } = await client.post('/auth/refresh', {}, {
+            headers: { Authorization: `Bearer ${refreshToken}` },
+          });
+          await SecureStore.setItemAsync('access_token', data.access_token);
+          return data.access_token;
+        })().finally(() => { refreshPromise = null; });
+      }
+      const newToken = await refreshPromise;
+      original.headers.Authorization = `Bearer ${newToken}`;
+      return api(original);
+    }
+    throw error;
+  }
+);
+
 export function apiMessage(error) {
   if (error.response?.data?.error) return error.response.data.error;
   if (error.response?.data?.msg) {

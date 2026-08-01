@@ -28,7 +28,7 @@
                             <label>Foto de Perfil</label>
                         </div>
                         <div class="upload-content">
-                            <img id="previewFoto" src="{% if candidato.FotoPerfil %}{{ url_for('static', filename='uploads/' + candidato.FotoPerfil) }}{% else %}{{ url_for('static', filename='images/default-profile.png') }}{% endif %}" 
+                            <img id="previewFoto" src="{{ profile_photo_url(candidato.FotoPerfil) }}" 
                                  alt="Preview foto" class="profile-avatar-preview">
                             <div class="upload-actions">
                                 <label for="foto_perfil" class="btn btn-outline btn-sm">

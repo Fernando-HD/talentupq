@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import api, { apiMessage } from '../services/api';
 import { useUser } from '../context/UserContext';
 
@@ -76,18 +77,25 @@ const ConversacionScreen = ({ navigation, route }) => {
 
   const candidato = user.candidato || {};
 
-  useEffect(() => {
-    api.get(`/conversaciones/${conversacionId}`)
-      .then(({ data }) => {
+  const cargarMensajes = useCallback(async (showError = false) => {
+    try {
+      const { data } = await api.get(`/conversaciones/${conversacionId}`);
         setVacante({
           Puesto: data.conversacion.Puesto,
           EmpresaNombre: data.conversacion.EmpresaNombre,
         });
         setMensajes(data.mensajes.map((item) => ({ ...item, id: item.MensajeID })));
         setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
-      })
-      .catch((error) => Alert.alert('Error', apiMessage(error)));
+    } catch (error) {
+      if (showError) Alert.alert('Error', apiMessage(error));
+    }
   }, [conversacionId]);
+
+  useEffect(() => {
+    cargarMensajes(true);
+    const interval = setInterval(() => cargarMensajes(false), 2500);
+    return () => clearInterval(interval);
+  }, [cargarMensajes]);
 
   const handleEnviarMensaje = async () => {
     if (!mensaje.trim()) {
@@ -100,15 +108,29 @@ const ConversacionScreen = ({ navigation, route }) => {
       return;
     }
 
+    const text = mensaje.trim();
+    const optimisticId = `pending-${Date.now()}`;
+    setMensaje('');
+    setMensajes((current) => [...current, {
+      id: optimisticId,
+      MensajeID: optimisticId,
+      Mensaje: text,
+      RemitenteTipo: 'candidato',
+      FechaEnvio: new Date().toISOString(),
+      Leido: false,
+      pending: true,
+    }]);
+    setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 50);
     setMensajeEnviando(true);
 
     try {
-      await api.post(`/conversaciones/${conversacionId}/mensajes`, { mensaje: mensaje.trim() });
-      const { data } = await api.get(`/conversaciones/${conversacionId}`);
-      setMensajes(data.mensajes.map((item) => ({ ...item, id: item.MensajeID })));
-      setMensaje('');
-      setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
+      const { data } = await api.post(`/conversaciones/${conversacionId}/mensajes`, { mensaje: text });
+      setMensajes((current) => current.map((item) => (
+        item.id === optimisticId ? { ...data, id: data.MensajeID } : item
+      )));
     } catch (error) {
+      setMensajes((current) => current.filter((item) => item.id !== optimisticId));
+      setMensaje(text);
       Alert.alert('Error', apiMessage(error));
     } finally {
       setMensajeEnviando(false);
@@ -140,7 +162,7 @@ const ConversacionScreen = ({ navigation, route }) => {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
       
       {/* Header */}
@@ -230,7 +252,8 @@ const ConversacionScreen = ({ navigation, route }) => {
                       ]}>
                         {msg.Mensaje}
                       </Text>
-                      {msg.Leido && !esMio && (
+                      {msg.pending && <Text style={styles.messageStatusText}>Enviando…</Text>}
+                      {msg.Leido && esMio && (
                         <View style={styles.messageStatus}>
                           <Ionicons name="checkmark-done-outline" size={12} color="rgba(255,255,255,0.6)" />
                           <Text style={styles.messageStatusText}>Leído</Text>
@@ -289,7 +312,7 @@ const ConversacionScreen = ({ navigation, route }) => {
           </View>
         </View>
       </KeyboardAvoidingView>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -297,7 +320,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f1f5f9',
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   header: {
     flexDirection: 'row',

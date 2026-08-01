@@ -12,6 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUser } from '../context/UserContext';
 
 const { width } = Dimensions.get('window');
@@ -32,7 +33,7 @@ const COLORS = {
 };
 
 const CandidatoDashboardScreen = ({ navigation, route }) => {
-  const { user, logout, refreshPostulaciones } = useUser();
+  const { user, logout, refreshUser } = useUser();
   
   // Estado local que se sincroniza con el contexto
   const [candidato, setCandidato] = useState({
@@ -89,34 +90,20 @@ const CandidatoDashboardScreen = ({ navigation, route }) => {
     return unsubscribe;
   }, [navigation, user]);
 
-  const [habilidades] = useState(user.habilidades || [
-    'Python', 'JavaScript', 'React Native', 'Flask', 'SQL', 'Git',
-  ]);
+  const habilidades = user.habilidades || [];
 
   const postulaciones = user.postulaciones || [];
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      refreshPostulaciones().catch(() => {});
+      refreshUser().catch(() => {});
     });
     return unsubscribe;
-  }, [navigation, refreshPostulaciones]);
+  }, [navigation]);
 
-  const [experienciaLaboral] = useState(() => {
-    if (user.experiencias && user.experiencias.length > 0) {
-      return user.experiencias;
-    }
-    return [
-      {
-        Puesto: 'Desarrollador Full Stack',
-        Empresa: 'Tech Solutions',
-        FechaIngreso: '2023-01-01',
-        FechaSalida: null,
-      },
-    ];
-  });
+  const experienciaLaboral = user.experiencias || [];
 
-  const [noLeidos] = useState(2);
+  const noLeidos = Number(user.noLeidos || 0);
   const [completed, setCompleted] = useState(60);
 
   // Recalcular completado cuando candidato cambia
@@ -244,7 +231,7 @@ const CandidatoDashboardScreen = ({ navigation, route }) => {
   ];
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
       
       <View style={styles.header}>
@@ -564,7 +551,7 @@ const CandidatoDashboardScreen = ({ navigation, route }) => {
           </View>
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -572,7 +559,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f1f5f9',
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   header: {
     flexDirection: 'row',
@@ -823,8 +809,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   contactGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: 'column',
     gap: 6,
     marginBottom: 10,
   },
@@ -835,7 +820,7 @@ const styles = StyleSheet.create({
     padding: 8,
     backgroundColor: '#f8fafc',
     borderRadius: 8,
-    width: (width - 40) / 2 - 6,
+    width: '100%',
   },
   infoContent: {
     flex: 1,

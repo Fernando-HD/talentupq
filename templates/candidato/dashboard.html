@@ -7,7 +7,7 @@
     <!-- Menú Lateral Fijo -->
     <div class="dashboard-sidebar">
         <div class="profile-card">
-            <img src="{% if candidato.FotoPerfil %}{{ url_for('static', filename='uploads/' + candidato.FotoPerfil) }}{% else %}{{ url_for('static', filename='images/default-profile.png') }}{% endif %}" 
+            <img src="{{ profile_photo_url(candidato.FotoPerfil) }}" 
                  class="profile-avatar" alt="Foto de perfil">
             <h3>{{ candidato.Nombre }} {{ candidato.ApellidoPaterno }}</h3>
             <p>{{ candidato.PuestoSolicitado or "Sin puesto especificado" }}</p>

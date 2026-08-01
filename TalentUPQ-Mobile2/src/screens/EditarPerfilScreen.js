@@ -16,6 +16,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useUser } from '../context/UserContext';
 
 const { width } = Dimensions.get('window');
@@ -97,7 +98,17 @@ const EditarPerfilScreen = ({ navigation }) => {
     });
 
     if (!result.canceled) {
-      setFotoPerfil(result.assets[0].uri);
+      const asset = result.assets[0];
+      const base64Photo = await FileSystem.readAsStringAsync(asset.uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      const mimeType = asset.mimeType || 'image/jpeg';
+      const dataUrl = `data:${mimeType};base64,${base64Photo}`;
+      if (dataUrl.length > 2800000) {
+        Alert.alert('Foto demasiado grande', 'Selecciona una imagen menor a 2 MB.');
+        return;
+      }
+      setFotoPerfil(dataUrl);
     }
   };
 

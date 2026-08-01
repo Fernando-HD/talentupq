@@ -208,7 +208,7 @@
                         <div class="file-upload-modern">
                             <div class="file-upload-preview" id="fotoPreview">
                                 {% if candidato.FotoPerfil %}
-                                    <img src="{{ url_for('static', filename='uploads/' + candidato.FotoPerfil) }}" 
+                                    <img src="{{ profile_photo_url(candidato.FotoPerfil) }}" 
                                          alt="Foto de perfil">
                                 {% else %}
                                     <i class="fas fa-user-circle"></i>
@@ -1115,7 +1115,7 @@ document.getElementById('foto_perfil').addEventListener('change', function(e) {
     } else {
         fileNameSpan.textContent = 'Mantener foto actual';
         {% if candidato.FotoPerfil %}
-            previewDiv.innerHTML = `<img src="{{ url_for('static', filename='uploads/' + candidato.FotoPerfil) }}" alt="Foto de perfil">`;
+            previewDiv.innerHTML = `<img src="{{ profile_photo_url(candidato.FotoPerfil) }}" alt="Foto de perfil">`;
         {% else %}
             previewDiv.innerHTML = '<i class="fas fa-user-circle"></i>';
         {% endif %}
@@ -1220,7 +1220,7 @@ function resetForm() {
         const cvPreview = document.querySelector('.file-upload-preview.cv-preview');
         
         {% if candidato.FotoPerfil %}
-            fotoPreview.innerHTML = `<img src="{{ url_for('static', filename='uploads/' + candidato.FotoPerfil) }}" alt="Foto de perfil">`;
+            fotoPreview.innerHTML = `<img src="{{ profile_photo_url(candidato.FotoPerfil) }}" alt="Foto de perfil">`;
         {% else %}
             fotoPreview.innerHTML = '<i class="fas fa-user-circle"></i>';
         {% endif %}

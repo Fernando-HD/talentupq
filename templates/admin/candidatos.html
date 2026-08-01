@@ -38,7 +38,7 @@
                     <td>
                         <div class="d-flex align-items-center">
                             {% if candidato.FotoPerfil %}
-                            <img src="{{ url_for('static', filename='uploads/' + candidato.FotoPerfil) }}" 
+                            <img src="{{ profile_photo_url(candidato.FotoPerfil) }}" 
                                  alt="{{ candidato.Nombre }}" class="candidate-photo">
                             {% endif %}
                             <span>{{ candidato.Nombre }} {{ candidato.ApellidoPaterno }} {{ candidato.ApellidoMaterno }}</span>

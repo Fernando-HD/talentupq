@@ -83,7 +83,9 @@ const RegisterScreen = ({ navigation }) => {
     if (!formData.nombre) newErrors.nombre = 'El nombre es requerido';
     if (!formData.apellidoPaterno) newErrors.apellidoPaterno = 'El apellido paterno es requerido';
     if (!formData.email) newErrors.email = 'El correo es requerido';
-    else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Correo inválido';
+    else if (!formData.email.trim().toLowerCase().endsWith('@upq.edu.mx')) {
+      newErrors.email = 'Usa tu correo institucional @upq.edu.mx';
+    }
     if (!formData.password) newErrors.password = 'La contraseña es requerida';
     else if (formData.password.length < 8 || !/[A-Za-z]/.test(formData.password) || !/\d/.test(formData.password)) {
       newErrors.password = 'Mínimo 8 caracteres, una letra y un número';

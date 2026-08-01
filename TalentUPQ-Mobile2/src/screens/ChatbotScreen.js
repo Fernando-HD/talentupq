@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import api, { apiMessage } from '../services/api';
 
 const { width } = Dimensions.get('window');
@@ -40,6 +41,10 @@ const COLORS = {
 // ============================================================
 
 const ChatbotScreen = ({ navigation }) => {
+  const compatibilityPercent = (text) => {
+    const match = String(text || '').match(/(?:compatibilidad|porcentaje)[^\d]*(\d{1,3})\s*%/i);
+    return match ? Math.min(100, Number(match[1])) : null;
+  };
   const [mensaje, setMensaje] = useState('');
   const [mensajes, setMensajes] = useState([
     {
@@ -233,7 +238,7 @@ const ChatbotScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="light-content" backgroundColor="#0f172a" />
 
       {/* Header */}
@@ -286,6 +291,17 @@ const ChatbotScreen = ({ navigation }) => {
                     {msg.texto}
                   </Text>
                 </View>
+                {!msg.esUsuario && compatibilityPercent(msg.texto) !== null && (
+                  <View style={styles.compatibilityCard}>
+                    <View style={styles.compatibilityHeader}>
+                      <Text style={styles.compatibilityLabel}>Compatibilidad</Text>
+                      <Text style={styles.compatibilityValue}>{compatibilityPercent(msg.texto)}%</Text>
+                    </View>
+                    <View style={styles.compatibilityTrack}>
+                      <View style={[styles.compatibilityFill, { width: `${compatibilityPercent(msg.texto)}%` }]} />
+                    </View>
+                  </View>
+                )}
                 <Text style={[styles.messageTime, msg.esUsuario && styles.userTime]}>
                   {formatTime(msg.timestamp)}
                 </Text>
@@ -372,7 +388,7 @@ const ChatbotScreen = ({ navigation }) => {
           </View>
         </View>
       </KeyboardAvoidingView>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -390,7 +406,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#0f172a',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(14, 165, 233, 0.3)',
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 10 : 14,
+    paddingTop: 14,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -661,6 +677,24 @@ const styles = StyleSheet.create({
   charCounterWarning: {
     color: '#f59e0b',
   },
+  compatibilityCard: {
+    width: '100%',
+    marginTop: 8,
+    padding: 10,
+    borderRadius: 10,
+    backgroundColor: '#ecfeff',
+    borderWidth: 1,
+    borderColor: '#67e8f9',
+  },
+  compatibilityHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  compatibilityLabel: { color: '#155e75', fontWeight: '700', fontSize: 12 },
+  compatibilityValue: { color: '#0284c7', fontWeight: '800', fontSize: 14 },
+  compatibilityTrack: { height: 9, borderRadius: 6, backgroundColor: '#cffafe', overflow: 'hidden' },
+  compatibilityFill: { height: '100%', borderRadius: 6, backgroundColor: '#0ea5e9' },
 });
 
 export default ChatbotScreen;

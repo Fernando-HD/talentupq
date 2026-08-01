@@ -46,6 +46,7 @@ app.secret_key = os.getenv('SECRET_KEY', 'upq_bolsa_trabajo_secret_key')
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', app.secret_key)
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = 3600
 app.config['JWT_REFRESH_TOKEN_EXPIRES'] = 2592000
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
 jwt = JWTManager(app)
 
 # ==================== CIFRADO DE DATOS SENSIBLES ====================
@@ -76,6 +77,19 @@ def decrypt_sensitive(value):
 
 def secure_equals_encrypted(encrypted_value, candidate):
     return hmac.compare_digest(decrypt_sensitive(encrypted_value) or '', str(candidate))
+
+
+def profile_photo_url(value):
+    """Resuelve fotos persistentes en BD y nombres de archivo heredados."""
+    if not value:
+        return url_for('static', filename='images/default-profile.png')
+    value = str(value)
+    if value.startswith(('data:image/', 'https://', 'http://')):
+        return value
+    return url_for('static', filename=f'uploads/{value}')
+
+
+app.jinja_env.globals['profile_photo_url'] = profile_photo_url
 
 
 # ==================== MÉTRICAS PROMETHEUS ====================
@@ -979,11 +993,15 @@ def registro():
 
         if len(password) < 8:
             errors.append('La contraseña debe tener al menos 8 caracteres')         
+        if password != confirm_password:
+            errors.append('Las contraseñas no coinciden')
 
         if tipo not in ['candidato', 'empresa', 'admin']:
             errors.append('Tipo de usuario no válido')
 
         if tipo == 'candidato':
+            if not email.lower().endswith('@upq.edu.mx'):
+                errors.append('Los candidatos deben registrarse con su correo institucional @upq.edu.mx')
             if not nombre:
                 errors.append('El nombre es obligatorio')
             if not apellido_paterno:
@@ -1127,12 +1145,14 @@ def login():
             )
             
             # Autenticar con Flask-Login
-            login_user(user_obj)
+            remember = request.form.get('remember') == 'on'
+            login_user(user_obj, remember=remember, duration=timedelta(days=30))
             
             # También mantener la sesión para compatibilidad con código existente
             session['email'] = email
             session['tipo'] = usuario[0]['TipoUsuario']
             session['user_id'] = usuario[0]['UsuarioID']
+            session.permanent = remember
             
             flash('Inicio de sesión exitoso.', 'success')
             
@@ -1315,9 +1335,12 @@ def candidato_perfil():
             if 'foto_perfil' in request.files:
                 file = request.files['foto_perfil']
                 if file and allowed_file(file.filename):
-                    filename = secure_filename(f"perfil_{candidato['CandidatoID']}.{file.filename.rsplit('.', 1)[1].lower()}")
-                    file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-                    update_data['FotoPerfil'] = filename
+                    photo_bytes = file.read(2 * 1024 * 1024 + 1)
+                    if len(photo_bytes) > 2 * 1024 * 1024:
+                        flash('La imagen no debe exceder 2MB', 'error')
+                        return redirect(url_for('candidato_perfil'))
+                    mime = file.mimetype if file.mimetype in ('image/jpeg', 'image/png', 'image/webp') else 'image/jpeg'
+                    update_data['FotoPerfil'] = f"data:{mime};base64,{base64.b64encode(photo_bytes).decode()}"
 
             if 'cv' in request.files:
                 file = request.files['cv']
@@ -2881,7 +2904,7 @@ def empresa_dashboard():
                (SELECT Mensaje FROM Mensajes 
                 WHERE ConversacionID = c.ConversacionID 
                 ORDER BY FechaEnvio DESC LIMIT 1) as UltimoMensaje,
-               (SELECT FechaEnvio FROM Mensajes 
+               (SELECT FechaEnvio AT TIME ZONE 'UTC' AT TIME ZONE 'America/Mexico_City' FROM Mensajes 
                 WHERE ConversacionID = c.ConversacionID 
                 ORDER BY FechaEnvio DESC LIMIT 1) as UltimoMensajeFecha,
                (SELECT COUNT(*) FROM Mensajes 
@@ -5375,7 +5398,9 @@ def ver_conversacion(vacante_id, candidato_id):
     
     # Obtener mensajes
     mensajes = execute_query(
-        """SELECT m.*, 
+        """SELECT m.*,
+           m.FechaEnvio AT TIME ZONE 'UTC' AT TIME ZONE 'America/Mexico_City' AS FechaEnvio,
+           m.FechaLectura AT TIME ZONE 'UTC' AT TIME ZONE 'America/Mexico_City' AS FechaLectura,
            CASE 
                WHEN m.RemitenteTipo = 'candidato' THEN c.Nombre
                WHEN m.RemitenteTipo = 'empresa' THEN e.Nombre
@@ -5481,9 +5506,13 @@ def enviar_mensaje():
             fetch=False
         )
         
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': True})
         flash('Mensaje enviado correctamente', 'success')
     except Exception as e:
         current_app.logger.error(f"Error al enviar mensaje: {str(e)}")
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'error': 'Error al enviar el mensaje'}), 500
         flash('Error al enviar el mensaje', 'error')
     
     return redirect(request.referrer)
@@ -5508,7 +5537,7 @@ def mis_conversaciones():
                (SELECT Mensaje FROM Mensajes 
                 WHERE ConversacionID = c.ConversacionID 
                 ORDER BY FechaEnvio DESC LIMIT 1) as UltimoMensaje,
-               (SELECT FechaEnvio FROM Mensajes 
+               (SELECT FechaEnvio AT TIME ZONE 'UTC' AT TIME ZONE 'America/Mexico_City' FROM Mensajes 
                 WHERE ConversacionID = c.ConversacionID 
                 ORDER BY FechaEnvio DESC LIMIT 1) as UltimoMensajeFecha,
                (SELECT COUNT(*) FROM Mensajes 
@@ -5536,7 +5565,7 @@ def mis_conversaciones():
                (SELECT Mensaje FROM Mensajes 
                 WHERE ConversacionID = c.ConversacionID 
                 ORDER BY FechaEnvio DESC LIMIT 1) as UltimoMensaje,
-               (SELECT FechaEnvio FROM Mensajes 
+               (SELECT FechaEnvio AT TIME ZONE 'UTC' AT TIME ZONE 'America/Mexico_City' FROM Mensajes 
                 WHERE ConversacionID = c.ConversacionID 
                 ORDER BY FechaEnvio DESC LIMIT 1) as UltimoMensajeFecha,
                (SELECT COUNT(*) FROM Mensajes 
@@ -5784,6 +5813,8 @@ def api_register():
 
     if not nombre or not apellido or not email or not password:
         return api_error('Nombre, apellido, correo y contraseña son obligatorios.')
+    if not email.endswith('@upq.edu.mx'):
+        return api_error('El registro de candidatos requiere un correo institucional @upq.edu.mx.')
     if not re.fullmatch(r'[^@\s]+@[^@\s]+\.[^@\s]+', email):
         return api_error('El correo electrónico no es válido.')
     if len(password) < 8 or not re.search(r'[A-Za-z]', password) or not re.search(r'\d', password):
@@ -5952,7 +5983,11 @@ def api_perfil():
         return api_error('Perfil no encontrado.', 404)
 
     if request.method == 'GET':
-        return jsonify(profiles[0])
+        profile = dict(profiles[0])
+        photo = profile.get('FotoPerfil')
+        if photo and not str(photo).startswith(('data:image/', 'https://', 'http://')):
+            profile['FotoPerfil'] = url_for('static', filename=f'uploads/{photo}', _external=True)
+        return jsonify(profile)
 
     data = request.get_json(silent=True) or {}
     def pick(*keys, default=''):
@@ -5976,6 +6011,11 @@ def api_perfil():
     modalidad = str(pick('modalidad', 'ModalidadTrabajo')).strip()
     puesto_actual = str(pick('puestoActual', 'PuestoActual')).strip()
     resumen = str(pick('resumen', 'ResumenProfesional')).strip()
+    foto_perfil = pick('fotoPerfil', 'FotoPerfil', default=profiles[0].get('FotoPerfil'))
+    if foto_perfil and not (str(foto_perfil).startswith('data:image/') or str(foto_perfil).startswith('https://')):
+        return api_error('La foto de perfil no tiene un formato válido.')
+    if foto_perfil and len(str(foto_perfil)) > 2_800_000:
+        return api_error('La foto de perfil no puede exceder 2 MB.')
     reubicacion = bool(pick('reubicacion', 'Reubicacion', default=False))
     viajar = bool(pick('viajar', 'Viajar', default=False))
     licencia = bool(pick('licencia', 'LicenciaConducir', default=False))
@@ -5984,6 +6024,8 @@ def api_perfil():
         return api_error('Nombre, apellido y correo son obligatorios.')
     if not re.fullmatch(r'[^@\s]+@[^@\s]+\.[^@\s]+', email):
         return api_error('El correo electrónico no es válido.')
+    if not email.endswith('@upq.edu.mx'):
+        return api_error('Los candidatos deben usar su correo institucional @upq.edu.mx.')
     if telefono and not re.fullmatch(r'\d{10}', telefono):
         return api_error('El teléfono debe contener 10 dígitos.')
     if rfc and not re.fullmatch(r'[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}', rfc):
@@ -6022,13 +6064,14 @@ def api_perfil():
                ApellidoMaterno = ?, Telefono = ?, Direccion = ?,
                FechaNacimiento = ?, Sexo = ?, EstadoCivil = ?, Nacionalidad = ?,
                RFC = ?, ModalidadTrabajo = ?, PuestoActual = ?, PuestoSolicitado = ?,
-               ResumenProfesional = ?, Reubicacion = ?, Viajar = ?, LicenciaConducir = ?
+               ResumenProfesional = ?, Reubicacion = ?, Viajar = ?, LicenciaConducir = ?,
+               FotoPerfil = ?
                WHERE UsuarioID = ?""",
             (nombre, apellido, apellido_materno or None, telefono or None,
              direccion or None, fecha_nacimiento, sexo or None, estado_civil or None,
              nacionalidad or None, rfc or None, modalidad or None,
              puesto_actual or None, puesto or None, resumen or None,
-             reubicacion, viajar, licencia, user['UsuarioID'])
+             reubicacion, viajar, licencia, foto_perfil, user['UsuarioID'])
         )
         conn.commit()
     except Exception as exc:
@@ -6045,7 +6088,11 @@ def api_perfil():
            WHERE c.UsuarioID = ?""",
         (user['UsuarioID'],)
     )[0]
-    return jsonify(updated)
+    profile = dict(updated)
+    photo = profile.get('FotoPerfil')
+    if photo and not str(photo).startswith(('data:image/', 'https://', 'http://')):
+        profile['FotoPerfil'] = url_for('static', filename=f'uploads/{photo}', _external=True)
+    return jsonify(profile)
 
 
 @app.route('/api/v1/experiencias', methods=['GET', 'POST'])
@@ -6323,7 +6370,7 @@ def api_conversaciones():
                   v.Puesto AS VacantePuesto, e.Nombre AS EmpresaNombre,
                   (SELECT Mensaje FROM Mensajes m WHERE m.ConversacionID=c.ConversacionID
                    ORDER BY FechaEnvio DESC LIMIT 1) AS UltimoMensaje,
-                  (SELECT FechaEnvio FROM Mensajes m WHERE m.ConversacionID=c.ConversacionID
+                  (SELECT FechaEnvio AT TIME ZONE 'UTC' FROM Mensajes m WHERE m.ConversacionID=c.ConversacionID
                    ORDER BY FechaEnvio DESC LIMIT 1) AS UltimoMensajeFecha,
                   (SELECT COUNT(*) FROM Mensajes m WHERE m.ConversacionID=c.ConversacionID
                    AND RemitenteTipo='empresa' AND Leido=FALSE) AS NoLeidos
@@ -6352,7 +6399,10 @@ def api_conversacion_detalle(conversation_id):
     if not conversations:
         return api_error('Conversación no encontrada.', 404)
     messages = execute_query(
-        "SELECT * FROM Mensajes WHERE ConversacionID=? ORDER BY FechaEnvio ASC",
+        """SELECT MensajeID, ConversacionID, RemitenteID, RemitenteTipo, Mensaje,
+                  FechaEnvio AT TIME ZONE 'UTC' AS FechaEnvio,
+                  Leido, FechaLectura AT TIME ZONE 'UTC' AS FechaLectura
+           FROM Mensajes WHERE ConversacionID=? ORDER BY FechaEnvio ASC""",
         (conversation_id,)
     )
     execute_query(
@@ -6375,12 +6425,14 @@ def api_enviar_mensaje(conversation_id):
     message = str((request.get_json(silent=True) or {}).get('mensaje', '')).strip()
     if not message or len(message) > 2000:
         return api_error('El mensaje debe contener entre 1 y 2000 caracteres.')
-    execute_query(
+    created = execute_query(
         """INSERT INTO Mensajes(ConversacionID,RemitenteID,RemitenteTipo,Mensaje)
-           VALUES(?,?,'candidato',?)""",
-        (conversation_id, candidate_id, message), fetch=False
+           VALUES(?,?,'candidato',?)
+           RETURNING MensajeID, ConversacionID, RemitenteID, RemitenteTipo, Mensaje,
+                     FechaEnvio AT TIME ZONE 'UTC' AS FechaEnvio, Leido, FechaLectura""",
+        (conversation_id, candidate_id, message)
     )
-    return jsonify({'message': 'Mensaje enviado correctamente.'}), 201
+    return jsonify(created[0]), 201
 
 
 @app.route('/api/v1/postulaciones/<int:postulacion_id>', methods=['DELETE'])

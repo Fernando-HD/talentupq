@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -75,11 +75,24 @@ const MisConversacionesScreen = ({ navigation }) => {
     },
   ]; */
 
-  useEffect(() => {
-    api.get('/conversaciones')
-      .then(({ data }) => setConversaciones(data))
-      .catch((error) => Alert.alert('Error', apiMessage(error)));
+  const cargarConversaciones = useCallback(async (showError = false) => {
+    try {
+      const { data } = await api.get('/conversaciones');
+      setConversaciones(data);
+    } catch (error) {
+      if (showError) Alert.alert('Error', apiMessage(error));
+    }
   }, []);
+
+  useEffect(() => {
+    cargarConversaciones(true);
+    const interval = setInterval(() => cargarConversaciones(false), 3000);
+    const unsubscribe = navigation.addListener('focus', () => cargarConversaciones(false));
+    return () => {
+      clearInterval(interval);
+      unsubscribe();
+    };
+  }, [cargarConversaciones, navigation]);
 
   const handleVerConversacion = (conversacionId, vacanteId, candidatoId) => {
     navigation.navigate('Conversacion', { 

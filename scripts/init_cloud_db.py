@@ -36,6 +36,8 @@ def main():
                 cursor.execute(sql_without_psql_commands(ROOT / 'database' / 'schema.sql'))
                 print('Esquema PostgreSQL creado.')
             cursor.execute('SET search_path TO public')
+            # Fotos embebidas: evita perder archivos en discos efímeros o entre instancias.
+            cursor.execute('ALTER TABLE candidatos ALTER COLUMN fotoperfil TYPE TEXT')
             cursor.execute((ROOT / 'database' / 'seed_catalogs.sql').read_text(encoding='utf-8'))
             print('Catálogos PostgreSQL verificados.')
 

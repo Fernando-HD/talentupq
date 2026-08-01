@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import api, { apiMessage } from '../services/api';
+import { useUser } from '../context/UserContext';
 
 const { width } = Dimensions.get('window');
 
@@ -31,6 +32,7 @@ const COLORS = {
 };
 
 const MisHabilidadesScreen = ({ navigation }) => {
+  const { actualizarHabilidades } = useUser();
   // Datos de habilidades técnicas
   const [todasHabilidades, setTodasHabilidades] = useState([]);
   /* Catálogo anterior retirado.
@@ -119,6 +121,10 @@ const MisHabilidadesScreen = ({ navigation }) => {
                 habilidades: habilidadesActuales,
                 competencias: competenciasActuales,
               });
+              const selected = new Set(habilidadesActuales);
+              await actualizarHabilidades(
+                todasHabilidades.filter((item) => selected.has(item.HabilidadID)).map((item) => item.Nombre)
+              );
               Alert.alert('Éxito', 'Habilidades actualizadas correctamente');
               navigation.goBack();
             } catch (error) {

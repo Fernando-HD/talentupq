@@ -65,14 +65,17 @@ export const UserProvider = ({ children }) => {
 
   const restoreSession = async () => {
     try {
+      const remember = await AsyncStorage.getItem('rememberSession');
+      if (remember !== 'true') {
+        await clearSession();
+        return;
+      }
       const token = await SecureStore.getItemAsync('access_token');
       if (!token) return;
-      const [{ data: account }, { data: profile }, { data: postulaciones }] = await Promise.all([
+      const [{ data: account }] = await Promise.all([
         api.get('/auth/me'),
-        api.get('/perfil'),
-        api.get('/postulaciones'),
       ]);
-      await persistUser(toUser(account, profile, { postulaciones }));
+      await loadAuthenticatedUser(account);
     } catch {
       await clearSession();
     } finally {
@@ -88,16 +91,25 @@ export const UserProvider = ({ children }) => {
   };
 
   const loadAuthenticatedUser = async (account) => {
-    const [{ data: profile }, { data: postulaciones }] = await Promise.all([
+    const [{ data: profile }, { data: postulaciones }, { data: skillData }, { data: experiencias }, { data: conversaciones }] = await Promise.all([
       api.get('/perfil'),
       api.get('/postulaciones'),
+      api.get('/perfil/habilidades'),
+      api.get('/experiencias'),
+      api.get('/conversaciones'),
     ]);
-    return persistUser(toUser(account, profile, { postulaciones }));
+    const selected = new Set(skillData.habilidadesActuales || []);
+    const habilidades = (skillData.habilidades || [])
+      .filter((item) => selected.has(item.HabilidadID))
+      .map((item) => item.Nombre);
+    const noLeidos = (conversaciones || []).reduce((sum, item) => sum + Number(item.NoLeidos || 0), 0);
+    return persistUser(toUser(account, profile, { postulaciones, habilidades, experiencias, noLeidos }));
   };
 
-  const login = async (email, password) => {
+  const login = async (email, password, remember = false) => {
     const { data } = await api.post('/auth/login', { email, password });
     await saveTokens(data);
+    await AsyncStorage.setItem('rememberSession', remember ? 'true' : 'false');
     return loadAuthenticatedUser(data.usuario);
   };
 
@@ -138,6 +150,11 @@ export const UserProvider = ({ children }) => {
     return data;
   };
 
+  const refreshUser = async () => {
+    const { data: account } = await api.get('/auth/me');
+    return loadAuthenticatedUser(account);
+  };
+
   const updateList = (key) => async (values) => {
     const next = { ...user, [key]: values };
     await persistUser(next);
@@ -149,6 +166,7 @@ export const UserProvider = ({ children }) => {
       SecureStore.deleteItemAsync('access_token'),
       SecureStore.deleteItemAsync('refresh_token'),
       AsyncStorage.removeItem('userData'),
+      AsyncStorage.removeItem('rememberSession'),
     ]);
     setUser(emptyUser);
   };
@@ -167,6 +185,7 @@ export const UserProvider = ({ children }) => {
       actualizarReferencias: updateList('referencias'),
       actualizarPostulaciones: updateList('postulaciones'),
       refreshPostulaciones,
+      refreshUser,
       favoritos,
       toggleFavorito,
       guardarDatos: persistUser,

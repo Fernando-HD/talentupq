@@ -24,6 +24,7 @@ const LoginScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
+  const [remember, setRemember] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
   
@@ -83,7 +84,7 @@ const LoginScreen = ({ navigation }) => {
     
     setLoading(true);
     try {
-      await login(email.trim().toLowerCase(), password);
+      await login(email.trim().toLowerCase(), password, remember);
       
       navigation.replace('CandidatoDashboard');
     } catch (error) {
@@ -232,9 +233,9 @@ const LoginScreen = ({ navigation }) => {
 
             {/* Opciones */}
             <View style={styles.options}>
-              <TouchableOpacity style={styles.checkboxContainer}>
-                <View style={styles.checkbox}>
-                  {false && <Ionicons name="checkmark" size={12} color="white" />}
+              <TouchableOpacity style={styles.checkboxContainer} onPress={() => setRemember((value) => !value)}>
+                <View style={[styles.checkbox, remember && styles.checkboxChecked]}>
+                  {remember && <Ionicons name="checkmark" size={12} color="white" />}
                 </View>
                 <Text style={styles.checkboxLabel}>Recordar sesión</Text>
               </TouchableOpacity>
@@ -493,6 +494,10 @@ const styles = StyleSheet.create({
     marginRight: 8,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: '#3498db',
+    borderColor: '#3498db',
   },
   checkboxLabel: {
     fontSize: 14,
