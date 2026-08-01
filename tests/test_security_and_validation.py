@@ -35,6 +35,14 @@ class SecurityTests(unittest.TestCase):
         self.assertEqual(options['rp']['id'], 'localhost')
         self.assertEqual(options['authenticatorSelection']['userVerification'], 'required')
 
+    def test_passkey_uses_https_origin_behind_render_proxy(self):
+        with hello.app.test_request_context(
+            base_url='https://talentupq-api.onrender.com',
+        ):
+            rp_id, origin = hello.webauthn_config()
+        self.assertEqual(rp_id, 'talentupq-api.onrender.com')
+        self.assertEqual(origin, 'https://talentupq-api.onrender.com')
+
 
 class ValidationTests(unittest.TestCase):
     def test_candidate_registration_requires_upq_email(self):

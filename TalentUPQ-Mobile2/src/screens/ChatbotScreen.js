@@ -41,10 +41,20 @@ const COLORS = {
 // ============================================================
 
 const ChatbotScreen = ({ navigation }) => {
-  const compatibilityPercent = (text) => {
-    const match = String(text || '').match(/(?:compatibilidad|porcentaje)[^\d]*(\d{1,3})\s*%/i);
-    return match ? Math.min(100, Number(match[1])) : null;
+  const compatibilityData = (text) => {
+    const match = String(text || '').match(/(?:porcentaje\s+de\s+compatibilidad|compatibilidad)[^\d]*(\d{1,3}(?:[.,]\d+)?)\s*%/i);
+    if (!match) return null;
+    const percent = Math.min(100, Math.max(0, Number(match[1].replace(',', '.'))));
+    const tone = percent >= 75
+      ? { label: 'Excelente', color: COLORS.success, soft: '#ecfdf5', track: '#bbf7d0' }
+      : percent >= 50
+        ? { label: 'Buena', color: COLORS.primaryDark, soft: '#eff6ff', track: '#bfdbfe' }
+        : percent >= 30
+          ? { label: 'En desarrollo', color: COLORS.warning, soft: '#fffbeb', track: '#fde68a' }
+          : { label: 'Baja', color: COLORS.danger, soft: '#fef2f2', track: '#fecaca' };
+    return { percent, ...tone };
   };
+  const cleanBotText = (text) => String(text || '').replace(/\*\*/g, '');
   const [mensaje, setMensaje] = useState('');
   const [mensajes, setMensajes] = useState([
     {
@@ -237,8 +247,39 @@ const ChatbotScreen = ({ navigation }) => {
     return date.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
   };
 
+  const renderCompatibility = (text) => {
+    const data = compatibilityData(text);
+    if (!data) return null;
+    return (
+      <View style={[styles.compatibilityCard, { backgroundColor: data.soft, borderColor: data.track }]}>
+        <View style={styles.compatibilityTopRow}>
+          <View style={[styles.compatibilityIcon, { backgroundColor: data.color }]}>
+            <Ionicons name="analytics" size={18} color="white" />
+          </View>
+          <View style={styles.compatibilityTitleGroup}>
+            <Text style={styles.compatibilityEyebrow}>ANÁLISIS DE VACANTE</Text>
+            <Text style={styles.compatibilityLabel}>Compatibilidad de tu perfil</Text>
+          </View>
+          <Text style={[styles.compatibilityValue, { color: data.color }]}>
+            {data.percent.toFixed(1)}%
+          </Text>
+        </View>
+        <View style={[styles.compatibilityTrack, { backgroundColor: data.track }]}>
+          <View style={[styles.compatibilityFill, {
+            width: `${data.percent}%`,
+            backgroundColor: data.color,
+          }]} />
+        </View>
+        <View style={styles.compatibilityFooter}>
+          <Text style={[styles.compatibilityLevel, { color: data.color }]}>Nivel: {data.label}</Text>
+          <Text style={styles.compatibilityHint}>Consulta el desglose y las recomendaciones</Text>
+        </View>
+      </View>
+    );
+  };
+
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="light-content" backgroundColor="#0f172a" />
 
       {/* Header */}
@@ -247,7 +288,7 @@ const ChatbotScreen = ({ navigation }) => {
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
-          <View style={styles.botAvatar}>
+          <View style={styles.headerBotAvatar}>
             <Ionicons name="hardware-chip-outline" size={22} color="white" />
             <View style={styles.onlineDot} />
           </View>
@@ -286,22 +327,12 @@ const ChatbotScreen = ({ navigation }) => {
                 />
               </View>
               <View style={[styles.messageContent, msg.esUsuario ? styles.userContent : styles.botContent]}>
+                {!msg.esUsuario && renderCompatibility(msg.texto)}
                 <View style={[styles.messageText, msg.esUsuario ? styles.userText : styles.botText]}>
                   <Text style={msg.esUsuario ? styles.userTextStyle : styles.botTextStyle}>
-                    {msg.texto}
+                    {msg.esUsuario ? msg.texto : cleanBotText(msg.texto)}
                   </Text>
                 </View>
-                {!msg.esUsuario && compatibilityPercent(msg.texto) !== null && (
-                  <View style={styles.compatibilityCard}>
-                    <View style={styles.compatibilityHeader}>
-                      <Text style={styles.compatibilityLabel}>Compatibilidad</Text>
-                      <Text style={styles.compatibilityValue}>{compatibilityPercent(msg.texto)}%</Text>
-                    </View>
-                    <View style={styles.compatibilityTrack}>
-                      <View style={[styles.compatibilityFill, { width: `${compatibilityPercent(msg.texto)}%` }]} />
-                    </View>
-                  </View>
-                )}
                 <Text style={[styles.messageTime, msg.esUsuario && styles.userTime]}>
                   {formatTime(msg.timestamp)}
                 </Text>
@@ -417,7 +448,7 @@ const styles = StyleSheet.create({
   backButton: {
     padding: 4,
   },
-  botAvatar: {
+  headerBotAvatar: {
     position: 'relative',
     width: 40,
     height: 40,
@@ -504,6 +535,7 @@ const styles = StyleSheet.create({
   },
   botContent: {
     alignItems: 'flex-start',
+    maxWidth: '86%',
   },
   userContent: {
     alignItems: 'flex-end',
@@ -679,22 +711,44 @@ const styles = StyleSheet.create({
   },
   compatibilityCard: {
     width: '100%',
-    marginTop: 8,
-    padding: 10,
-    borderRadius: 10,
-    backgroundColor: '#ecfeff',
+    marginBottom: 8,
+    padding: 12,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#67e8f9',
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
-  compatibilityHeader: {
+  compatibilityTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  compatibilityIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 9,
+  },
+  compatibilityTitleGroup: { flex: 1 },
+  compatibilityEyebrow: { color: '#64748b', fontSize: 9, fontWeight: '800', letterSpacing: 0.8 },
+  compatibilityLabel: { color: '#0f172a', fontWeight: '700', fontSize: 12, marginTop: 1 },
+  compatibilityValue: { fontWeight: '900', fontSize: 20, marginLeft: 8 },
+  compatibilityTrack: { height: 12, borderRadius: 7, overflow: 'hidden' },
+  compatibilityFill: { height: '100%', borderRadius: 7 },
+  compatibilityFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 6,
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 8,
   },
-  compatibilityLabel: { color: '#155e75', fontWeight: '700', fontSize: 12 },
-  compatibilityValue: { color: '#0284c7', fontWeight: '800', fontSize: 14 },
-  compatibilityTrack: { height: 9, borderRadius: 6, backgroundColor: '#cffafe', overflow: 'hidden' },
-  compatibilityFill: { height: '100%', borderRadius: 6, backgroundColor: '#0ea5e9' },
+  compatibilityLevel: { fontSize: 11, fontWeight: '800' },
+  compatibilityHint: { color: '#64748b', fontSize: 9, flex: 1, textAlign: 'right' },
 });
 
 export default ChatbotScreen;

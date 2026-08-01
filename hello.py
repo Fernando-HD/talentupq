@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, current_app
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
+from werkzeug.middleware.proxy_fix import ProxyFix
 from datetime import datetime, date, timedelta
 import base64
 import hashlib
@@ -54,6 +55,8 @@ from webauthn.helpers.structs import (
 
 # ==================== CREAR APP (SOLO UNA VEZ) ====================
 app = Flask(__name__)
+# Render termina HTTPS delante de Gunicorn; respeta el esquema y host públicos.
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 load_dotenv()
 app.secret_key = os.getenv('SECRET_KEY', 'upq_bolsa_trabajo_secret_key')
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', app.secret_key)
@@ -68,7 +71,7 @@ def webauthn_config():
     host = request.host.split(':', 1)[0]
     return (
         os.getenv('WEBAUTHN_RP_ID', host).strip(),
-        os.getenv('WEBAUTHN_ORIGIN', request.host_url.rstrip('/')).strip(),
+        os.getenv('WEBAUTHN_ORIGIN', f'{request.scheme}://{request.host}').strip(),
     )
 
 # ==================== CIFRADO DE DATOS SENSIBLES ====================

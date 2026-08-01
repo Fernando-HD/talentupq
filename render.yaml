@@ -32,6 +32,10 @@ services:
         generateValue: true
       - key: CORS_ORIGINS
         value: https://talentupq-api.onrender.com
+      - key: WEBAUTHN_RP_ID
+        value: talentupq-api.onrender.com
+      - key: WEBAUTHN_ORIGIN
+        value: https://talentupq-api.onrender.com
       - key: MAIL_USERNAME
         sync: false
       - key: MAIL_PASSWORD

@@ -338,7 +338,7 @@ const CandidatoDashboardScreen = ({ navigation, route }) => {
                   size={22} 
                   color={item.active ? '#2563eb' : '#64748b'} 
                 />
-                {item.badge && (
+                {Number(item.badge) > 0 && (
                   <View style={styles.navBadge}>
                     <Text style={styles.navBadgeText}>{item.badge}</Text>
                   </View>
