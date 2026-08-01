@@ -1165,7 +1165,9 @@ def login():
         else:
             flash('Correo electrónico o contraseña incorrectos.', 'error')
     
-    return render_template('login.html')
+    # La implementación anterior sólo detectaba la presencia de cualquier rostro;
+    # no autenticaba identidad. Se mantiene oculta hasta contar con enrolamiento seguro.
+    return render_template('login.html', facial_auth_enabled=False)
 
 
 @app.route('/logout')

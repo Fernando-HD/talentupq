@@ -4,7 +4,9 @@
 
 {% block content %}
 <!-- Cargar Face-api.js -->
+{% if facial_auth_enabled %}
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+{% endif %}
 <div class="auth-container">
     <div class="auth-background">
         <div class="floating-shape shape-1"></div>
@@ -758,7 +760,9 @@
         <!-- Pestañas de selección -->
         <div class="admin-tabs">
             <button class="admin-tab active" data-tab="password">🔐 Contraseña</button>
+            {% if facial_auth_enabled %}
             <button class="admin-tab" data-tab="facial">👤 Reconocimiento Facial</button>
+            {% endif %}
         </div>
 
         <!-- Panel de Contraseña -->
@@ -787,6 +791,7 @@
         </div>
 
         <!-- Panel de Reconocimiento Facial -->
+        {% if facial_auth_enabled %}
         <div id="facialPanel" class="admin-panel" style="display: none;">
             <div class="admin-input-group">
                 <input type="email" value="Admin@upq.edu.mx" readonly>
@@ -812,6 +817,7 @@
             
             <div id="facialMessage" class="facial-message"></div>
         </div>
+        {% endif %}
         
         <p class="admin-note">Solo para personal autorizado</p>
     </div>

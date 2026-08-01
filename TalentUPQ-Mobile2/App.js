@@ -3,7 +3,8 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { UserProvider, useUser } from './src/context/UserContext';
 import { ActivityIndicator, View } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { FeedbackProvider } from './src/context/FeedbackContext';
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import HomeScreen from './src/screens/HomeScreen';
@@ -69,7 +70,11 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <UserProvider>
-        <AppNavigation />
+        <FeedbackProvider>
+          <SafeAreaView style={{ flex: 1, backgroundColor: '#ffffff' }} edges={['bottom']}>
+            <AppNavigation />
+          </SafeAreaView>
+        </FeedbackProvider>
       </UserProvider>
     </SafeAreaProvider>
   );
