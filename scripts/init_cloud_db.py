@@ -38,6 +38,18 @@ def main():
             cursor.execute('SET search_path TO public')
             # Fotos embebidas: evita perder archivos en discos efímeros o entre instancias.
             cursor.execute('ALTER TABLE candidatos ALTER COLUMN fotoperfil TYPE TEXT')
+            cursor.execute(
+                """CREATE TABLE IF NOT EXISTS adminpasskeys (
+                       passkeyid SERIAL PRIMARY KEY,
+                       usuarioid INTEGER NOT NULL REFERENCES usuarios(usuarioid) ON DELETE CASCADE,
+                       credentialid TEXT UNIQUE NOT NULL,
+                       publickey TEXT NOT NULL,
+                       signcount BIGINT NOT NULL DEFAULT 0,
+                       devicename VARCHAR(100),
+                       createdat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                       lastusedat TIMESTAMP
+                   )"""
+            )
             cursor.execute((ROOT / 'database' / 'seed_catalogs.sql').read_text(encoding='utf-8'))
             print('Catálogos PostgreSQL verificados.')
 

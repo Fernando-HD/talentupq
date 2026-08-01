@@ -488,10 +488,16 @@
                     <span class="stats-badge">{{ vacantes|length }} pendiente{% if vacantes|length != 1 %}s{% endif %}</span>
                 </div>
             </div>
-            <a href="{{ url_for('admin_panel_control') }}" class="btn-dashboard">
-                <i class="fas fa-tachometer-alt"></i>
-                Panel de Control
-            </a>
+            <div style="display: flex; gap: .75rem; flex-wrap: wrap;">
+                <button type="button" id="registerAdminPasskey" class="btn-dashboard" style="border: 0; cursor: pointer;">
+                    <i class="fas fa-fingerprint"></i>
+                    Configurar huella / Face ID
+                </button>
+                <a href="{{ url_for('admin_panel_control') }}" class="btn-dashboard">
+                    <i class="fas fa-tachometer-alt"></i>
+                    Panel de Control
+                </a>
+            </div>
         </div>
     </div>
 
@@ -562,4 +568,60 @@
     </div>
     {% endif %}
 </div>
+<script>
+function passkeyDecode(value) {
+    const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64 + '='.repeat((4 - base64.length % 4) % 4);
+    return Uint8Array.from(atob(padded), char => char.charCodeAt(0));
+}
+
+function passkeyEncode(value) {
+    let binary = '';
+    new Uint8Array(value).forEach(byte => { binary += String.fromCharCode(byte); });
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+document.getElementById('registerAdminPasskey').addEventListener('click', async () => {
+    if (!window.PublicKeyCredential) {
+        alert('Este navegador no admite passkeys. Usa Safari, Chrome o Edge actualizado.');
+        return;
+    }
+    try {
+        const response = await fetch('/admin/passkeys/register/options', { method: 'POST' });
+        const options = await response.json();
+        if (!response.ok) throw new Error(options.error || 'No se pudo iniciar el registro.');
+        options.challenge = passkeyDecode(options.challenge);
+        options.user.id = passkeyDecode(options.user.id);
+        options.excludeCredentials = (options.excludeCredentials || []).map(item => ({
+            ...item,
+            id: passkeyDecode(item.id),
+        }));
+        const credential = await navigator.credentials.create({ publicKey: options });
+        const payload = {
+            id: credential.id,
+            rawId: passkeyEncode(credential.rawId),
+            type: credential.type,
+            response: {
+                clientDataJSON: passkeyEncode(credential.response.clientDataJSON),
+                attestationObject: passkeyEncode(credential.response.attestationObject),
+                transports: credential.response.getTransports ? credential.response.getTransports() : [],
+            },
+            clientExtensionResults: credential.getClientExtensionResults(),
+            authenticatorAttachment: credential.authenticatorAttachment,
+            deviceName: navigator.platform || 'Dispositivo personal',
+        };
+        const verification = await fetch('/admin/passkeys/register/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        const result = await verification.json();
+        if (!verification.ok) throw new Error(result.error || 'No se pudo registrar.');
+        alert(result.message);
+    } catch (error) {
+        alert(error.name === 'NotAllowedError'
+            ? 'El registro fue cancelado o excedió el tiempo.' : error.message);
+    }
+});
+</script>
 {% endblock %}

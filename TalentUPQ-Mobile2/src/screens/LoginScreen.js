@@ -271,25 +271,6 @@ const LoginScreen = ({ navigation }) => {
               </LinearGradient>
             </TouchableOpacity>
 
-            {/* Social Login */}
-            <View style={styles.socialSection}>
-              <View style={styles.divider}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>o ingresa con</Text>
-                <View style={styles.dividerLine} />
-              </View>
-              <View style={styles.socialButtons}>
-                <TouchableOpacity style={[styles.socialButton, styles.googleButton]}>
-                  <Ionicons name="logo-google" size={22} color="#db4437" />
-                  <Text style={styles.socialButtonText}>Google</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.socialButton, styles.linkedinButton]}>
-                  <Ionicons name="logo-linkedin" size={22} color="#0077b5" />
-                  <Text style={styles.socialButtonText}>LinkedIn</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
             {/* Footer */}
             <View style={styles.footer}>
               <Text style={styles.footerText}>¿No tienes una cuenta?</Text>
@@ -542,51 +523,6 @@ const styles = StyleSheet.create({
   },
   loaderDot3: {
     opacity: 0.3,
-  },
-  socialSection: {
-    marginBottom: 20,
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#e1e5e9',
-  },
-  dividerText: {
-    marginHorizontal: 16,
-    color: '#5a6c7d',
-    fontSize: 13,
-  },
-  socialButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  socialButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    borderWidth: 2,
-    borderColor: '#e1e5e9',
-    borderRadius: 10,
-    backgroundColor: 'white',
-  },
-  googleButton: {
-    borderColor: '#db4437',
-  },
-  linkedinButton: {
-    borderColor: '#0077b5',
-  },
-  socialButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#5a6c7d',
   },
   footer: {
     flexDirection: 'row',

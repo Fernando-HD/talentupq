@@ -3,10 +3,6 @@
 {% block title %}Iniciar Sesión{% endblock %}
 
 {% block content %}
-<!-- Cargar Face-api.js -->
-{% if facial_auth_enabled %}
-<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
-{% endif %}
 <div class="auth-container">
     <div class="auth-background">
         <div class="floating-shape shape-1"></div>
@@ -65,22 +61,6 @@
                     </div>
                     <i class="fas fa-arrow-right btn-icon"></i>
                 </button>
-            </div>
-            
-            <div class="social-login">
-                <div class="divider">
-                    <span>o ingresa con</span>
-                </div>
-                <div class="social-buttons">
-                    <button type="button" class="social-btn google-btn">
-                        <i class="fab fa-google"></i>
-                        Google
-                    </button>
-                    <button type="button" class="social-btn linkedin-btn">
-                        <i class="fab fa-linkedin"></i>
-                        LinkedIn
-                    </button>
-                </div>
             </div>
             
             <div class="auth-footer">
@@ -487,37 +467,6 @@
         justify-content: center;
     }
     
-    .social-btn {
-        flex: 1;
-        padding: 12px;
-        border: 2px solid #e1e5e9;
-        border-radius: 10px;
-        background: white;
-        color: #5a6c7d;
-        font-weight: 500;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        transition: all 0.3s ease;
-        cursor: pointer;
-    }
-    
-    .social-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-    }
-    
-    .google-btn:hover {
-        border-color: #db4437;
-        color: #db4437;
-    }
-    
-    .linkedin-btn:hover {
-        border-color: #0077b5;
-        color: #0077b5;
-    }
-    
     .auth-footer {
         text-align: center;
         margin-top: 2rem;
@@ -685,17 +634,6 @@
             }
         });
         
-        // Social login buttons animation
-        const socialButtons = document.querySelectorAll('.social-btn');
-        socialButtons.forEach(btn => {
-            btn.addEventListener('click', function() {
-                this.style.transform = 'translateY(0)';
-                setTimeout(() => {
-                    this.style.transform = 'translateY(-2px)';
-                }, 100);
-            });
-        });
-        
         // Simple particle effect
         createParticles();
     });
@@ -760,9 +698,6 @@
         <!-- Pestañas de selección -->
         <div class="admin-tabs">
             <button class="admin-tab active" data-tab="password">🔐 Contraseña</button>
-            {% if facial_auth_enabled %}
-            <button class="admin-tab" data-tab="facial">👤 Reconocimiento Facial</button>
-            {% endif %}
         </div>
 
         <!-- Panel de Contraseña -->
@@ -787,37 +722,12 @@
                         <polyline points="8 1 12 5 8 9"></polyline>
                     </svg>
                 </button>
+                <button type="button" id="adminPasskeyLogin" class="admin-submit-btn" style="margin-top: 12px;">
+                    <span><i class="fas fa-fingerprint"></i> Entrar con huella, rostro o passkey</span>
+                </button>
+                <div id="passkeyLoginMessage" class="facial-message"></div>
             </form>
         </div>
-
-        <!-- Panel de Reconocimiento Facial -->
-        {% if facial_auth_enabled %}
-        <div id="facialPanel" class="admin-panel" style="display: none;">
-            <div class="admin-input-group">
-                <input type="email" value="Admin@upq.edu.mx" readonly>
-                <label>Administrador</label>
-            </div>
-            
-            <div class="facial-container">
-                <video id="facialVideo" autoplay muted playsinline></video>
-                <canvas id="facialCanvas" style="display: none;"></canvas>
-                <div id="facialStatus" class="facial-status">
-                    <i class="fas fa-camera"></i> Iniciar cámara
-                </div>
-            </div>
-            
-            <div class="facial-buttons">
-                <button type="button" id="startCameraBtn" class="facial-btn">
-                    <i class="fas fa-play"></i> Iniciar Cámara
-                </button>
-                <button type="button" id="verifyFaceBtn" class="facial-btn" disabled>
-                    <i class="fas fa-check"></i> Verificar Rostro
-                </button>
-            </div>
-            
-            <div id="facialMessage" class="facial-message"></div>
-        </div>
-        {% endif %}
         
         <p class="admin-note">Solo para personal autorizado</p>
     </div>
@@ -1522,7 +1432,71 @@ document.addEventListener('DOMContentLoaded', function() {
             if (e.target === modal) stopFacialCamera();
         });
     }
+
+    const passkeyButton = document.getElementById('adminPasskeyLogin');
+    if (passkeyButton) passkeyButton.addEventListener('click', loginWithPasskey);
 });
+
+function base64urlToBuffer(value) {
+    const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64 + '='.repeat((4 - base64.length % 4) % 4);
+    return Uint8Array.from(atob(padded), char => char.charCodeAt(0));
+}
+
+function bufferToBase64url(value) {
+    const bytes = new Uint8Array(value);
+    let binary = '';
+    bytes.forEach(byte => { binary += String.fromCharCode(byte); });
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+async function loginWithPasskey() {
+    const message = document.getElementById('passkeyLoginMessage');
+    if (!window.PublicKeyCredential) {
+        message.textContent = 'Este navegador no admite huella, rostro o passkeys.';
+        message.className = 'facial-message error';
+        return;
+    }
+    try {
+        message.textContent = 'Esperando verificación del dispositivo…';
+        message.className = 'facial-message';
+        const optionsResponse = await fetch('/admin/passkeys/login/options', { method: 'POST' });
+        const options = await optionsResponse.json();
+        if (!optionsResponse.ok) throw new Error(options.error || 'No hay una passkey registrada.');
+        options.challenge = base64urlToBuffer(options.challenge);
+        options.allowCredentials = (options.allowCredentials || []).map(item => ({
+            ...item,
+            id: base64urlToBuffer(item.id),
+        }));
+        const credential = await navigator.credentials.get({ publicKey: options });
+        const payload = {
+            id: credential.id,
+            rawId: bufferToBase64url(credential.rawId),
+            type: credential.type,
+            response: {
+                authenticatorData: bufferToBase64url(credential.response.authenticatorData),
+                clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
+                signature: bufferToBase64url(credential.response.signature),
+                userHandle: credential.response.userHandle
+                    ? bufferToBase64url(credential.response.userHandle) : null,
+            },
+            clientExtensionResults: credential.getClientExtensionResults(),
+            authenticatorAttachment: credential.authenticatorAttachment,
+        };
+        const verifyResponse = await fetch('/admin/passkeys/login/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        const result = await verifyResponse.json();
+        if (!verifyResponse.ok) throw new Error(result.error || 'Identidad no verificada.');
+        window.location.assign(result.redirect);
+    } catch (error) {
+        message.textContent = error.name === 'NotAllowedError'
+            ? 'La verificación fue cancelada o excedió el tiempo.' : error.message;
+        message.className = 'facial-message error';
+    }
+}
 </script>
 
 {% endblock %}

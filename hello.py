@@ -38,6 +38,19 @@ from flask_jwt_extended import (
 )
 from flask_login import LoginManager, login_required, current_user, login_user, logout_user, UserMixin
 from flask_login import login_user, logout_user
+from webauthn import (
+    generate_authentication_options,
+    generate_registration_options,
+    verify_authentication_response,
+    verify_registration_response,
+)
+from webauthn.helpers import base64url_to_bytes, bytes_to_base64url, options_to_json
+from webauthn.helpers.structs import (
+    AuthenticatorSelectionCriteria,
+    PublicKeyCredentialDescriptor,
+    ResidentKeyRequirement,
+    UserVerificationRequirement,
+)
 
 # ==================== CREAR APP (SOLO UNA VEZ) ====================
 app = Flask(__name__)
@@ -48,6 +61,15 @@ app.config['JWT_ACCESS_TOKEN_EXPIRES'] = 3600
 app.config['JWT_REFRESH_TOKEN_EXPIRES'] = 2592000
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
 jwt = JWTManager(app)
+
+
+def webauthn_config():
+    """Devuelve el dominio y origen autorizados para las passkeys."""
+    host = request.host.split(':', 1)[0]
+    return (
+        os.getenv('WEBAUTHN_RP_ID', host).strip(),
+        os.getenv('WEBAUTHN_ORIGIN', request.host_url.rstrip('/')).strip(),
+    )
 
 # ==================== CIFRADO DE DATOS SENSIBLES ====================
 # En producción DATA_ENCRYPTION_KEY debe ser un secreto aleatorio independiente.
@@ -1116,9 +1138,17 @@ def login():
                 (email,)
             )
             if admins and admins[0]['Activo'] and check_password_hash(admins[0]['PasswordHash'], password):
+                user_obj = User(
+                    id=admins[0]['UsuarioID'],
+                    email=admins[0]['Email'],
+                    tipo='admin',
+                    activo=admins[0]['Activo'],
+                )
+                login_user(user_obj, remember=True, duration=timedelta(days=30))
                 session['email'] = admins[0]['Email']
                 session['tipo'] = 'admin'
                 session['user_id'] = admins[0]['UsuarioID']
+                session.permanent = True
                 return redirect(url_for('admin_dashboard'))
             else:
                 flash('Credenciales administrativas incorrectas', 'error')
@@ -1165,9 +1195,7 @@ def login():
         else:
             flash('Correo electrónico o contraseña incorrectos.', 'error')
     
-    # La implementación anterior sólo detectaba la presencia de cualquier rostro;
-    # no autenticaba identidad. Se mantiene oculta hasta contar con enrolamiento seguro.
-    return render_template('login.html', facial_auth_enabled=False)
+    return render_template('login.html')
 
 
 @app.route('/logout')
@@ -3610,16 +3638,156 @@ def admin_login():
             ((email or '').strip().lower(),)
         )
         if admins and admins[0]['Activo'] and check_password_hash(admins[0]['PasswordHash'], password or ''):
+            user_obj = User(
+                id=admins[0]['UsuarioID'],
+                email=admins[0]['Email'],
+                tipo='admin',
+                activo=admins[0]['Activo'],
+            )
+            login_user(user_obj, remember=True, duration=timedelta(days=30))
             session['email'] = admins[0]['Email']
             session['tipo'] = 'admin'
             session['user_id'] = admins[0]['UsuarioID']
+            session.permanent = True
             flash('Bienvenido Administrador', 'success')
             return redirect(url_for('admin_dashboard'))
         else:
             flash('Credenciales administrativas incorrectas', 'error')
 
 
-    return render_template('admin/login.html')  
+    return redirect(url_for('login'))
+
+
+@app.post('/admin/passkeys/register/options')
+@login_required
+@role_required('admin')
+def admin_passkey_register_options():
+    rp_id, _ = webauthn_config()
+    admin_id = session['user_id']
+    admin_email = session.get('email', 'administrador')
+    credentials = execute_query(
+        "SELECT CredentialID FROM AdminPasskeys WHERE UsuarioID = ?",
+        (admin_id,),
+    )
+    options = generate_registration_options(
+        rp_id=rp_id,
+        rp_name='TalentUPQ',
+        user_id=str(admin_id).encode(),
+        user_name=admin_email,
+        user_display_name=admin_email,
+        exclude_credentials=[
+            PublicKeyCredentialDescriptor(id=base64url_to_bytes(row['CredentialID']))
+            for row in credentials
+        ],
+        authenticator_selection=AuthenticatorSelectionCriteria(
+            resident_key=ResidentKeyRequirement.PREFERRED,
+            user_verification=UserVerificationRequirement.REQUIRED,
+        ),
+    )
+    session['passkey_registration_challenge'] = bytes_to_base64url(options.challenge)
+    return app.response_class(options_to_json(options), mimetype='application/json')
+
+
+@app.post('/admin/passkeys/register/verify')
+@login_required
+@role_required('admin')
+def admin_passkey_register_verify():
+    admin_id = session['user_id']
+    challenge = session.pop('passkey_registration_challenge', None)
+    if not challenge:
+        return jsonify({'error': 'El reto expiró. Intenta nuevamente.'}), 400
+    try:
+        rp_id, origin = webauthn_config()
+        credential_payload = request.get_json(force=True)
+        device_name = credential_payload.pop('deviceName', 'Dispositivo personal')
+        verification = verify_registration_response(
+            credential=credential_payload,
+            expected_challenge=base64url_to_bytes(challenge),
+            expected_rp_id=rp_id,
+            expected_origin=origin,
+            require_user_verification=True,
+        )
+        execute_query(
+            """INSERT INTO AdminPasskeys
+               (UsuarioID, CredentialID, PublicKey, SignCount, DeviceName)
+               VALUES (?, ?, ?, ?, ?)""",
+            (
+                admin_id,
+                bytes_to_base64url(verification.credential_id),
+                bytes_to_base64url(verification.credential_public_key),
+                verification.sign_count,
+                str(device_name)[:100],
+            ),
+            fetch=False,
+        )
+        return jsonify({'ok': True, 'message': 'Huella, rostro o passkey registrada correctamente.'})
+    except Exception as error:
+        current_app.logger.warning('No fue posible registrar passkey: %s', error)
+        return jsonify({'error': 'No fue posible registrar este dispositivo.'}), 400
+
+
+@app.post('/admin/passkeys/login/options')
+def admin_passkey_login_options():
+    credentials = execute_query(
+        """SELECT p.CredentialID FROM AdminPasskeys p
+           JOIN Usuarios u ON u.UsuarioID = p.UsuarioID
+           WHERE u.TipoUsuario = 'admin' AND u.Activo = TRUE"""
+    )
+    if not credentials:
+        return jsonify({'error': 'Primero inicia con contraseña y registra este dispositivo.'}), 404
+    rp_id, _ = webauthn_config()
+    options = generate_authentication_options(
+        rp_id=rp_id,
+        allow_credentials=[
+            PublicKeyCredentialDescriptor(id=base64url_to_bytes(row['CredentialID']))
+            for row in credentials
+        ],
+        user_verification=UserVerificationRequirement.REQUIRED,
+    )
+    session['passkey_login_challenge'] = bytes_to_base64url(options.challenge)
+    return app.response_class(options_to_json(options), mimetype='application/json')
+
+
+@app.post('/admin/passkeys/login/verify')
+def admin_passkey_login_verify():
+    challenge = session.pop('passkey_login_challenge', None)
+    payload = request.get_json(force=True)
+    if not challenge:
+        return jsonify({'error': 'El reto expiró. Intenta nuevamente.'}), 400
+    rows = execute_query(
+        """SELECT p.PasskeyID, p.UsuarioID, p.PublicKey, p.SignCount,
+                  u.Email, u.Activo
+           FROM AdminPasskeys p JOIN Usuarios u ON u.UsuarioID = p.UsuarioID
+           WHERE p.CredentialID = ? AND u.TipoUsuario = 'admin'""",
+        (payload.get('id', ''),),
+    )
+    if not rows or not rows[0]['Activo']:
+        return jsonify({'error': 'Passkey no reconocida.'}), 401
+    credential = rows[0]
+    try:
+        rp_id, origin = webauthn_config()
+        verification = verify_authentication_response(
+            credential=payload,
+            expected_challenge=base64url_to_bytes(challenge),
+            expected_rp_id=rp_id,
+            expected_origin=origin,
+            credential_public_key=base64url_to_bytes(credential['PublicKey']),
+            credential_current_sign_count=credential['SignCount'],
+            require_user_verification=True,
+        )
+        execute_query(
+            "UPDATE AdminPasskeys SET SignCount = ?, LastUsedAt = CURRENT_TIMESTAMP WHERE PasskeyID = ?",
+            (verification.new_sign_count, credential['PasskeyID']),
+            fetch=False,
+        )
+        user_obj = User(credential['UsuarioID'], credential['Email'], 'admin', True)
+        login_user(user_obj, remember=True, duration=timedelta(days=30))
+        session.update(email=credential['Email'], tipo='admin', user_id=credential['UsuarioID'])
+        session.permanent = True
+        return jsonify({'ok': True, 'redirect': url_for('admin_dashboard')})
+    except Exception as error:
+        current_app.logger.warning('Passkey administrativa inválida: %s', error)
+        return jsonify({'error': 'No se pudo validar la identidad en este dispositivo.'}), 401
 
 # Rutas para administrador
 @app.route('/admin')

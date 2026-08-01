@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 
 import hello
 
@@ -16,6 +17,23 @@ class SecurityTests(unittest.TestCase):
         response = hello.app.test_client().get('/metrics')
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'talentupq_http_requests_total', response.data)
+
+    def test_passkey_registration_requires_admin_session(self):
+        response = hello.app.test_client().post('/admin/passkeys/register/options')
+        self.assertEqual(response.status_code, 302)
+
+    def test_passkey_options_require_device_verification(self):
+        with hello.app.test_client() as client:
+            with client.session_transaction() as session:
+                session['tipo'] = 'admin'
+                session['user_id'] = 1
+                session['email'] = 'admin@upq.edu.mx'
+            with patch.object(hello, 'execute_query', return_value=[]):
+                response = client.post('/admin/passkeys/register/options')
+        self.assertEqual(response.status_code, 200)
+        options = response.get_json()
+        self.assertEqual(options['rp']['id'], 'localhost')
+        self.assertEqual(options['authenticatorSelection']['userVerification'], 'required')
 
 
 class ValidationTests(unittest.TestCase):
