@@ -1,5 +1,6 @@
 import unittest
 from unittest.mock import patch
+from urllib.parse import parse_qs, urlparse
 
 import hello
 
@@ -42,6 +43,35 @@ class SecurityTests(unittest.TestCase):
             rp_id, origin = hello.webauthn_config()
         self.assertEqual(rp_id, 'talentupq-api.onrender.com')
         self.assertEqual(origin, 'https://talentupq-api.onrender.com')
+
+    def test_google_oauth_start_uses_state_nonce_and_https_callback(self):
+        with patch.dict('os.environ', {
+            'GOOGLE_CLIENT_ID': 'client-id.apps.googleusercontent.com',
+            'GOOGLE_CLIENT_SECRET': 'server-secret',
+            'GOOGLE_REDIRECT_URI': 'https://talentupq-api.onrender.com/auth/google/callback',
+        }):
+            with hello.app.test_client() as client:
+                response = client.get('/auth/google')
+                with client.session_transaction() as session:
+                    oauth = session['google_oauth']
+        self.assertEqual(response.status_code, 302)
+        query = parse_qs(urlparse(response.location).query)
+        self.assertEqual(query['state'][0], oauth['state'])
+        self.assertEqual(query['nonce'][0], oauth['nonce'])
+        self.assertEqual(
+            query['redirect_uri'][0],
+            'https://talentupq-api.onrender.com/auth/google/callback',
+        )
+
+    def test_google_does_not_create_external_candidate(self):
+        claims = {
+            'sub': 'google-user-id',
+            'email': 'persona@gmail.com',
+            'email_verified': True,
+        }
+        with patch.object(hello, 'execute_query', return_value=[]):
+            with self.assertRaisesRegex(ValueError, '@upq.edu.mx'):
+                hello._google_account(claims)
 
 
 class ValidationTests(unittest.TestCase):

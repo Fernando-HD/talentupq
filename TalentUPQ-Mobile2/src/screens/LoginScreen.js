@@ -14,11 +14,15 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as AuthSession from 'expo-auth-session';
+import * as WebBrowser from 'expo-web-browser';
 import { useUser } from '../context/UserContext';
-import { apiMessage } from '../services/api';
+import { API_URL, apiMessage } from '../services/api';
+
+WebBrowser.maybeCompleteAuthSession();
 
 const LoginScreen = ({ navigation }) => {
-  const { login } = useUser();
+  const { login, googleLogin } = useUser();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -89,6 +93,33 @@ const LoginScreen = ({ navigation }) => {
       navigation.replace('CandidatoDashboard');
     } catch (error) {
       Alert.alert('Error', apiMessage(error));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    try {
+      const redirectUri = AuthSession.makeRedirectUri({
+        scheme: 'talentupq',
+        path: 'google-auth',
+      });
+      const serverOrigin = API_URL.replace(/\/api\/v1\/?$/, '');
+      const authUrl = `${serverOrigin}/auth/google?source=mobile&return_to=${encodeURIComponent(redirectUri)}`;
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+      if (result.type !== 'success' || !result.url) {
+        if (result.type !== 'cancel' && result.type !== 'dismiss') {
+          Alert.alert('Google', 'No fue posible completar el acceso con Google.');
+        }
+        return;
+      }
+      const code = new URL(result.url).searchParams.get('code');
+      if (!code) throw new Error('Google no devolvió el código de acceso.');
+      await googleLogin(code, true);
+      navigation.replace('CandidatoDashboard');
+    } catch (error) {
+      Alert.alert('Acceso con Google', error.response ? apiMessage(error) : error.message);
     } finally {
       setLoading(false);
     }
@@ -269,6 +300,21 @@ const LoginScreen = ({ navigation }) => {
                   </>
                 )}
               </LinearGradient>
+            </TouchableOpacity>
+
+            <View style={styles.googleDivider}>
+              <View style={styles.googleDividerLine} />
+              <Text style={styles.googleDividerText}>o continúa con</Text>
+              <View style={styles.googleDividerLine} />
+            </View>
+            <TouchableOpacity
+              style={styles.googleButton}
+              onPress={handleGoogleLogin}
+              disabled={loading}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="logo-google" size={22} color="#4285F4" />
+              <Text style={styles.googleButtonText}>Continuar con Google</Text>
             </TouchableOpacity>
 
             {/* Footer */}
@@ -506,6 +552,38 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: 'white',
+  },
+  googleDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 18,
+  },
+  googleDividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#e1e5e9',
+  },
+  googleDividerText: {
+    marginHorizontal: 14,
+    color: '#64748b',
+    fontSize: 13,
+  },
+  googleButton: {
+    minHeight: 50,
+    borderWidth: 1,
+    borderColor: '#dbe2ea',
+    borderRadius: 12,
+    backgroundColor: 'white',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    marginBottom: 20,
+  },
+  googleButtonText: {
+    color: '#1e293b',
+    fontSize: 15,
+    fontWeight: '600',
   },
   loader: {
     flexDirection: 'row',

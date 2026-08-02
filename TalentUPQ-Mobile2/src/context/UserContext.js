@@ -113,6 +113,13 @@ export const UserProvider = ({ children }) => {
     return loadAuthenticatedUser(data.usuario);
   };
 
+  const googleLogin = async (code, remember = true) => {
+    const { data } = await api.post('/auth/google/exchange', { code });
+    await saveTokens(data);
+    await AsyncStorage.setItem('rememberSession', remember ? 'true' : 'false');
+    return loadAuthenticatedUser(data.usuario);
+  };
+
   const register = async (form) => {
     const { data } = await api.post('/auth/register', form);
     await saveTokens(data);
@@ -176,6 +183,7 @@ export const UserProvider = ({ children }) => {
       user,
       loading,
       login,
+      googleLogin,
       register,
       logout: clearSession,
       actualizarCandidato,

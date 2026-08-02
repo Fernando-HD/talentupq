@@ -11,8 +11,13 @@ from flask_login import current_user, login_required
 import os
 import re
 import uuid
+import secrets
 import time
+from urllib.parse import urlencode, urlparse
 import psycopg2
+import requests
+from google.auth.transport.requests import Request as GoogleAuthRequest
+from google.oauth2 import id_token as google_id_token
 from cryptography.fernet import Fernet, InvalidToken
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
 from dotenv import load_dotenv
@@ -73,6 +78,17 @@ def webauthn_config():
         os.getenv('WEBAUTHN_RP_ID', host).strip(),
         os.getenv('WEBAUTHN_ORIGIN', f'{request.scheme}://{request.host}').strip(),
     )
+
+
+def google_oauth_config():
+    """Configuración OAuth mantenida exclusivamente en variables del servidor."""
+    client_id = os.getenv('GOOGLE_CLIENT_ID', '').strip()
+    client_secret = os.getenv('GOOGLE_CLIENT_SECRET', '').strip()
+    callback = os.getenv(
+        'GOOGLE_REDIRECT_URI',
+        f'{request.scheme}://{request.host}/auth/google/callback',
+    ).strip()
+    return client_id, client_secret, callback
 
 # ==================== CIFRADO DE DATOS SENSIBLES ====================
 # En producción DATA_ENCRYPTION_KEY debe ser un secreto aleatorio independiente.
@@ -1199,6 +1215,179 @@ def login():
             flash('Correo electrónico o contraseña incorrectos.', 'error')
     
     return render_template('login.html')
+
+
+def _google_account(claims):
+    """Vincula una identidad Google verificada o crea un candidato institucional."""
+    email = str(claims.get('email', '')).strip().lower()
+    subject = str(claims.get('sub', '')).strip()
+    if not email or not subject or not claims.get('email_verified'):
+        raise ValueError('Google no confirmó este correo electrónico.')
+
+    users = execute_query(
+        """SELECT UsuarioID, Email, TipoUsuario, Activo, GoogleSub
+           FROM Usuarios WHERE GoogleSub = ?""",
+        (subject,),
+    )
+    if not users:
+        users = execute_query(
+            """SELECT UsuarioID, Email, TipoUsuario, Activo, GoogleSub
+               FROM Usuarios WHERE LOWER(Email) = ?""",
+            (email,),
+        )
+    if users:
+        user = users[0]
+        if not user['Activo']:
+            raise ValueError('La cuenta está desactivada.')
+        if user['TipoUsuario'] == 'admin':
+            raise ValueError('Los administradores deben usar contraseña o passkey.')
+        if user['TipoUsuario'] == 'candidato' and not email.endswith('@upq.edu.mx'):
+            raise ValueError('Los candidatos deben usar su correo @upq.edu.mx.')
+        if user.get('GoogleSub') and user['GoogleSub'] != subject:
+            raise ValueError('Este correo ya está vinculado con otra cuenta de Google.')
+        if not user.get('GoogleSub'):
+            execute_query(
+                "UPDATE Usuarios SET GoogleSub = ? WHERE UsuarioID = ?",
+                (subject, user['UsuarioID']),
+                fetch=False,
+            )
+        return user
+
+    if not email.endswith('@upq.edu.mx'):
+        raise ValueError('Para crear una cuenta de candidato usa tu correo @upq.edu.mx.')
+
+    first_name = str(claims.get('given_name') or email.split('@')[0]).strip()[:100]
+    last_name = str(claims.get('family_name') or 'UPQ').strip()[:100]
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            """INSERT INTO Usuarios (Email, PasswordHash, TipoUsuario, Activo, GoogleSub)
+               VALUES (?, ?, 'candidato', TRUE, ?) RETURNING UsuarioID""",
+            (email, generate_password_hash(secrets.token_urlsafe(32)), subject),
+        )
+        user_id = cursor.fetchone()[0]
+        cursor.execute(
+            """INSERT INTO Candidatos
+               (CandidatoID, UsuarioID, Nombre, ApellidoPaterno)
+               VALUES (?, ?, ?, ?)""",
+            (user_id, user_id, first_name, last_name),
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        cursor.close()
+        conn.close()
+    enviar_correo_bienvenida(email, f'{first_name} {last_name}', 'candidato')
+    return {
+        'UsuarioID': user_id,
+        'Email': email,
+        'TipoUsuario': 'candidato',
+        'Activo': True,
+        'GoogleSub': subject,
+    }
+
+
+def _valid_mobile_oauth_redirect(value):
+    parsed = urlparse(value or '')
+    return parsed.scheme in {'exp', 'exps', 'talentupq'} and bool(parsed.netloc or parsed.path)
+
+
+@app.get('/auth/google')
+def google_login_start():
+    client_id, client_secret, callback = google_oauth_config()
+    if not client_id or not client_secret:
+        flash('El acceso con Google aún no está configurado en el servidor.', 'error')
+        return redirect(url_for('login'))
+
+    source = request.args.get('source', 'web')
+    mobile_redirect = request.args.get('return_to', '')
+    if source == 'mobile' and not _valid_mobile_oauth_redirect(mobile_redirect):
+        return api_error('La dirección de retorno móvil no es válida.')
+
+    state = secrets.token_urlsafe(32)
+    nonce = secrets.token_urlsafe(32)
+    session['google_oauth'] = {
+        'state': state,
+        'nonce': nonce,
+        'source': source,
+        'mobile_redirect': mobile_redirect,
+    }
+    params = {
+        'client_id': client_id,
+        'redirect_uri': callback,
+        'response_type': 'code',
+        'scope': 'openid email profile',
+        'state': state,
+        'nonce': nonce,
+        'prompt': 'select_account',
+    }
+    return redirect(f"https://accounts.google.com/o/oauth2/v2/auth?{urlencode(params)}")
+
+
+@app.get('/auth/google/callback')
+def google_login_callback():
+    oauth_session = session.pop('google_oauth', None) or {}
+    if request.args.get('error'):
+        flash('El acceso con Google fue cancelado.', 'warning')
+        return redirect(url_for('login'))
+    if not oauth_session or not secrets.compare_digest(
+        request.args.get('state', ''), oauth_session.get('state', '')
+    ):
+        flash('La solicitud de Google expiró o no es válida.', 'error')
+        return redirect(url_for('login'))
+
+    client_id, client_secret, callback = google_oauth_config()
+    try:
+        token_response = requests.post(
+            'https://oauth2.googleapis.com/token',
+            data={
+                'code': request.args.get('code', ''),
+                'client_id': client_id,
+                'client_secret': client_secret,
+                'redirect_uri': callback,
+                'grant_type': 'authorization_code',
+            },
+            timeout=15,
+        )
+        token_response.raise_for_status()
+        token_payload = token_response.json()
+        claims = google_id_token.verify_oauth2_token(
+            token_payload['id_token'], GoogleAuthRequest(), client_id
+        )
+        if not secrets.compare_digest(str(claims.get('nonce', '')), oauth_session['nonce']):
+            raise ValueError('La respuesta de Google no corresponde a esta sesión.')
+        user = _google_account(claims)
+    except ValueError as error:
+        current_app.logger.warning('Acceso Google rechazado: %s', error)
+        flash(str(error), 'error')
+        return redirect(url_for('login'))
+    except Exception as error:
+        current_app.logger.exception('Error completando OAuth de Google: %s', error)
+        flash('No fue posible completar el acceso con Google.', 'error')
+        return redirect(url_for('login'))
+
+    if oauth_session.get('source') == 'mobile':
+        raw_code = secrets.token_urlsafe(32)
+        execute_query(
+            """INSERT INTO OAuthLoginCodes (CodeHash, UsuarioID, ExpiresAt)
+               VALUES (?, ?, CURRENT_TIMESTAMP + INTERVAL '2 minutes')""",
+            (hashlib.sha256(raw_code.encode()).hexdigest(), user['UsuarioID']),
+            fetch=False,
+        )
+        separator = '&' if '?' in oauth_session['mobile_redirect'] else '?'
+        return redirect(f"{oauth_session['mobile_redirect']}{separator}{urlencode({'code': raw_code})}")
+
+    user_obj = User(user['UsuarioID'], user['Email'], user['TipoUsuario'], user['Activo'])
+    login_user(user_obj, remember=True, duration=timedelta(days=30))
+    session.update(email=user['Email'], tipo=user['TipoUsuario'], user_id=user['UsuarioID'])
+    session.permanent = True
+    flash('Inicio de sesión con Google exitoso.', 'success')
+    return redirect(url_for(
+        'empresa_dashboard' if user['TipoUsuario'] == 'empresa' else 'candidato_dashboard'
+    ))
 
 
 @app.route('/logout')
@@ -5959,6 +6148,55 @@ def api_login():
             'Email': user['Email'],
             'TipoUsuario': user['TipoUsuario'],
         }
+    })
+
+
+@app.post('/api/v1/auth/google/exchange')
+def api_google_exchange():
+    raw_code = str((request.get_json(silent=True) or {}).get('code', '')).strip()
+    if not raw_code:
+        return api_error('Falta el código temporal de Google.')
+    code_hash = hashlib.sha256(raw_code.encode()).hexdigest()
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            """UPDATE OAuthLoginCodes SET UsedAt = CURRENT_TIMESTAMP
+               WHERE CodeHash = ? AND UsedAt IS NULL AND ExpiresAt > CURRENT_TIMESTAMP
+               RETURNING UsuarioID""",
+            (code_hash,),
+        )
+        row = cursor.fetchone()
+        if not row:
+            conn.rollback()
+            return api_error('El código de Google expiró o ya fue utilizado.', 401)
+        user_id = row[0]
+        cursor.execute(
+            """SELECT UsuarioID, Email, TipoUsuario, Activo FROM Usuarios
+               WHERE UsuarioID = ?""",
+            (user_id,),
+        )
+        columns = [column[0] for column in cursor.description]
+        user_row = cursor.fetchone()
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        cursor.close()
+        conn.close()
+    if not user_row:
+        return api_error('Usuario no disponible.', 401)
+    user = CaseInsensitiveDict(zip(columns, user_row))
+    identity = str(user['UsuarioID'])
+    return jsonify({
+        'access_token': create_access_token(identity=identity, additional_claims={'tipo': user['TipoUsuario']}),
+        'refresh_token': create_refresh_token(identity=identity),
+        'usuario': {
+            'UsuarioID': user['UsuarioID'],
+            'Email': user['Email'],
+            'TipoUsuario': user['TipoUsuario'],
+        },
     })
 
 

@@ -36,6 +36,12 @@ services:
         value: talentupq-api.onrender.com
       - key: WEBAUTHN_ORIGIN
         value: https://talentupq-api.onrender.com
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        value: https://talentupq-api.onrender.com/auth/google/callback
       - key: MAIL_USERNAME
         sync: false
       - key: MAIL_PASSWORD

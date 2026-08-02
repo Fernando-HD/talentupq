@@ -62,6 +62,17 @@
                     <i class="fas fa-arrow-right btn-icon"></i>
                 </button>
             </div>
+
+            <div class="google-divider"><span>o continúa con</span></div>
+            <a href="{{ url_for('google_login_start') }}" class="google-login-btn">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.09-1.92 3.27-4.76 3.27-8.1z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.87 0-5.3-1.94-6.17-4.55H2.15v2.84A11 11 0 0 0 12 23z"/>
+                    <path fill="#FBBC05" d="M5.83 14.09A6.6 6.6 0 0 1 5.48 12c0-.73.13-1.43.35-2.09V7.07H2.15A11 11 0 0 0 1 12c0 1.77.42 3.44 1.15 4.93l3.68-2.84z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.2 1.64l3.15-3.15A10.6 10.6 0 0 0 12 1a11 11 0 0 0-9.85 6.07l3.68 2.84C6.7 7.31 9.13 5.38 12 5.38z"/>
+                </svg>
+                Continuar con Google
+            </a>
             
             <div class="auth-footer">
                 <p>¿No tienes una cuenta? <a href="{{ url_for('registro') }}" class="auth-link">Regístrate aquí</a></p>
@@ -473,6 +484,47 @@
         padding-top: 1.5rem;
         border-top: 1px solid #e1e5e9;
     }
+
+    .google-divider {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: #94a3b8;
+        font-size: .85rem;
+        margin: 1.25rem 0;
+    }
+
+    .google-divider::before, .google-divider::after {
+        content: '';
+        height: 1px;
+        background: #e2e8f0;
+        flex: 1;
+    }
+
+    .google-login-btn {
+        width: 100%;
+        min-height: 48px;
+        border: 1px solid #dbe2ea;
+        border-radius: 12px;
+        background: white;
+        color: #1e293b;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: .2s ease;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, .05);
+    }
+
+    .google-login-btn:hover {
+        border-color: #4285f4;
+        transform: translateY(-1px);
+        box-shadow: 0 7px 18px rgba(66, 133, 244, .14);
+    }
+
+    .google-login-btn svg { width: 22px; height: 22px; }
     
     .auth-footer p {
         color: #5a6c7d;

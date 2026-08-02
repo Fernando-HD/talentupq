@@ -38,6 +38,20 @@ def main():
             cursor.execute('SET search_path TO public')
             # Fotos embebidas: evita perder archivos en discos efímeros o entre instancias.
             cursor.execute('ALTER TABLE candidatos ALTER COLUMN fotoperfil TYPE TEXT')
+            cursor.execute('ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS googlesub TEXT')
+            cursor.execute(
+                """CREATE UNIQUE INDEX IF NOT EXISTS usuarios_googlesub_unique
+                   ON usuarios (googlesub) WHERE googlesub IS NOT NULL"""
+            )
+            cursor.execute(
+                """CREATE TABLE IF NOT EXISTS oauthlogincodes (
+                       codehash VARCHAR(64) PRIMARY KEY,
+                       usuarioid INTEGER NOT NULL REFERENCES usuarios(usuarioid) ON DELETE CASCADE,
+                       expiresat TIMESTAMP NOT NULL,
+                       usedat TIMESTAMP,
+                       createdat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                   )"""
+            )
             cursor.execute(
                 """CREATE TABLE IF NOT EXISTS adminpasskeys (
                        passkeyid SERIAL PRIMARY KEY,

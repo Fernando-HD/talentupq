@@ -529,6 +529,7 @@ CREATE TABLE public.usuarios (
     activo boolean DEFAULT true,
     resettoken character varying(100),
     resettokenexpira timestamp without time zone,
+    googlesub text,
     CONSTRAINT usuarios_tipousuario_check CHECK (((tipousuario)::text = ANY ((ARRAY['candidato'::character varying, 'empresa'::character varying, 'admin'::character varying])::text[])))
 );
 
@@ -1216,5 +1217,16 @@ ALTER TABLE ONLY public.vacantesrevision
 ALTER TABLE ONLY public.adminpasskeys
     ADD CONSTRAINT adminpasskeys_usuarioid_fkey FOREIGN KEY (usuarioid)
     REFERENCES public.usuarios(usuarioid) ON DELETE CASCADE;
+
+CREATE UNIQUE INDEX usuarios_googlesub_unique
+    ON public.usuarios (googlesub) WHERE googlesub IS NOT NULL;
+
+CREATE TABLE public.oauthlogincodes (
+    codehash character varying(64) PRIMARY KEY,
+    usuarioid integer NOT NULL REFERENCES public.usuarios(usuarioid) ON DELETE CASCADE,
+    expiresat timestamp without time zone NOT NULL,
+    usedat timestamp without time zone,
+    createdat timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
 
 \unrestrict TbnWtklaug4PNPbJBBbMDLz8Kh1natNfIxKmAxRz5HWVWWCzOTfCdtxYEbPX5bi
