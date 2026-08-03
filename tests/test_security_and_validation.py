@@ -31,6 +31,13 @@ class SecurityTests(unittest.TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertIn('bloqueada', response.get_json()['error'])
 
+    def test_firewall_blocks_url_encoded_attack_patterns(self):
+        response = hello.app.test_client().get(
+            '/api/v1/vacantes?q=%3Cscript%3Ealert%281%29%3C%2Fscript%3E'
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertIn('bloqueada', response.get_json()['error'])
+
     def test_firewall_adds_security_headers(self):
         response = hello.app.test_client().get('/api/v1/security/status')
         self.assertEqual(response.headers['X-Content-Type-Options'], 'nosniff')

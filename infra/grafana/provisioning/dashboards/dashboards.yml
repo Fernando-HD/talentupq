@@ -4,4 +4,6 @@ providers:
     folder: TalentUPQ
     type: file
     options:
-      path: /var/lib/grafana/dashboards
+      # /var/lib/grafana tiene un disco persistente en Render. Los dashboards
+      # aprovisionados viven en /etc para que el montaje no los oculte.
+      path: /etc/grafana/dashboards

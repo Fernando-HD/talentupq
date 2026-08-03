@@ -15,7 +15,7 @@ import secrets
 import time
 import threading
 from collections import defaultdict, deque
-from urllib.parse import urlencode, urlparse
+from urllib.parse import unquote_plus, urlencode, urlparse
 import psycopg2
 import requests
 from google.auth.transport.requests import Request as GoogleAuthRequest
@@ -210,9 +210,12 @@ def application_firewall():
             return _firewall_reject('rate_limit', 429)
         attempts.append(now)
 
+    # Los navegadores codifican caracteres peligrosos (%3Cscript%3E); analizar
+    # tanto el valor recibido como su forma decodificada evita el bypass.
     candidate = request.full_path
     if request.method in ('POST', 'PUT', 'PATCH'):
         candidate += request.get_data(cache=True, as_text=True)[:16_384]
+    candidate = f'{candidate}\n{unquote_plus(candidate)}'
     if any(pattern.search(candidate) for pattern in _FIREWALL_PATTERNS):
         return _firewall_reject('malicious_pattern', 403)
 
