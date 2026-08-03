@@ -6,9 +6,9 @@
     {"type":"stat","title":"PostgreSQL disponible","id":2,"gridPos":{"h":8,"w":6,"x":6,"y":0},"targets":[{"expr":"max(talentupq_database_available)","refId":"A"}]},
     {"type":"timeseries","title":"Peticiones por segundo","id":3,"gridPos":{"h":8,"w":12,"x":12,"y":0},"targets":[{"expr":"sum(rate(talentupq_http_requests_total[1m])) by (status)","legendFormat":"HTTP {{status}}","refId":"A"}]},
     {"type":"timeseries","title":"Latencia p95","id":4,"gridPos":{"h":8,"w":12,"x":0,"y":8},"targets":[{"expr":"histogram_quantile(0.95, sum(rate(talentupq_http_request_duration_seconds_bucket[5m])) by (le))","refId":"A"}]},
-    {"type":"timeseries","title":"Bloqueos del firewall","id":5,"gridPos":{"h":8,"w":12,"x":12,"y":8},"targets":[{"expr":"sum(increase(talentupq_firewall_blocked_requests_total[5m])) by (reason)","legendFormat":"{{reason}}","refId":"A"}]},
+    {"type":"timeseries","title":"Bloqueos acumulados del firewall","id":5,"gridPos":{"h":8,"w":12,"x":12,"y":8},"targets":[{"expr":"sum(talentupq_firewall_blocked_requests_total) by (reason)","legendFormat":"{{reason}}","refId":"A"}]},
     {"type":"stat","title":"Peticiones permitidas","id":6,"gridPos":{"h":6,"w":6,"x":0,"y":16},"targets":[{"expr":"sum(talentupq_firewall_allowed_requests_total)","refId":"A"}]},
-    {"type":"stat","title":"Instancias observadas","id":7,"gridPos":{"h":6,"w":6,"x":6,"y":16},"targets":[{"expr":"count(up{job=\"talentupq-api-render\"})","refId":"A"}]}
+    {"type":"stat","title":"Endpoint público monitoreado","id":7,"gridPos":{"h":6,"w":6,"x":6,"y":16},"targets":[{"expr":"count(up{job=\"talentupq-api-render\"})","refId":"A"}]}
   ],
   "schemaVersion": 41,
   "tags": ["talentupq", "security", "monitoring"],
@@ -16,5 +16,5 @@
   "time": {"from":"now-30m","to":"now"},
   "title": "TalentUPQ - Operación y seguridad",
   "uid": "talentupq-security",
-  "version": 1
+  "version": 2
 }
