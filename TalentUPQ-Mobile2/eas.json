@@ -1,0 +1,27 @@
+{
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "preview": {
+      "distribution": "internal",
+      "node": "24.15.0",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://talentupq-api.onrender.com/api/v1"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "production": {
+      "node": "24.15.0",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://talentupq-api.onrender.com/api/v1"
+      },
+      "android": {
+        "buildType": "app-bundle"
+      }
+    }
+  }
+}
