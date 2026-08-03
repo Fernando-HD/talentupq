@@ -13,6 +13,8 @@ import re
 import uuid
 import secrets
 import time
+import threading
+from collections import defaultdict, deque
 from urllib.parse import urlencode, urlparse
 import psycopg2
 import requests
@@ -142,6 +144,80 @@ HTTP_LATENCY = Histogram(
 )
 ACTIVE_REQUESTS = Gauge('talentupq_http_requests_active', 'Peticiones HTTP activas')
 DB_HEALTH = Gauge('talentupq_database_available', 'Disponibilidad de PostgreSQL (1=disponible)')
+FIREWALL_BLOCKS = Counter(
+    'talentupq_firewall_blocked_requests_total',
+    'Peticiones bloqueadas por el firewall de aplicación',
+    ['reason'],
+)
+FIREWALL_ALLOWED = Counter(
+    'talentupq_firewall_allowed_requests_total',
+    'Peticiones permitidas por el firewall de aplicación',
+)
+
+# Firewall de aplicación sencillo y observable. Se ejecuta también en Render,
+# delante de todas las vistas web y endpoints móviles.
+_firewall_windows = defaultdict(deque)
+_firewall_lock = threading.Lock()
+_firewall_started_at = time.time()
+_FIREWALL_PATTERNS = (
+    re.compile(r'(?:\.\./|\.\.\\)'),
+    re.compile(r'<\s*script\b', re.IGNORECASE),
+    re.compile(r'\b(?:union\s+select|drop\s+table|information_schema)\b', re.IGNORECASE),
+)
+
+
+def _firewall_client_key():
+    # ProxyFix normaliza remote_addr usando X-Forwarded-For en Render.
+    return request.remote_addr or 'unknown'
+
+
+def _firewall_reject(reason, status):
+    FIREWALL_BLOCKS.labels(reason).inc()
+    current_app.logger.warning(
+        'Firewall bloqueó solicitud: reason=%s ip=%s path=%s',
+        reason,
+        _firewall_client_key(),
+        request.path,
+    )
+    if request.path.startswith('/api/'):
+        return jsonify({'error': 'Solicitud bloqueada por la política de seguridad.'}), status
+    return 'Solicitud bloqueada por la política de seguridad.', status
+
+
+@app.before_request
+def application_firewall():
+    """Limita abuso y bloquea patrones comunes antes de llegar a la aplicación."""
+    if request.path in ('/api/v1/health', '/metrics'):
+        FIREWALL_ALLOWED.inc()
+        return None
+
+    content_length = request.content_length or 0
+    if content_length > 12 * 1024 * 1024:
+        return _firewall_reject('payload_too_large', 413)
+
+    now = time.monotonic()
+    is_auth = request.path in (
+        '/login', '/admin/login', '/api/v1/auth/login',
+        '/api/v1/auth/password/forgot', '/api/v1/auth/password/verify',
+    )
+    window_seconds, request_limit = (300, 20) if is_auth else (60, 180)
+    key = (_firewall_client_key(), 'auth' if is_auth else 'general')
+    with _firewall_lock:
+        attempts = _firewall_windows[key]
+        while attempts and attempts[0] <= now - window_seconds:
+            attempts.popleft()
+        if len(attempts) >= request_limit:
+            return _firewall_reject('rate_limit', 429)
+        attempts.append(now)
+
+    candidate = request.full_path
+    if request.method in ('POST', 'PUT', 'PATCH'):
+        candidate += request.get_data(cache=True, as_text=True)[:16_384]
+    if any(pattern.search(candidate) for pattern in _FIREWALL_PATTERNS):
+        return _firewall_reject('malicious_pattern', 403)
+
+    FIREWALL_ALLOWED.inc()
+    return None
 
 
 @app.before_request
@@ -154,9 +230,16 @@ def start_request_metrics():
 def finish_request_metrics(response):
     endpoint = request.endpoint or 'not_found'
     HTTP_REQUESTS.labels(request.method, endpoint, response.status_code).inc()
-    started_at = getattr(request, '_metrics_started_at', time.monotonic())
-    HTTP_LATENCY.labels(request.method, endpoint).observe(time.monotonic() - started_at)
-    ACTIVE_REQUESTS.dec()
+    started_at = getattr(request, '_metrics_started_at', None)
+    if started_at is not None:
+        HTTP_LATENCY.labels(request.method, endpoint).observe(time.monotonic() - started_at)
+        ACTIVE_REQUESTS.dec()
+    response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+    response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
+    response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+    response.headers.setdefault('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()')
+    if request.is_secure:
+        response.headers.setdefault('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
     return response
 
 # ==================== CONFIGURACIÓN FLASK-LOGIN ====================
@@ -6090,6 +6173,18 @@ def api_health():
     except Exception:
         DB_HEALTH.set(0)
         return jsonify({'status': 'error', 'database': 'unavailable'}), 503
+
+
+@app.route('/api/v1/security/status', methods=['GET'])
+def api_security_status():
+    """Evidencia pública sin datos sensibles de que el firewall está activo."""
+    return jsonify({
+        'firewall': 'active',
+        'monitoring': 'prometheus',
+        'rate_limit': True,
+        'payload_limit_mb': 12,
+        'uptime_seconds': int(time.time() - _firewall_started_at),
+    })
 
 
 @app.route('/metrics', methods=['GET'])

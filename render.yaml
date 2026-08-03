@@ -50,3 +50,52 @@ services:
         sync: false
       - key: INITIAL_ADMIN_PASSWORD
         sync: false
+
+  # Prometheus consulta las métricas del API desplegado. El disco conserva el
+  # historial entre despliegues y permite mostrar evidencia en Grafana.
+  - name: talentupq-prometheus
+    type: web
+    runtime: docker
+    plan: starter
+    region: oregon
+    dockerfilePath: ./infra/prometheus/Dockerfile.render
+    dockerContext: ./infra/prometheus
+    healthCheckPath: /-/healthy
+    autoDeployTrigger: commit
+    envVars:
+      - key: PORT
+        value: 9090
+    disk:
+      name: prometheus-data
+      mountPath: /prometheus
+      sizeGB: 1
+
+  # Grafana queda accesible para la demostración, con el dashboard de operación
+  # y seguridad aprovisionado automáticamente.
+  - name: talentupq-grafana
+    type: web
+    runtime: docker
+    plan: starter
+    region: oregon
+    dockerfilePath: ./infra/grafana/Dockerfile.render
+    dockerContext: ./infra/grafana
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: GF_SERVER_HTTP_PORT
+        value: 3000
+      - key: GF_SECURITY_ADMIN_USER
+        value: admin
+      - key: GF_SECURITY_ADMIN_PASSWORD
+        generateValue: true
+      - key: PROMETHEUS_HOSTPORT
+        fromService:
+          name: talentupq-prometheus
+          type: web
+          property: hostport
+    disk:
+      name: grafana-data
+      mountPath: /var/lib/grafana
+      sizeGB: 1

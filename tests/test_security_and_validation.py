@@ -18,6 +18,23 @@ class SecurityTests(unittest.TestCase):
         response = hello.app.test_client().get('/metrics')
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'talentupq_http_requests_total', response.data)
+        self.assertIn(b'talentupq_firewall_blocked_requests_total', response.data)
+
+    def test_firewall_status_is_public_and_active(self):
+        response = hello.app.test_client().get('/api/v1/security/status')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()['firewall'], 'active')
+        self.assertTrue(response.get_json()['rate_limit'])
+
+    def test_firewall_blocks_common_attack_patterns(self):
+        response = hello.app.test_client().get('/api/v1/vacantes?q=<script>alert(1)</script>')
+        self.assertEqual(response.status_code, 403)
+        self.assertIn('bloqueada', response.get_json()['error'])
+
+    def test_firewall_adds_security_headers(self):
+        response = hello.app.test_client().get('/api/v1/security/status')
+        self.assertEqual(response.headers['X-Content-Type-Options'], 'nosniff')
+        self.assertEqual(response.headers['X-Frame-Options'], 'SAMEORIGIN')
 
     def test_passkey_registration_requires_admin_session(self):
         response = hello.app.test_client().post('/admin/passkeys/register/options')
