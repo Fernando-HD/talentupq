@@ -33,6 +33,12 @@
       "expo-secure-store",
       "expo-web-browser",
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "80b5846d-ba54-49bb-9101-ecafad1eae27"
+      }
+    },
+    "owner": "fer-hd"
   }
 }
