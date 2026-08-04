@@ -15,6 +15,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useUser } from '../context/UserContext';
+import { clean, isPhone, isUpqEmail, maxLength } from '../utils/validation';
 import { apiMessage } from '../services/api';
 
 const RegisterScreen = ({ navigation }) => {
@@ -83,7 +84,7 @@ const RegisterScreen = ({ navigation }) => {
     if (!formData.nombre) newErrors.nombre = 'El nombre es requerido';
     if (!formData.apellidoPaterno) newErrors.apellidoPaterno = 'El apellido paterno es requerido';
     if (!formData.email) newErrors.email = 'El correo es requerido';
-    else if (!formData.email.trim().toLowerCase().endsWith('@upq.edu.mx')) {
+    else if (!isUpqEmail(formData.email)) {
       newErrors.email = 'Usa tu correo institucional @upq.edu.mx';
     }
     if (!formData.password) newErrors.password = 'La contraseña es requerida';
@@ -93,9 +94,13 @@ const RegisterScreen = ({ navigation }) => {
     if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Las contraseñas no coinciden';
     }
-    if (formData.telefono && formData.telefono.length !== 10) {
+    if (formData.telefono && !isPhone(formData.telefono)) {
       newErrors.telefono = 'El teléfono debe tener 10 dígitos';
     }
+    if (!maxLength(formData.nombre, 100)) newErrors.nombre = 'Máximo 100 caracteres';
+    if (!maxLength(formData.apellidoPaterno, 100)) newErrors.apellidoPaterno = 'Máximo 100 caracteres';
+    if (!maxLength(formData.apellidoMaterno, 100)) newErrors.apellidoMaterno = 'Máximo 100 caracteres';
+    if (!maxLength(formData.direccion, 250)) newErrors.direccion = 'Máximo 250 caracteres';
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -107,7 +112,7 @@ const RegisterScreen = ({ navigation }) => {
     setLoading(true);
     try {
       const result = await register({
-        nombre: formData.nombre.trim(),
+        nombre: clean(formData.nombre),
         apellido: formData.apellidoPaterno.trim(),
         apellidoMaterno: formData.apellidoMaterno.trim(),
         email: formData.email.trim().toLowerCase(),

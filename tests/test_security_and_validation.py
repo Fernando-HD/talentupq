@@ -43,6 +43,20 @@ class SecurityTests(unittest.TestCase):
         self.assertEqual(response.headers['X-Content-Type-Options'], 'nosniff')
         self.assertEqual(response.headers['X-Frame-Options'], 'SAMEORIGIN')
 
+    def test_rate_limit_returns_retry_after(self):
+        hello._firewall_windows.clear()
+        client = hello.app.test_client()
+        for _ in range(180):
+            self.assertEqual(client.get('/api/v1/security/status').status_code, 200)
+        response = client.get('/api/v1/security/status')
+        self.assertEqual(response.status_code, 429)
+        self.assertEqual(response.headers['Retry-After'], '60')
+        hello._firewall_windows.clear()
+
+    def test_production_api_docs_are_disabled_by_default(self):
+        self.assertEqual(hello.app.test_client().get('/apidocs/').status_code, 404)
+        self.assertEqual(hello.app.test_client().get('/api/docs').status_code, 404)
+
     def test_passkey_registration_requires_admin_session(self):
         response = hello.app.test_client().post('/admin/passkeys/register/options')
         self.assertEqual(response.status_code, 302)
@@ -128,6 +142,11 @@ class ValidationTests(unittest.TestCase):
             'FechaFin',
         )
         self.assertIsNotNone(error)
+
+    def test_rejects_invalid_or_negative_numbers(self):
+        self.assertIsNotNone(hello.validate_non_negative_numbers({'Sueldo': '-1'}, ('Sueldo',)))
+        self.assertIsNotNone(hello.validate_non_negative_numbers({'Sueldo': 'abc'}, ('Sueldo',)))
+        self.assertIsNone(hello.validate_non_negative_numbers({'Sueldo': '1500.50'}, ('Sueldo',)))
 
 
 if __name__ == '__main__':

@@ -18,6 +18,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useUser } from '../context/UserContext';
+import { clean, isDate, isFutureDate, isPhone, maxLength } from '../utils/validation';
 
 const { width } = Dimensions.get('window');
 
@@ -61,6 +62,7 @@ const EditarPerfilScreen = ({ navigation }) => {
   const [fotoPerfil, setFotoPerfil] = useState(user.candidato?.FotoPerfil || null);
   const [cvNombre, setCvNombre] = useState(user.candidato?.CV || 'cv_juan_perez.pdf');
   const [edad, setEdad] = useState(29);
+  const [guardando, setGuardando] = useState(false);
 
   const estadosCiviles = ['Soltero/a', 'Casado/a', 'Divorciado/a', 'Viudo/a', 'Unión libre'];
   const generos = ['Masculino', 'Femenino', 'Otro'];
@@ -119,12 +121,36 @@ const EditarPerfilScreen = ({ navigation }) => {
     });
 
     if (!result.canceled) {
-      setCvNombre(result.assets[0].name);
-      Alert.alert('CV actualizado', `Archivo: ${result.assets[0].name}`);
+      const asset = result.assets[0];
+      if (asset.size && asset.size > 10 * 1024 * 1024) {
+        Alert.alert('CV demasiado grande', 'Selecciona un PDF de máximo 10 MB.');
+        return;
+      }
+      setCvNombre(asset.name);
+      Alert.alert('CV actualizado', `Archivo: ${asset.name}`);
     }
   };
 
   const handleSubmit = () => {
+    if (guardando) return;
+    if (!clean(formData.nombre) || !clean(formData.apellidoPaterno)) {
+      return Alert.alert('Revisa los datos', 'Nombre y apellido paterno son obligatorios.');
+    }
+    if (!maxLength(formData.nombre, 100) || !maxLength(formData.apellidoPaterno, 100) || !maxLength(formData.apellidoMaterno, 100)) {
+      return Alert.alert('Revisa los datos', 'Los nombres y apellidos no pueden exceder 100 caracteres.');
+    }
+    if (clean(formData.telefono) && !isPhone(formData.telefono)) {
+      return Alert.alert('Revisa los datos', 'El teléfono debe contener exactamente 10 dígitos.');
+    }
+    if (clean(formData.fechaNacimiento) && (!isDate(formData.fechaNacimiento) || isFutureDate(formData.fechaNacimiento))) {
+      return Alert.alert('Revisa los datos', 'La fecha de nacimiento debe ser válida, usar AAAA-MM-DD y no estar en el futuro.');
+    }
+    if (clean(formData.rfc) && !/^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$/.test(clean(formData.rfc).toUpperCase())) {
+      return Alert.alert('Revisa los datos', 'El RFC no tiene un formato válido.');
+    }
+    if (!maxLength(formData.direccion, 250) || !maxLength(formData.puestoActual, 150) || !maxLength(formData.puestoSeleccionado, 150) || !maxLength(formData.resumen, 3000)) {
+      return Alert.alert('Revisa los datos', 'Dirección, puestos o resumen exceden el tamaño permitido.');
+    }
     Alert.alert(
       'Guardar cambios',
       '¿Estás seguro de que quieres guardar los cambios?',
@@ -133,13 +159,14 @@ const EditarPerfilScreen = ({ navigation }) => {
         {
           text: 'Guardar',
           onPress: async () => {
+            setGuardando(true);
             try {
               // Guardar en el contexto global
               await actualizarCandidato({
-                Nombre: formData.nombre,
-                ApellidoPaterno: formData.apellidoPaterno,
-                ApellidoMaterno: formData.apellidoMaterno,
-                Telefono: formData.telefono,
+                Nombre: clean(formData.nombre),
+                ApellidoPaterno: clean(formData.apellidoPaterno),
+                ApellidoMaterno: clean(formData.apellidoMaterno),
+                Telefono: clean(formData.telefono),
                 FechaNacimiento: formData.fechaNacimiento,
                 Sexo: formData.sexo,
                 EstadoCivil: formData.estadoCivil,
@@ -161,6 +188,8 @@ const EditarPerfilScreen = ({ navigation }) => {
               navigation.goBack();
             } catch (error) {
               Alert.alert('Error', 'No se pudo guardar los cambios');
+            } finally {
+              setGuardando(false);
             }
           },
         },
@@ -177,9 +206,7 @@ const EditarPerfilScreen = ({ navigation }) => {
           <Ionicons name="arrow-back" size={24} color="#1e293b" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Editar Perfil</Text>
-        <TouchableOpacity onPress={handleSubmit} style={styles.saveButton}>
-          <Text style={styles.saveButtonText}>Guardar</Text>
-        </TouchableOpacity>
+        <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView
@@ -541,9 +568,9 @@ const EditarPerfilScreen = ({ navigation }) => {
           </View>
         </View>
 
-        <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+        <TouchableOpacity style={[styles.submitButton, guardando && styles.disabledButton]} onPress={handleSubmit} disabled={guardando}>
           <Ionicons name="save-outline" size={20} color="white" />
-          <Text style={styles.submitButtonText}>Guardar Cambios</Text>
+          <Text style={styles.submitButtonText}>{guardando ? 'Guardando...' : 'Guardar Cambios'}</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -566,6 +593,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',
   },
+  headerSpacer: { width: 56 },
+  disabledButton: { opacity: 0.6 },
   backButton: {
     padding: 4,
   },

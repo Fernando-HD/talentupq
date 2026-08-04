@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUser } from '../context/UserContext';
+import api from '../services/api';
 
 const { width } = Dimensions.get('window');
 
@@ -105,6 +106,7 @@ const CandidatoDashboardScreen = ({ navigation, route }) => {
 
   const noLeidos = Number(user.noLeidos || 0);
   const [completed, setCompleted] = useState(60);
+  const [vacantesDisponibles, setVacantesDisponibles] = useState([]);
 
   // Recalcular completado cuando candidato cambia
   useEffect(() => {
@@ -117,6 +119,20 @@ const CandidatoDashboardScreen = ({ navigation, route }) => {
     if (experienciaLaboral.length > 0) count += 20;
     setCompleted(Math.min(count, 100));
   }, [candidato, habilidades, experienciaLaboral]);
+
+  useEffect(() => {
+    const cargarVacantes = async () => {
+      try {
+        const { data } = await api.get('/vacantes');
+        setVacantesDisponibles(Array.isArray(data) ? data.slice(0, 3) : []);
+      } catch {
+        setVacantesDisponibles([]);
+      }
+    };
+    cargarVacantes();
+    const unsubscribe = navigation.addListener('focus', cargarVacantes);
+    return unsubscribe;
+  }, [navigation]);
 
   const formatDate = (dateInput) => {
     if (!dateInput) return 'Fecha no disponible';
@@ -417,6 +433,43 @@ const CandidatoDashboardScreen = ({ navigation, route }) => {
                   <Ionicons name="cloud-upload-outline" size={14} color="#1e293b" />
                   <Text style={styles.btnOutlineText}>Subir CV</Text>
                 </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <View style={styles.cardHeaderLeft}>
+                <Ionicons name="search-circle-outline" size={19} color={COLORS.primary} />
+                <Text style={styles.cardTitle}>Vacantes disponibles</Text>
+              </View>
+              <TouchableOpacity style={styles.cardEditButton} onPress={() => navigation.navigate('Vacantes')}>
+                <Text style={styles.cardEditText}>Ver todas</Text>
+                <Ionicons name="arrow-forward-outline" size={14} color={COLORS.primary} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.cardBody}>
+              {vacantesDisponibles.length ? vacantesDisponibles.map((vacante) => (
+                <TouchableOpacity
+                  key={vacante.VacanteID}
+                  style={styles.vacanteItem}
+                  onPress={() => navigation.navigate('DetalleVacante', { vacanteId: vacante.VacanteID })}
+                  activeOpacity={0.75}
+                >
+                  <View style={styles.vacanteIcon}>
+                    <Ionicons name="briefcase-outline" size={19} color={COLORS.primary} />
+                  </View>
+                  <View style={styles.vacanteInfo}>
+                    <Text style={styles.vacantePuesto} numberOfLines={1}>{vacante.Puesto}</Text>
+                    <Text style={styles.vacanteEmpresa} numberOfLines={1}>{vacante.EmpresaNombre}</Text>
+                    <Text style={styles.vacanteMeta} numberOfLines={1}>
+                      {[vacante.Modalidad, vacante.Ubicacion].filter(Boolean).join(' · ') || 'Información por definir'}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
+                </TouchableOpacity>
+              )) : (
+                <Text style={styles.emptyState}>No hay vacantes disponibles por el momento.</Text>
               )}
             </View>
           </View>
@@ -758,6 +811,18 @@ const styles = StyleSheet.create({
   navTextActive: {
     color: '#2563eb',
   },
+  vacanteItem: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11,
+    borderBottomWidth: 1, borderBottomColor: '#eef2f7',
+  },
+  vacanteIcon: {
+    width: 38, height: 38, borderRadius: 10, backgroundColor: '#eff6ff',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  vacanteInfo: { flex: 1 },
+  vacantePuesto: { fontSize: 14, fontWeight: '700', color: COLORS.dark },
+  vacanteEmpresa: { fontSize: 12, color: COLORS.gray, marginTop: 2 },
+  vacanteMeta: { fontSize: 11, color: '#94a3b8', marginTop: 2 },
   content: {
     paddingHorizontal: 12,
     paddingTop: 12,

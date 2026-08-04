@@ -59,6 +59,12 @@ export function apiMessage(error) {
   if (error.response.status === 404) {
     return 'La función no existe en la API activa. Reinicia el servidor Flask.';
   }
+  if (error.response.status === 429) {
+    return 'Se hicieron demasiadas solicitudes. Espera un minuto e inténtalo nuevamente.';
+  }
+  if (error.response.status === 413) {
+    return 'El archivo o la información enviada excede el tamaño permitido.';
+  }
   if (error.response.status >= 500) {
     return `El servidor tuvo un error (${error.response.status}). Revisa la terminal de Flask.`;
   }

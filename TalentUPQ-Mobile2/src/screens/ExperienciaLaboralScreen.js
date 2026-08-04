@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import api, { apiMessage } from '../services/api';
+import { clean, isDate, isFutureDate, isNonNegativeNumber, isPhone, maxLength } from '../utils/validation';
 
 const { width } = Dimensions.get('window');
 
@@ -146,15 +147,28 @@ const ExperienciaLaboralScreen = ({ navigation }) => {
       return;
     }
 
+    if (!isDate(formData.fechaIngreso) || isFutureDate(formData.fechaIngreso) || (formData.fechaSalida && (!isDate(formData.fechaSalida) || isFutureDate(formData.fechaSalida)))) {
+      return Alert.alert('Error de fechas', 'Usa fechas válidas en formato AAAA-MM-DD y no posteriores a hoy.');
+    }
+
     if (formData.fechaSalida && formData.fechaIngreso > formData.fechaSalida) {
       Alert.alert('Error de fechas', 'La fecha de salida no puede ser anterior a la fecha de ingreso');
       return;
     }
+    if (clean(formData.telefono) && !isPhone(formData.telefono)) {
+      return Alert.alert('Teléfono inválido', 'El teléfono debe contener exactamente 10 dígitos.');
+    }
+    if (!isNonNegativeNumber(formData.sueldoInicial) || !isNonNegativeNumber(formData.sueldoFinal)) {
+      return Alert.alert('Sueldo inválido', 'Los sueldos deben ser números iguales o mayores a cero.');
+    }
+    if (!maxLength(formData.empresa, 100) || !maxLength(formData.puesto, 100) || !maxLength(formData.domicilio, 250) || !maxLength(formData.funciones, 2000) || !maxLength(formData.motivoSeparacion, 1000)) {
+      return Alert.alert('Datos demasiado largos', 'Uno o más campos exceden el tamaño permitido.');
+    }
 
     const nuevaExperiencia = {
       id: modoEdicion ? experiencias[experienciaEditando].id : Date.now(),
-      Empresa: formData.empresa,
-      Puesto: formData.puesto,
+      Empresa: clean(formData.empresa),
+      Puesto: clean(formData.puesto),
       FechaIngreso: formData.fechaIngreso,
       FechaSalida: formData.fechaSalida || null,
       Domicilio: formData.domicilio,

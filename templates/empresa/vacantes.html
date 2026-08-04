@@ -122,17 +122,17 @@
                     </a>
                     
                     {% if item['Estatus'] == 'aprobada' %}
-                    <a href="{{ url_for('empresa_cambiar_estado_vacante', vacante_id=item['VacanteID'], nuevo_estado='cerrada') }}" 
-                       class="btn-close-vacancy"
-                       onclick="return confirm('¿Estás seguro de cerrar esta vacante? Las postulaciones ya no serán visibles.')">
+                    <form method="POST" action="{{ url_for('empresa_cambiar_estado_vacante', vacante_id=item['VacanteID'], nuevo_estado='cerrada') }}" onsubmit="return confirm('¿Estás seguro de cerrar esta vacante? Las postulaciones ya no serán visibles.')">
+                      <button type="submit" class="btn-close-vacancy">
                         <i class="fas fa-pause-circle"></i> Cerrar vacante
-                    </a>
+                      </button>
+                    </form>
                     {% elif item['Estatus'] == 'cerrada' %}
-                    <a href="{{ url_for('empresa_cambiar_estado_vacante', vacante_id=item['VacanteID'], nuevo_estado='abierta') }}" 
-                       class="btn-reopen-vacancy"
-                       onclick="return confirm('¿Estás seguro de reabrir esta vacante? Los candidatos podrán postularse nuevamente.')">
+                    <form method="POST" action="{{ url_for('empresa_cambiar_estado_vacante', vacante_id=item['VacanteID'], nuevo_estado='aprobada') }}" onsubmit="return confirm('¿Estás seguro de reabrir esta vacante? Los candidatos podrán postularse nuevamente.')">
+                      <button type="submit" class="btn-reopen-vacancy">
                         <i class="fas fa-play-circle"></i> Reabrir vacante
-                    </a>
+                      </button>
+                    </form>
                     {% endif %}
                 </div>
             </div>

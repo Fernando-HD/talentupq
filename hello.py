@@ -70,6 +70,10 @@ app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', app.secret_key)
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = 3600
 app.config['JWT_REFRESH_TOKEN_EXPIRES'] = 2592000
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
+app.config['MAX_CONTENT_LENGTH'] = 12 * 1024 * 1024
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = os.getenv('SESSION_COOKIE_SECURE', os.getenv('RENDER', 'false')).lower() == 'true'
 jwt = JWTManager(app)
 
 
@@ -167,8 +171,9 @@ _FIREWALL_PATTERNS = (
 
 
 def _firewall_client_key():
-    # ProxyFix normaliza remote_addr usando X-Forwarded-For en Render.
-    return request.remote_addr or 'unknown'
+    # Render se publica detrás de Cloudflare; este encabezado evita agrupar a
+    # todos los usuarios bajo la IP del proxy. Nunca se usa como autorización.
+    return request.headers.get('CF-Connecting-IP', request.remote_addr or 'unknown')[:64]
 
 
 def _firewall_reject(reason, status):
@@ -180,8 +185,13 @@ def _firewall_reject(reason, status):
         request.path,
     )
     if request.path.startswith('/api/'):
-        return jsonify({'error': 'Solicitud bloqueada por la política de seguridad.'}), status
-    return 'Solicitud bloqueada por la política de seguridad.', status
+        response = jsonify({'error': 'Solicitud bloqueada por la política de seguridad.'})
+    else:
+        response = current_app.response_class('Solicitud bloqueada por la política de seguridad.')
+    response.status_code = status
+    if status == 429:
+        response.headers['Retry-After'] = '60'
+    return response
 
 
 @app.before_request
@@ -195,6 +205,15 @@ def application_firewall():
     if content_length > 12 * 1024 * 1024:
         return _firewall_reject('payload_too_large', 413)
 
+    # Las APIs usan JWT; para formularios de sesión web se rechazan envíos
+    # cross-site, evitando que otro sitio dispare acciones con la cookie activa.
+    if request.method in ('POST', 'PUT', 'PATCH', 'DELETE') and not request.path.startswith('/api/'):
+        origin = request.headers.get('Origin')
+        fetch_site = request.headers.get('Sec-Fetch-Site', '').lower()
+        expected_origin = f'{request.scheme}://{request.host}'
+        if (origin and origin.rstrip('/') != expected_origin.rstrip('/')) or fetch_site == 'cross-site':
+            return _firewall_reject('cross_site_request', 403)
+
     now = time.monotonic()
     is_auth = request.path in (
         '/login', '/admin/login', '/api/v1/auth/login',
@@ -203,6 +222,12 @@ def application_firewall():
     window_seconds, request_limit = (300, 20) if is_auth else (60, 180)
     key = (_firewall_client_key(), 'auth' if is_auth else 'general')
     with _firewall_lock:
+        # Limpieza acotada para que un escaneo con muchas IP no haga crecer
+        # indefinidamente el diccionario del limitador.
+        if len(_firewall_windows) > 10_000:
+            stale = [item for item, values in _firewall_windows.items() if not values or values[-1] <= now - 300]
+            for item in stale[:5_000]:
+                _firewall_windows.pop(item, None)
         attempts = _firewall_windows[key]
         while attempts and attempts[0] <= now - window_seconds:
             attempts.popleft()
@@ -286,9 +311,6 @@ class User(UserMixin):
     def is_active(self):
         return self.activo == 1 or self.activo == True
 
-# ==================== CORS ====================
-CORS(app, origins=['http://localhost:3000', 'http://127.0.0.1:3000'])
-
 # ==================== SWAGGER ====================
 app.config['SWAGGER'] = {
     'title': 'TalentUPQ API',
@@ -321,7 +343,7 @@ app.config['SWAGGER'] = {
     'swagger_ui_css': '//unpkg.com/swagger-ui-dist@3/swagger-ui.css',
 }
 
-swagger = Swagger(app)
+swagger = Swagger(app) if os.getenv('ENABLE_API_DOCS', 'false').lower() == 'true' else None
 
 # ==================== CONFIGURACIONES ADICIONALES ====================
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
@@ -569,8 +591,11 @@ def enviar_correo_bienvenida(email_usuario, nombre_usuario, tipo_usuario):
     
 
 @app.route('/test_correo/<email>')
+@login_required
 def test_correo(email):
     """Ruta para probar el envío de correos"""
+    if getattr(current_user, 'tipo', None) != 'admin' or os.getenv('ENABLE_TEST_EMAIL', 'false').lower() != 'true':
+        return jsonify({'error': 'Ruta no disponible.'}), 404
     try:
         print(f"🧪 Probando envío de correo a: {email}")
         
@@ -594,11 +619,11 @@ def test_correo(email):
                 'success': False, 
                 'message': '❌ Error enviando correo'
             })
-    except Exception as e:
+    except Exception:
         return jsonify({
             'success': False, 
-            'message': f'❌ Error: {str(e)}'
-        })
+            'message': 'No fue posible enviar el correo.'
+        }), 500
 
 
 
@@ -2465,7 +2490,7 @@ def candidato_ver_vacante(vacante_id):
                          ya_postulado=vacante['ya_postulado'])
 
 
-@app.route('/candidato/postular/<int:vacante_id>')
+@app.route('/candidato/postular/<int:vacante_id>', methods=['POST'])
 @login_required
 @role_required('candidato')
 def candidato_postular(vacante_id):
@@ -2536,7 +2561,7 @@ def candidato_postulaciones():
     
     return render_template('candidato/postulaciones.html', postulaciones=postulaciones)
 
-@app.route('/candidato/cancelar_postulacion/<int:postulacion_id>')
+@app.route('/candidato/cancelar_postulacion/<int:postulacion_id>', methods=['POST'])
 @login_required
 @role_required('candidato')
 def candidato_cancelar_postulacion(postulacion_id):
@@ -3502,7 +3527,7 @@ def empresa_ver_vacante(vacante_id):
 
 
 
-@app.route('/empresa/aceptar_candidato/<int:vacante_id>/<int:candidato_id>')
+@app.route('/empresa/aceptar_candidato/<int:vacante_id>/<int:candidato_id>', methods=['POST'])
 @login_required
 @role_required('empresa')
 def empresa_aceptar_candidato(vacante_id, candidato_id):
@@ -3820,7 +3845,7 @@ def empresa_notificaciones():
     
     return render_template('empresa/notificaciones.html', notificaciones=notificaciones)
 
-@app.route('/empresa/vacante/<int:vacante_id>/<nuevo_estado>')
+@app.route('/empresa/vacante/<int:vacante_id>/<nuevo_estado>', methods=['POST'])
 @login_required
 @role_required('empresa')
 def empresa_cambiar_estado_vacante(vacante_id, nuevo_estado):
@@ -6146,6 +6171,19 @@ def validate_date_order(data, start_field, end_field):
     return None
 
 
+def validate_non_negative_numbers(data, fields):
+    for field in fields:
+        value = data.get(field)
+        if value in (None, ''):
+            continue
+        try:
+            if float(value) < 0:
+                raise ValueError
+        except (TypeError, ValueError):
+            return f'{field} debe ser un número igual o mayor a cero.'
+    return None
+
+
 def current_api_user():
     user_id = int(get_jwt_identity())
     users = execute_query(
@@ -6620,7 +6658,7 @@ def api_experiencias():
     validation_error = validate_api_fields(
         data, required, ('Telefono',), ('FechaIngreso', 'FechaSalida'),
         {'Empresa': 100, 'Puesto': 100, 'Funciones': 2000}
-    ) or validate_date_order(data, 'FechaIngreso', 'FechaSalida')
+    ) or validate_date_order(data, 'FechaIngreso', 'FechaSalida') or validate_non_negative_numbers(data, ('SueldoInicial', 'SueldoFinal'))
     if validation_error:
         return api_error(validation_error)
     row = execute_query(
@@ -6652,7 +6690,7 @@ def api_experiencia_item(item_id):
     validation_error = validate_api_fields(
         data, ('Empresa', 'Puesto', 'FechaIngreso', 'Funciones'), ('Telefono',),
         ('FechaIngreso', 'FechaSalida'), {'Empresa': 100, 'Puesto': 100, 'Funciones': 2000}
-    ) or validate_date_order(data, 'FechaIngreso', 'FechaSalida')
+    ) or validate_date_order(data, 'FechaIngreso', 'FechaSalida') or validate_non_negative_numbers(data, ('SueldoInicial', 'SueldoFinal'))
     if validation_error:
         return api_error(validation_error)
     execute_query(
@@ -6684,6 +6722,8 @@ def api_preparaciones():
         data, required, date_fields=('FechaInicio', 'FechaFin'),
         max_lengths={'Grado': 100, 'Estatus': 30, 'Institucion': 150, 'Pais': 80}
     ) or validate_date_order(data, 'FechaInicio', 'FechaFin')
+    if data.get('Cedula') and not re.fullmatch(r'[A-Za-z0-9-]{4,30}', str(data['Cedula']).strip()):
+        validation_error = validation_error or 'Cedula sólo admite letras, números y guiones (4 a 30 caracteres).'
     if validation_error:
         return api_error(validation_error)
     rows = execute_query(
@@ -6715,6 +6755,8 @@ def api_preparacion_item(item_id):
         date_fields=('FechaInicio', 'FechaFin'),
         max_lengths={'Grado': 100, 'Estatus': 30, 'Institucion': 150, 'Pais': 80}
     ) or validate_date_order(data, 'FechaInicio', 'FechaFin')
+    if data.get('Cedula') and not re.fullmatch(r'[A-Za-z0-9-]{4,30}', str(data['Cedula']).strip()):
+        validation_error = validation_error or 'Cedula sólo admite letras, números y guiones (4 a 30 caracteres).'
     if validation_error:
         return api_error(validation_error)
     execute_query(
@@ -7058,8 +7100,9 @@ def api_vacantes():
             ORDER BY v.FechaPublicacion DESC
         """)
         return jsonify(vacantes)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    except Exception:
+        current_app.logger.exception('No fue posible consultar vacantes')
+        return api_error('No fue posible consultar las vacantes.', 500)
 
 @app.route('/api/v1/vacantes/<int:vacante_id>', methods=['GET', 'OPTIONS'])
 def api_vacante_detalle(vacante_id):
@@ -7127,8 +7170,9 @@ def api_vacante_detalle(vacante_id):
             return jsonify({'error': 'Vacante no encontrada'}), 404
         
         return jsonify(vacante[0])
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    except Exception:
+        current_app.logger.exception('No fue posible consultar el detalle de vacante')
+        return api_error('No fue posible consultar la vacante.', 500)
 
 @app.route('/api/v1/estadisticas', methods=['GET', 'OPTIONS'])
 def api_estadisticas_publicas():
@@ -7183,8 +7227,9 @@ def api_estadisticas_publicas():
             'total_empresas': total_empresas,
             'vacantes_por_modalidad': modalidades
         })
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    except Exception:
+        current_app.logger.exception('No fue posible consultar estadísticas')
+        return api_error('No fue posible consultar las estadísticas.', 500)
 
 @app.route('/api/v1/habilidades', methods=['GET', 'OPTIONS'])
 def api_habilidades():
@@ -7218,12 +7263,15 @@ def api_habilidades():
     try:
         habilidades = execute_query("SELECT HabilidadID, Nombre FROM Habilidades ORDER BY Nombre")
         return jsonify(habilidades)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    except Exception:
+        current_app.logger.exception('No fue posible consultar habilidades')
+        return api_error('No fue posible consultar las habilidades.', 500)
     
 @app.route('/api/docs')
 def api_docs():
     """Redirigir a la documentación Swagger"""
+    if swagger is None:
+        return api_error('Documentación no disponible.', 404)
     return redirect('/apidocs')
 
 

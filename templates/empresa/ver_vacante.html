@@ -44,21 +44,21 @@
             </div>
         </div>
         
-        {% if vacante.Estatus == 'abierta' %}
+        {% if vacante.Estatus == 'aprobada' %}
         <div class="header-actions">
-            <a href="{{ url_for('empresa_cambiar_estado_vacante', vacante_id=vacante.VacanteID, nuevo_estado='cerrada') }}" 
-               class="btn-pause"
-               onclick="return confirm('¿Estás seguro de cerrar esta vacante? Las postulaciones ya no serán visibles para nuevos candidatos.')">
+            <form method="POST" action="{{ url_for('empresa_cambiar_estado_vacante', vacante_id=vacante.VacanteID, nuevo_estado='cerrada') }}" onsubmit="return confirm('¿Estás seguro de cerrar esta vacante? Las postulaciones ya no serán visibles para nuevos candidatos.')">
+              <button type="submit" class="btn-pause">
                 <i class="fas fa-pause-circle"></i> Cerrar vacante
-            </a>
+              </button>
+            </form>
         </div>
         {% elif vacante.Estatus == 'cerrada' %}
         <div class="header-actions">
-            <a href="{{ url_for('empresa_cambiar_estado_vacante', vacante_id=vacante.VacanteID, nuevo_estado='abierta') }}" 
-               class="btn-reopen"
-               onclick="return confirm('¿Estás seguro de reabrir esta vacante? Los candidatos podrán postularse nuevamente.')">
+            <form method="POST" action="{{ url_for('empresa_cambiar_estado_vacante', vacante_id=vacante.VacanteID, nuevo_estado='aprobada') }}" onsubmit="return confirm('¿Estás seguro de reabrir esta vacante? Los candidatos podrán postularse nuevamente.')">
+              <button type="submit" class="btn-reopen">
                 <i class="fas fa-play-circle"></i> Reabrir vacante
-            </a>
+              </button>
+            </form>
         </div>
         {% endif %}
     </div>
@@ -284,11 +284,11 @@
                                 
                                 {% if not post.Estatus or post.Estatus == 'pendiente' %}
                                 <div class="decision-buttons">
-                                    <a href="{{ url_for('empresa_aceptar_candidato', vacante_id=vacante.VacanteID, candidato_id=post.CandidatoID) }}" 
-                                       class="btn-accept"
-                                       onclick="return confirm('¿Aceptar a {{ post.Nombre }} {{ post.Apellido }} para esta vacante?')">
+                                    <form method="POST" action="{{ url_for('empresa_aceptar_candidato', vacante_id=vacante.VacanteID, candidato_id=post.CandidatoID) }}" onsubmit="return confirm('¿Aceptar a {{ post.Nombre }} {{ post.Apellido }} para esta vacante?')">
+                                      <button type="submit" class="btn-accept">
                                         <i class="fas fa-check"></i> Aceptar
-                                    </a>
+                                      </button>
+                                    </form>
                                     <a href="{{ url_for('empresa_rechazar_candidato', vacante_id=vacante.VacanteID, candidato_id=post.CandidatoID) }}" 
                                        class="btn-reject"
                                        onclick="return confirm('¿Rechazar a {{ post.Nombre }} {{ post.Apellido }} para esta vacante?')">

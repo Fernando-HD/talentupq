@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import api, { apiMessage } from '../services/api';
+import { clean, isIntegerInRange, isPhone, maxLength } from '../utils/validation';
 
 const { width } = Dimensions.get('window');
 
@@ -128,6 +129,9 @@ const ReferenciasScreen = ({ navigation }) => {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
+        if (asset.size && asset.size > 5 * 1024 * 1024) {
+          return Alert.alert('Documento demasiado grande', 'Selecciona un PDF de máximo 5 MB.');
+        }
         setFormData(prev => ({ 
           ...prev, 
           documento: { 
@@ -150,16 +154,17 @@ const ReferenciasScreen = ({ navigation }) => {
       return;
     }
 
-    if (parseInt(formData.anosConocer) < 1) {
-      Alert.alert('Error', 'Los años de conocer deben ser al menos 1');
-      return;
+    if (!isPhone(formData.telefono)) return Alert.alert('Teléfono inválido', 'El teléfono debe contener exactamente 10 dígitos.');
+    if (!isIntegerInRange(formData.anosConocer, 1, 80)) return Alert.alert('Años inválidos', 'Los años de conocer deben ser un entero entre 1 y 80.');
+    if (!maxLength(formData.nombre, 150) || !maxLength(formData.ocupacion, 100) || !maxLength(formData.empresa, 150)) {
+      return Alert.alert('Datos demasiado largos', 'Nombre, ocupación o empresa exceden el tamaño permitido.');
     }
 
     const nuevaReferencia = {
       id: modoEdicion ? referencias[referenciaEditando].id : Date.now(),
-      Nombre: formData.nombre,
-      Ocupacion: formData.ocupacion,
-      Telefono: formData.telefono,
+      Nombre: clean(formData.nombre),
+      Ocupacion: clean(formData.ocupacion),
+      Telefono: clean(formData.telefono),
       AnosConocer: parseInt(formData.anosConocer),
       Empresa: formData.empresa,
       Documento: formData.documento ? formData.documento.name : (modoEdicion ? referencias[referenciaEditando].Documento : null),

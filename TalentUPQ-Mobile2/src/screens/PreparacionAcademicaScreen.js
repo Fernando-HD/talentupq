@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import api, { apiMessage } from '../services/api';
+import { clean, isDate, isFutureDate, maxLength } from '../utils/validation';
 
 const { width } = Dimensions.get('window');
 
@@ -133,15 +134,25 @@ const PreparacionAcademicaScreen = ({ navigation }) => {
       return;
     }
 
+    if (!isDate(formData.fechaInicio) || isFutureDate(formData.fechaInicio) || (formData.fechaFin && !isDate(formData.fechaFin))) {
+      return Alert.alert('Error de fechas', 'Usa fechas válidas en formato AAAA-MM-DD; el inicio no puede estar en el futuro.');
+    }
+
     if (formData.fechaFin && formData.fechaInicio > formData.fechaFin) {
       Alert.alert('Error de fechas', 'La fecha de finalización no puede ser anterior a la fecha de inicio');
       return;
     }
+    if (clean(formData.cedula) && !/^[A-Za-z0-9-]{4,30}$/.test(clean(formData.cedula))) {
+      return Alert.alert('Cédula inválida', 'La cédula sólo puede contener letras, números y guiones (4 a 30 caracteres).');
+    }
+    if (!maxLength(formData.grado, 100) || !maxLength(formData.institucion, 150) || !maxLength(formData.pais, 80)) {
+      return Alert.alert('Datos demasiado largos', 'Grado, institución o país exceden el tamaño permitido.');
+    }
 
     const nuevaPreparacion = {
       id: modoEdicion ? preparaciones[preparacionEditando].id : Date.now(),
-      Grado: formData.grado,
-      Institucion: formData.institucion,
+      Grado: clean(formData.grado),
+      Institucion: clean(formData.institucion),
       Cedula: formData.cedula,
       Estatus: formData.estatus,
       Pais: formData.pais,

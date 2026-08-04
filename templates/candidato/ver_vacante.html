@@ -14,12 +14,13 @@
         </div>
         <div class="vacante-header-right">
             {% if not ya_postulado %}
-            <a href="{{ url_for('candidato_postular', vacante_id=vacante.id) }}" class="btn-postular" 
-               onclick="return confirmPostulacion()">
+            <form method="POST" action="{{ url_for('candidato_postular', vacante_id=vacante.id) }}" onsubmit="return confirmPostulacion()">
+              <button type="submit" class="btn-postular">
                 <i class="fas fa-paper-plane"></i>
                 <span>Postularme ahora</span>
                 <i class="fas fa-arrow-right"></i>
-            </a>
+              </button>
+            </form>
             {% endif %}
         </div>
     </div>
@@ -218,11 +219,12 @@
             <div class="action-card">
                 <h4>¿Listo para postularte?</h4>
                 <p>Asegúrate de tener tu perfil completo y CV actualizado</p>
-                <a href="{{ url_for('candidato_postular', vacante_id=vacante.id) }}" class="btn-postular-sidebar" 
-                   onclick="return confirmPostulacion()">
+                <form method="POST" action="{{ url_for('candidato_postular', vacante_id=vacante.id) }}" onsubmit="return confirmPostulacion()">
+                  <button type="submit" class="btn-postular-sidebar">
                     <i class="fas fa-paper-plane"></i>
                     Postularme ahora
-                </a>
+                  </button>
+                </form>
                 <small class="action-note">
                     <i class="fas fa-shield-alt"></i>
                     Tus datos están seguros

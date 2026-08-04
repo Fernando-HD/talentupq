@@ -161,9 +161,7 @@ const MisHabilidadesScreen = ({ navigation }) => {
           <Ionicons name="star-outline" size={20} color="#2563eb" />
           <Text style={styles.headerTitle}>Mis Habilidades</Text>
         </View>
-        <TouchableOpacity onPress={handleGuardar} style={styles.saveButton}>
-          <Text style={styles.saveButtonText}>Guardar</Text>
-        </TouchableOpacity>
+        <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView 
@@ -346,6 +344,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',
   },
+  headerSpacer: { width: 56 },
   backButton: {
     padding: 4,
   },
