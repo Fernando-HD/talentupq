@@ -250,6 +250,7 @@ const ChatbotScreen = ({ navigation }) => {
   const renderCompatibility = (text) => {
     const data = compatibilityData(text);
     if (!data) return null;
+    const percent = Number.isFinite(Number(data.percent)) ? Math.max(0, Math.min(100, Number(data.percent))) : 0;
     return (
       <View style={[styles.compatibilityCard, { backgroundColor: data.soft, borderColor: data.track }]}>
         <View style={styles.compatibilityTopRow}>
@@ -261,12 +262,12 @@ const ChatbotScreen = ({ navigation }) => {
             <Text style={styles.compatibilityLabel}>Compatibilidad de tu perfil</Text>
           </View>
           <Text style={[styles.compatibilityValue, { color: data.color }]}>
-            {data.percent.toFixed(1)}%
+            {percent.toFixed(1)}%
           </Text>
         </View>
         <View style={[styles.compatibilityTrack, { backgroundColor: data.track }]}>
           <View style={[styles.compatibilityFill, {
-            width: `${data.percent}%`,
+            width: `${percent}%`,
             backgroundColor: data.color,
           }]} />
         </View>

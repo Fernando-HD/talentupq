@@ -98,12 +98,18 @@ export const UserProvider = ({ children }) => {
       api.get('/experiencias'),
       api.get('/conversaciones'),
     ]);
-    const selected = new Set(skillData.habilidadesActuales || []);
-    const habilidades = (skillData.habilidades || [])
+    const selected = new Set(Array.isArray(skillData?.habilidadesActuales) ? skillData.habilidadesActuales : []);
+    const habilidades = (Array.isArray(skillData?.habilidades) ? skillData.habilidades : [])
       .filter((item) => selected.has(item.HabilidadID))
       .map((item) => item.Nombre);
-    const noLeidos = (conversaciones || []).reduce((sum, item) => sum + Number(item.NoLeidos || 0), 0);
-    return persistUser(toUser(account, profile, { postulaciones, habilidades, experiencias, noLeidos }));
+    const safeConversations = Array.isArray(conversaciones) ? conversaciones : [];
+    const noLeidos = safeConversations.reduce((sum, item) => sum + Number(item.NoLeidos || 0), 0);
+    return persistUser(toUser(account, profile || {}, {
+      postulaciones: Array.isArray(postulaciones) ? postulaciones : [],
+      habilidades,
+      experiencias: Array.isArray(experiencias) ? experiencias : [],
+      noLeidos,
+    }));
   };
 
   const login = async (email, password, remember = false) => {

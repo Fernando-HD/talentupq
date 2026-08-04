@@ -117,10 +117,11 @@ const VacantesScreen = ({ navigation }) => {
     const cargarVacantes = async () => {
       try {
         const { data } = await api.get('/vacantes');
-        const normalized = data.map((item) => ({
-          id: item.VacanteID,
-          puesto: item.Puesto,
-          empresa_nombre: item.EmpresaNombre,
+        const rows = Array.isArray(data) ? data : [];
+        const normalized = rows.map((item, index) => ({
+          id: item.VacanteID ?? `vacante-${index}`,
+          puesto: String(item.Puesto ?? 'Vacante sin nombre'),
+          empresa_nombre: String(item.EmpresaNombre ?? 'Empresa no especificada'),
           modalidad: (item.Modalidad || '').toLowerCase().replace('í', 'i'),
           grado_estudios: item.GradoEstudios || '',
           ubicacion: item.Ubicacion || 'Por definir',

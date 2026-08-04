@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 const FeedbackContext = createContext(null);
 
 const toneFor = (title = '') => {
-  const value = title.toLowerCase();
+  const value = String(title || '').toLowerCase();
   if (value.includes('error') || value.includes('no fue posible')) {
     return { color: '#dc2626', soft: '#fef2f2', icon: 'alert-circle' };
   }

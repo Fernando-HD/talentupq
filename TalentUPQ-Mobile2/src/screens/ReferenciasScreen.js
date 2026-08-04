@@ -60,7 +60,15 @@ const ReferenciasScreen = ({ navigation }) => {
   const cargarReferencias = async () => {
     try {
       const { data } = await api.get('/referencias');
-      setReferencias(data.map((item) => ({ ...item, id: item.ReferenciaID })));
+      const rows = Array.isArray(data) ? data : [];
+      setReferencias(rows.map((item, index) => ({
+        ...item,
+        id: item.ReferenciaID ?? `referencia-${index}`,
+        Nombre: String(item.Nombre ?? 'Referencia sin nombre'),
+        Ocupacion: String(item.Ocupacion ?? ''),
+        Telefono: String(item.Telefono ?? ''),
+        Empresa: String(item.Empresa ?? ''),
+      })));
     } catch (error) {
       Alert.alert('Error', apiMessage(error));
     }
@@ -378,12 +386,12 @@ const ReferenciasScreen = ({ navigation }) => {
             <View style={styles.cardHeaderIcon}>
               <Ionicons name="people-outline" size={20} color="#2563eb" />
             </View>
-            <Text style={styles.cardTitle}>
-              Mis Referencias
+            <View style={styles.headerTitleContainer}>
+              <Text style={styles.cardTitle}>Mis Referencias</Text>
               <View style={styles.countBadge}>
                 <Text style={styles.countBadgeText}>{referencias.length}</Text>
               </View>
-            </Text>
+            </View>
           </View>
 
           <View style={styles.cardBody}>

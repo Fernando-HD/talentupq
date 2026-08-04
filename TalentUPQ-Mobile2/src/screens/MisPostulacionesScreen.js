@@ -86,18 +86,19 @@ const MisPostulacionesScreen = ({ navigation }) => {
   useFocusEffect(useCallback(() => {
     api.get('/postulaciones')
       .then(({ data }) => {
-        const normalized = data.map((item) => ({
-          id: item.PostulacionID,
+        const rows = Array.isArray(data) ? data : [];
+        const normalized = rows.map((item, index) => ({
+          id: item.PostulacionID ?? `postulacion-${index}`,
           vacante: {
             id: item.VacanteID,
-            puesto: item.Puesto,
-            empresa: item.EmpresaNombre,
+            puesto: String(item.Puesto ?? 'Vacante sin nombre'),
+            empresa: String(item.EmpresaNombre ?? 'Empresa no especificada'),
           },
           postulacion: {
             id: item.PostulacionID,
             fecha: item.FechaPostulacion?.slice(0, 10),
-            estatus: item.Estatus,
-            comentarios: item.Comentarios,
+            estatus: String(item.Estatus ?? 'pendiente'),
+            comentarios: item.Comentarios == null ? null : String(item.Comentarios),
           },
         }));
         setPostulaciones(normalized);
@@ -113,8 +114,8 @@ const MisPostulacionesScreen = ({ navigation }) => {
     } else {
       const filtered = postulaciones.filter(
         (post) =>
-          post.vacante.puesto.toLowerCase().includes(text.toLowerCase()) ||
-          post.vacante.empresa.toLowerCase().includes(text.toLowerCase())
+          String(post.vacante?.puesto || '').toLowerCase().includes(text.toLowerCase()) ||
+          String(post.vacante?.empresa || '').toLowerCase().includes(text.toLowerCase())
       );
       setFilteredPostulaciones(filtered);
     }
@@ -152,7 +153,7 @@ const MisPostulacionesScreen = ({ navigation }) => {
   };
 
   const getBadgeStyle = (estatus) => {
-    switch (estatus.toLowerCase()) {
+    switch (String(estatus || '').toLowerCase()) {
       case 'aceptado':
         return styles.badgeSuccess;
       case 'rechazado':
@@ -163,7 +164,7 @@ const MisPostulacionesScreen = ({ navigation }) => {
   };
 
   const getBadgeTextStyle = (estatus) => {
-    switch (estatus.toLowerCase()) {
+    switch (String(estatus || '').toLowerCase()) {
       case 'aceptado':
         return styles.badgeTextSuccess;
       case 'rechazado':
@@ -174,7 +175,7 @@ const MisPostulacionesScreen = ({ navigation }) => {
   };
 
   const getBadgeIcon = (estatus) => {
-    switch (estatus.toLowerCase()) {
+    switch (String(estatus || '').toLowerCase()) {
       case 'aceptado':
         return 'checkmark-circle-outline';
       case 'rechazado':

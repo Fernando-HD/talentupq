@@ -237,7 +237,7 @@ const PreparacionAcademicaScreen = ({ navigation }) => {
   };
 
   const getStatusTextStyle = (estatus) => {
-    switch (estatus.toLowerCase()) {
+    switch (String(estatus || '').toLowerCase()) {
       case 'completo':
         return styles.statusTextCompleto;
       case 'en curso':
@@ -455,12 +455,12 @@ const PreparacionAcademicaScreen = ({ navigation }) => {
             <View style={styles.cardHeaderIcon}>
               <Ionicons name="book-outline" size={20} color="#2563eb" />
             </View>
-            <Text style={styles.cardTitle}>
-              Mis Estudios
+            <View style={styles.headerTitleContainer}>
+              <Text style={styles.cardTitle}>Mis Estudios</Text>
               <View style={styles.countBadge}>
                 <Text style={styles.countBadgeText}>{preparaciones.length}</Text>
               </View>
-            </Text>
+            </View>
           </View>
 
           <View style={styles.cardBody}>

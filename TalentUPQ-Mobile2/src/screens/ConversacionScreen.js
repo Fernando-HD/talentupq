@@ -81,10 +81,15 @@ const ConversacionScreen = ({ navigation, route }) => {
     try {
       const { data } = await api.get(`/conversaciones/${conversacionId}`);
         setVacante({
-          Puesto: data.conversacion.Puesto,
-          EmpresaNombre: data.conversacion.EmpresaNombre,
+          Puesto: String(data?.conversacion?.Puesto ?? ''),
+          EmpresaNombre: String(data?.conversacion?.EmpresaNombre ?? ''),
         });
-        setMensajes(data.mensajes.map((item) => ({ ...item, id: item.MensajeID })));
+        const rows = Array.isArray(data?.mensajes) ? data.mensajes : [];
+        setMensajes(rows.map((item, index) => ({
+          ...item,
+          id: item.MensajeID ?? `mensaje-${index}`,
+          Contenido: String(item.Contenido ?? ''),
+        })));
         setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
     } catch (error) {
       if (showError) Alert.alert('Error', apiMessage(error));

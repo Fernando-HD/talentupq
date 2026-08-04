@@ -78,7 +78,15 @@ const MisConversacionesScreen = ({ navigation }) => {
   const cargarConversaciones = useCallback(async (showError = false) => {
     try {
       const { data } = await api.get('/conversaciones');
-      setConversaciones(data);
+      const rows = Array.isArray(data) ? data : [];
+      setConversaciones(rows.map((item, index) => ({
+        ...item,
+        ConversacionID: item.ConversacionID ?? `conversacion-${index}`,
+        EmpresaNombre: String(item.EmpresaNombre ?? ''),
+        VacantePuesto: String(item.VacantePuesto ?? ''),
+        UltimoMensaje: String(item.UltimoMensaje ?? ''),
+        NoLeidos: Number(item.NoLeidos || 0),
+      })));
     } catch (error) {
       if (showError) Alert.alert('Error', apiMessage(error));
     }
@@ -145,12 +153,12 @@ const MisConversacionesScreen = ({ navigation }) => {
             <View style={styles.cardHeaderIcon}>
               <Ionicons name="mail-outline" size={18} color="#2563eb" />
             </View>
-            <Text style={styles.cardTitle}>
-              Chats Activos
+            <View style={styles.headerTitleContainer}>
+              <Text style={styles.cardTitle}>Chats Activos</Text>
               <View style={styles.countBadge}>
                 <Text style={styles.countBadgeText}>{conversaciones.length}</Text>
               </View>
-            </Text>
+            </View>
           </View>
 
           <View style={styles.cardBody}>
