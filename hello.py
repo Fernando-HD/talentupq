@@ -6171,6 +6171,15 @@ def validate_date_order(data, start_field, end_field):
     return None
 
 
+def validate_not_future_dates(data, fields):
+    today = date.today().isoformat()
+    for field in fields:
+        value = data.get(field)
+        if value and str(value)[:10] > today:
+            return f'{field} no puede estar en el futuro.'
+    return None
+
+
 def validate_non_negative_numbers(data, fields):
     for field in fields:
         value = data.get(field)
@@ -6582,6 +6591,11 @@ def api_perfil():
             parsed_birth_date = datetime.strptime(str(fecha_nacimiento)[:10], '%Y-%m-%d').date()
             if parsed_birth_date > date.today():
                 return api_error('La fecha de nacimiento no puede estar en el futuro.')
+            age = date.today().year - parsed_birth_date.year - (
+                (date.today().month, date.today().day) < (parsed_birth_date.month, parsed_birth_date.day)
+            )
+            if age < 18 or age > 100:
+                return api_error('El candidato debe tener entre 18 y 100 años.')
         except ValueError:
             return api_error('La fecha de nacimiento debe tener formato AAAA-MM-DD.')
     limits = {
@@ -6728,7 +6742,7 @@ def api_experiencias():
     validation_error = validate_api_fields(
         data, required, ('Telefono',), ('FechaIngreso', 'FechaSalida'),
         {'Empresa': 100, 'Puesto': 100, 'Funciones': 2000}
-    ) or validate_date_order(data, 'FechaIngreso', 'FechaSalida') or validate_non_negative_numbers(data, ('SueldoInicial', 'SueldoFinal'))
+    ) or validate_not_future_dates(data, ('FechaIngreso', 'FechaSalida')) or validate_date_order(data, 'FechaIngreso', 'FechaSalida') or validate_non_negative_numbers(data, ('SueldoInicial', 'SueldoFinal'))
     if validation_error:
         return api_error(validation_error)
     row = execute_query(
@@ -6760,7 +6774,7 @@ def api_experiencia_item(item_id):
     validation_error = validate_api_fields(
         data, ('Empresa', 'Puesto', 'FechaIngreso', 'Funciones'), ('Telefono',),
         ('FechaIngreso', 'FechaSalida'), {'Empresa': 100, 'Puesto': 100, 'Funciones': 2000}
-    ) or validate_date_order(data, 'FechaIngreso', 'FechaSalida') or validate_non_negative_numbers(data, ('SueldoInicial', 'SueldoFinal'))
+    ) or validate_not_future_dates(data, ('FechaIngreso', 'FechaSalida')) or validate_date_order(data, 'FechaIngreso', 'FechaSalida') or validate_non_negative_numbers(data, ('SueldoInicial', 'SueldoFinal'))
     if validation_error:
         return api_error(validation_error)
     execute_query(
@@ -6792,6 +6806,12 @@ def api_preparaciones():
         data, required, date_fields=('FechaInicio', 'FechaFin'),
         max_lengths={'Grado': 100, 'Estatus': 30, 'Institucion': 150, 'Pais': 80}
     ) or validate_date_order(data, 'FechaInicio', 'FechaFin')
+    if data.get('Estatus') == 'Completo':
+        validation_error = validation_error or (None if data.get('FechaFin') else 'Los estudios completos requieren FechaFin.')
+        validation_error = validation_error or validate_not_future_dates(data, ('FechaFin',))
+    elif data.get('Estatus') == 'Incompleto':
+        validation_error = validation_error or validate_not_future_dates(data, ('FechaFin',))
+    validation_error = validation_error or validate_not_future_dates(data, ('FechaInicio',))
     if data.get('Cedula') and not re.fullmatch(r'[A-Za-z0-9-]{4,30}', str(data['Cedula']).strip()):
         validation_error = validation_error or 'Cedula sólo admite letras, números y guiones (4 a 30 caracteres).'
     if validation_error:
@@ -6825,6 +6845,12 @@ def api_preparacion_item(item_id):
         date_fields=('FechaInicio', 'FechaFin'),
         max_lengths={'Grado': 100, 'Estatus': 30, 'Institucion': 150, 'Pais': 80}
     ) or validate_date_order(data, 'FechaInicio', 'FechaFin')
+    if data.get('Estatus') == 'Completo':
+        validation_error = validation_error or (None if data.get('FechaFin') else 'Los estudios completos requieren FechaFin.')
+        validation_error = validation_error or validate_not_future_dates(data, ('FechaFin',))
+    elif data.get('Estatus') == 'Incompleto':
+        validation_error = validation_error or validate_not_future_dates(data, ('FechaFin',))
+    validation_error = validation_error or validate_not_future_dates(data, ('FechaInicio',))
     if data.get('Cedula') and not re.fullmatch(r'[A-Za-z0-9-]{4,30}', str(data['Cedula']).strip()):
         validation_error = validation_error or 'Cedula sólo admite letras, números y guiones (4 a 30 caracteres).'
     if validation_error:

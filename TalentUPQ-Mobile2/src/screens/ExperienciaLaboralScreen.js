@@ -69,7 +69,17 @@ const ExperienciaLaboralScreen = ({ navigation }) => {
   const cargarExperiencias = async () => {
     try {
       const { data } = await api.get('/experiencias');
-      setExperiencias(data.map((item) => ({ ...item, id: item.ExperienciaID })));
+      const rows = Array.isArray(data) ? data : [];
+      setExperiencias(rows.map((item, index) => ({
+        ...item,
+        id: item.ExperienciaID ?? `experiencia-${index}`,
+        Empresa: String(item.Empresa ?? 'Empresa no especificada'),
+        Puesto: String(item.Puesto ?? 'Puesto no especificado'),
+        Domicilio: String(item.Domicilio ?? ''),
+        Telefono: String(item.Telefono ?? ''),
+        Funciones: String(item.Funciones ?? ''),
+        MotivoSeparacion: String(item.MotivoSeparacion ?? ''),
+      })));
     } catch (error) {
       Alert.alert('Error', apiMessage(error));
     }
@@ -224,13 +234,15 @@ const ExperienciaLaboralScreen = ({ navigation }) => {
 
   const formatDate = (dateString) => {
     if (!dateString) return '';
-    const date = new Date(dateString + 'T00:00:00');
+    const normalized = toISODate(dateString);
+    if (!normalized) return 'Fecha no disponible';
+    const date = new Date(`${normalized}T12:00:00`);
     return date.toLocaleDateString('es-MX', { month: 'short', year: 'numeric' });
   };
 
   const formatCurrency = (amount) => {
-    if (!amount) return '0.00';
-    return amount.toFixed(2);
+    const numericAmount = Number(amount);
+    return Number.isFinite(numericAmount) ? numericAmount.toFixed(2) : '0.00';
   };
 
   return (
@@ -448,12 +460,12 @@ const ExperienciaLaboralScreen = ({ navigation }) => {
             <View style={styles.cardHeaderIcon}>
               <Ionicons name="time-outline" size={20} color="#2563eb" />
             </View>
-            <Text style={styles.cardTitle}>
-              Mi Historial Laboral
+            <View style={styles.headerTitleContainer}>
+              <Text style={styles.cardTitle}>Mi Historial Laboral</Text>
               <View style={styles.countBadge}>
                 <Text style={styles.countBadgeText}>{experiencias.length}</Text>
               </View>
-            </Text>
+            </View>
           </View>
 
           <View style={styles.cardBody}>

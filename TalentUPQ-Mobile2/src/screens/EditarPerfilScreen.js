@@ -20,7 +20,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { useUser } from '../context/UserContext';
 import DateField, { toISODate } from '../components/DateField';
 import api, { apiMessage } from '../services/api';
-import { clean, isDate, isFutureDate, isPhone, maxLength } from '../utils/validation';
+import { clean, isAdultBirthDate, isDate, isFutureDate, isPhone, maxLength } from '../utils/validation';
 
 const { width } = Dimensions.get('window');
 
@@ -155,6 +155,9 @@ const EditarPerfilScreen = ({ navigation }) => {
     }
     if (clean(formData.fechaNacimiento) && (!isDate(formData.fechaNacimiento) || isFutureDate(formData.fechaNacimiento))) {
       return Alert.alert('Revisa los datos', 'La fecha de nacimiento debe ser válida, usar AAAA-MM-DD y no estar en el futuro.');
+    }
+    if (clean(formData.fechaNacimiento) && !isAdultBirthDate(formData.fechaNacimiento)) {
+      return Alert.alert('Revisa los datos', 'El candidato debe tener entre 18 y 100 años.');
     }
     if (clean(formData.rfc) && !/^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$/.test(clean(formData.rfc).toUpperCase())) {
       return Alert.alert('Revisa los datos', 'El RFC no tiene un formato válido.');
@@ -356,7 +359,8 @@ const EditarPerfilScreen = ({ navigation }) => {
                   value={formData.fechaNacimiento}
                   onChange={(value) => handleInputChange('fechaNacimiento', value)}
                   placeholder="Seleccionar fecha"
-                  maximumDate={new Date()}
+                  maximumDate={new Date(new Date().getFullYear() - 18, new Date().getMonth(), new Date().getDate())}
+                  minimumDate={new Date(new Date().getFullYear() - 100, new Date().getMonth(), new Date().getDate())}
                   style={styles.input}
                 />
               </View>

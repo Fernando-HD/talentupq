@@ -62,7 +62,16 @@ const PreparacionAcademicaScreen = ({ navigation }) => {
   const cargarPreparaciones = async () => {
     try {
       const { data } = await api.get('/preparaciones');
-      setPreparaciones(data.map((item) => ({ ...item, id: item.PreparacionID })));
+      const rows = Array.isArray(data) ? data : [];
+      setPreparaciones(rows.map((item, index) => ({
+        ...item,
+        id: item.PreparacionID ?? `preparacion-${index}`,
+        Grado: String(item.Grado ?? 'Sin grado'),
+        Institucion: String(item.Institucion ?? 'Institución no especificada'),
+        Cedula: String(item.Cedula ?? ''),
+        Estatus: String(item.Estatus ?? 'Incompleto'),
+        Pais: String(item.Pais ?? ''),
+      })));
     } catch (error) {
       Alert.alert('Error', apiMessage(error));
     }
@@ -145,6 +154,12 @@ const PreparacionAcademicaScreen = ({ navigation }) => {
       Alert.alert('Error de fechas', 'La fecha de finalización no puede ser anterior a la fecha de inicio');
       return;
     }
+    if (formData.estatus === 'Completo' && (!formData.fechaFin || isFutureDate(formData.fechaFin))) {
+      return Alert.alert('Error de fechas', 'Los estudios completos requieren una fecha de finalización no posterior a hoy.');
+    }
+    if (formData.estatus === 'Incompleto' && formData.fechaFin && isFutureDate(formData.fechaFin)) {
+      return Alert.alert('Error de fechas', 'La fecha de finalización de estudios incompletos no puede estar en el futuro.');
+    }
     if (clean(formData.cedula) && !/^[A-Za-z0-9-]{4,30}$/.test(clean(formData.cedula))) {
       return Alert.alert('Cédula inválida', 'La cédula sólo puede contener letras, números y guiones (4 a 30 caracteres).');
     }
@@ -202,12 +217,14 @@ const PreparacionAcademicaScreen = ({ navigation }) => {
 
   const formatDate = (dateString) => {
     if (!dateString) return '';
-    const date = new Date(dateString + 'T00:00:00');
+    const normalized = toISODate(dateString);
+    if (!normalized) return 'Fecha no disponible';
+    const date = new Date(`${normalized}T12:00:00`);
     return date.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
   };
 
   const getStatusStyle = (estatus) => {
-    switch (estatus.toLowerCase()) {
+    switch (String(estatus || '').toLowerCase()) {
       case 'completo':
         return styles.statusCompleto;
       case 'en curso':
