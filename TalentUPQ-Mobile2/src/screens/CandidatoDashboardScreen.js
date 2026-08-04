@@ -15,6 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUser } from '../context/UserContext';
 import api from '../services/api';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 
 const { width } = Dimensions.get('window');
 
@@ -107,6 +109,23 @@ const CandidatoDashboardScreen = ({ navigation, route }) => {
   const noLeidos = Number(user.noLeidos || 0);
   const [completed, setCompleted] = useState(60);
   const [vacantesDisponibles, setVacantesDisponibles] = useState([]);
+
+  const descargarCV = async () => {
+    try {
+      const { data } = await api.get('/perfil/cv', { timeout: 45000 });
+      const safeName = String(data.nombre || 'curriculum.pdf').replace(/[^a-zA-Z0-9._-]/g, '_');
+      const uri = `${FileSystem.cacheDirectory}${safeName}`;
+      await FileSystem.writeAsStringAsync(uri, data.contenido, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      if (!(await Sharing.isAvailableAsync())) {
+        return Alert.alert('CV descargado', `El archivo quedó disponible en ${uri}`);
+      }
+      await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Abrir o compartir CV' });
+    } catch (error) {
+      Alert.alert('No fue posible descargar el CV', error.response?.data?.error || 'Inténtalo nuevamente.');
+    }
+  };
 
   // Recalcular completado cuando candidato cambia
   useEffect(() => {
@@ -421,7 +440,7 @@ const CandidatoDashboardScreen = ({ navigation, route }) => {
               </View>
 
               {candidato.CV ? (
-                <TouchableOpacity style={[styles.btnPrimary, styles.btnBlock]}>
+                <TouchableOpacity style={[styles.btnPrimary, styles.btnBlock]} onPress={descargarCV}>
                   <Ionicons name="download-outline" size={14} color="white" />
                   <Text style={styles.btnPrimaryText}>Descargar CV</Text>
                 </TouchableOpacity>

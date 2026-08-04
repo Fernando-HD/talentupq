@@ -6642,6 +6642,76 @@ def api_perfil():
     return jsonify(profile)
 
 
+@app.route('/api/v1/perfil/cv', methods=['GET', 'POST'])
+@jwt_required()
+def api_perfil_cv():
+    """Guarda y descarga el CV del candidato sin depender del disco efímero."""
+    candidate_id = current_candidate_id()
+    if not candidate_id:
+        return api_error('Perfil de candidato no encontrado.', 403)
+
+    if request.method == 'GET':
+        rows = execute_query(
+            """SELECT CVNombre, CVMime, CVContenido
+               FROM CandidatoDocumentos WHERE CandidatoID = ?""",
+            (candidate_id,)
+        )
+        if not rows:
+            return api_error('No hay un CV guardado.', 404)
+        document = rows[0]
+        content = bytes(document['CVContenido'])
+        return jsonify({
+            'nombre': document['CVNombre'] or 'curriculum.pdf',
+            'mimeType': document['CVMime'] or 'application/pdf',
+            'contenido': base64.b64encode(content).decode('ascii'),
+        })
+
+    data = request.get_json(silent=True) or {}
+    name = secure_filename(str(data.get('nombre', '')).strip())
+    mime_type = str(data.get('mimeType', 'application/pdf')).strip().lower()
+    encoded = str(data.get('contenido', '')).strip()
+    if not name or not name.lower().endswith('.pdf') or mime_type != 'application/pdf':
+        return api_error('El CV debe ser un archivo PDF válido.')
+    if not encoded or len(encoded) > 11_000_000:
+        return api_error('El CV no puede exceder 8 MB.', 413)
+    try:
+        content = base64.b64decode(encoded, validate=True)
+    except (ValueError, TypeError):
+        return api_error('El contenido del CV no es válido.')
+    if len(content) > 8 * 1024 * 1024:
+        return api_error('El CV no puede exceder 8 MB.', 413)
+    if not content.startswith(b'%PDF-'):
+        return api_error('El archivo seleccionado no contiene un PDF válido.')
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            """INSERT INTO CandidatoDocumentos
+                   (CandidatoID, CVNombre, CVMime, CVContenido, ActualizadoEn)
+               VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+               ON CONFLICT (CandidatoID) DO UPDATE SET
+                   CVNombre = EXCLUDED.CVNombre,
+                   CVMime = EXCLUDED.CVMime,
+                   CVContenido = EXCLUDED.CVContenido,
+                   ActualizadoEn = CURRENT_TIMESTAMP""",
+            (candidate_id, name, mime_type, psycopg2.Binary(content))
+        )
+        cursor.execute(
+            "UPDATE Candidatos SET CV = ? WHERE CandidatoID = ?",
+            (name, candidate_id)
+        )
+        conn.commit()
+    except Exception as exc:
+        conn.rollback()
+        current_app.logger.error(f'API CV upload error: {exc}')
+        return api_error('No fue posible guardar el CV.', 500)
+    finally:
+        cursor.close()
+        conn.close()
+    return jsonify({'message': 'CV actualizado correctamente.', 'CV': name})
+
+
 @app.route('/api/v1/experiencias', methods=['GET', 'POST'])
 @jwt_required()
 def api_experiencias():

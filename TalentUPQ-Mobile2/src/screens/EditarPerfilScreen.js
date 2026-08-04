@@ -18,6 +18,8 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useUser } from '../context/UserContext';
+import DateField, { toISODate } from '../components/DateField';
+import api, { apiMessage } from '../services/api';
 import { clean, isDate, isFutureDate, isPhone, maxLength } from '../utils/validation';
 
 const { width } = Dimensions.get('window');
@@ -36,7 +38,7 @@ const COLORS = {
 };
 
 const EditarPerfilScreen = ({ navigation }) => {
-  const { user, actualizarCandidato } = useUser();
+  const { user, actualizarCandidato, refreshUser } = useUser();
   
   // Inicializar formData con los datos del usuario
   const [formData, setFormData] = useState({
@@ -44,7 +46,7 @@ const EditarPerfilScreen = ({ navigation }) => {
     apellidoPaterno: user.candidato?.ApellidoPaterno || '',
     apellidoMaterno: user.candidato?.ApellidoMaterno || '',
     telefono: user.candidato?.Telefono || '',
-    fechaNacimiento: user.candidato?.FechaNacimiento || '',
+    fechaNacimiento: toISODate(user.candidato?.FechaNacimiento),
     sexo: user.candidato?.Sexo || '',
     estadoCivil: user.candidato?.EstadoCivil || '',
     nacionalidad: user.candidato?.Nacionalidad || '',
@@ -60,7 +62,8 @@ const EditarPerfilScreen = ({ navigation }) => {
   });
 
   const [fotoPerfil, setFotoPerfil] = useState(user.candidato?.FotoPerfil || null);
-  const [cvNombre, setCvNombre] = useState(user.candidato?.CV || 'cv_juan_perez.pdf');
+  const [cvNombre, setCvNombre] = useState(user.candidato?.CV || '');
+  const [cvPendiente, setCvPendiente] = useState(null);
   const [edad, setEdad] = useState(29);
   const [guardando, setGuardando] = useState(false);
 
@@ -122,12 +125,20 @@ const EditarPerfilScreen = ({ navigation }) => {
 
     if (!result.canceled) {
       const asset = result.assets[0];
-      if (asset.size && asset.size > 10 * 1024 * 1024) {
-        Alert.alert('CV demasiado grande', 'Selecciona un PDF de máximo 10 MB.');
+      if (asset.size && asset.size > 8 * 1024 * 1024) {
+        Alert.alert('CV demasiado grande', 'Selecciona un PDF de máximo 8 MB.');
         return;
       }
+      const contenido = await FileSystem.readAsStringAsync(asset.uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
       setCvNombre(asset.name);
-      Alert.alert('CV actualizado', `Archivo: ${asset.name}`);
+      setCvPendiente({
+        nombre: asset.name,
+        mimeType: 'application/pdf',
+        contenido,
+      });
+      Alert.alert('CV seleccionado', 'Se cargará al guardar los cambios del perfil.');
     }
   };
 
@@ -181,13 +192,16 @@ const EditarPerfilScreen = ({ navigation }) => {
                 Viajar: formData.viajar,
                 LicenciaConducir: formData.licencia,
                 FotoPerfil: fotoPerfil,
-                CV: cvNombre,
               });
+              if (cvPendiente) {
+                await api.post('/perfil/cv', cvPendiente, { timeout: 45000 });
+                await refreshUser();
+              }
               
               Alert.alert('Éxito', 'Perfil actualizado correctamente');
               navigation.goBack();
             } catch (error) {
-              Alert.alert('Error', 'No se pudo guardar los cambios');
+              Alert.alert('Error', apiMessage(error));
             } finally {
               setGuardando(false);
             }
@@ -260,14 +274,14 @@ const EditarPerfilScreen = ({ navigation }) => {
                 <View style={styles.cvIconWrapper}>
                   <Ionicons name="document-text" size={36} color={COLORS.danger} />
                 </View>
-                <Text style={styles.cvName} numberOfLines={2}>{cvNombre}</Text>
+                <Text style={styles.cvName} numberOfLines={2}>{cvNombre || 'Sin CV cargado'}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.uploadButton} onPress={handleSelectCV}>
                 <Ionicons name="cloud-upload-outline" size={14} color="white" />
-                <Text style={styles.uploadButtonText}>Actualizar CV</Text>
+                <Text style={styles.uploadButtonText}>{cvNombre ? 'Actualizar CV' : 'Subir CV'}</Text>
               </TouchableOpacity>
-              <Text style={styles.uploadHint}>PDF. Máx 10MB</Text>
+              <Text style={styles.uploadHint}>PDF. Máx 8MB</Text>
             </View>
           </View>
         </View>
@@ -338,12 +352,12 @@ const EditarPerfilScreen = ({ navigation }) => {
                 <Text style={styles.inputLabel}>
                   <Ionicons name="calendar-outline" size={14} color={COLORS.primary} /> Fecha Nacimiento
                 </Text>
-                <TextInput
-                  style={styles.input}
+                <DateField
                   value={formData.fechaNacimiento}
-                  onChangeText={(text) => handleInputChange('fechaNacimiento', text)}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor="#94a3b8"
+                  onChange={(value) => handleInputChange('fechaNacimiento', value)}
+                  placeholder="Seleccionar fecha"
+                  maximumDate={new Date()}
+                  style={styles.input}
                 />
               </View>
             </View>

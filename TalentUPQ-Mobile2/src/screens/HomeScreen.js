@@ -8,6 +8,8 @@ import {
   SafeAreaView,
   Dimensions,
   Platform,
+  Linking,
+  Alert,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +19,14 @@ import { theme } from '../styles/theme';
 const { width, height } = Dimensions.get('window');
 
 const HomeScreen = ({ navigation }) => {
+  const openExternalPage = async (url) => {
+    try {
+      await Linking.openURL(url);
+    } catch {
+      Alert.alert('No fue posible abrir el enlace', 'Inténtalo nuevamente desde tu navegador.');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
@@ -137,7 +147,7 @@ const HomeScreen = ({ navigation }) => {
                 Crea tu perfil profesional, destaca tus habilidades y encuentra oportunidades acordes a tus metas.
               </Text>
               <View style={styles.featureUnderline} />
-              <TouchableOpacity style={styles.featureLink}>
+              <TouchableOpacity style={styles.featureLink} onPress={() => navigation.navigate('Register')}>
                 <Text style={styles.featureLinkText}>Regístrate como candidato</Text>
                 <Ionicons name="arrow-forward" size={16} color={theme.colors.primary} />
               </TouchableOpacity>
@@ -152,7 +162,10 @@ const HomeScreen = ({ navigation }) => {
                 Publica vacantes, gestiona postulaciones y encuentra al talento que tu empresa necesita.
               </Text>
               <View style={styles.featureUnderline} />
-              <TouchableOpacity style={styles.featureLink}>
+              <TouchableOpacity
+                style={styles.featureLink}
+                onPress={() => openExternalPage('https://talentupq-api.onrender.com/registro?tipo=empresa')}
+              >
                 <Text style={styles.featureLinkText}>Regístrate como empresa</Text>
                 <Ionicons name="arrow-forward" size={16} color={theme.colors.primary} />
               </TouchableOpacity>
@@ -167,7 +180,10 @@ const HomeScreen = ({ navigation }) => {
                 Nuestros egresados acceden a las mejores oportunidades laborales del mercado.
               </Text>
               <View style={styles.featureUnderline} />
-              <TouchableOpacity style={styles.featureLink}>
+              <TouchableOpacity
+                style={styles.featureLink}
+                onPress={() => openExternalPage('https://www.upq.mx/')}
+              >
                 <Text style={styles.featureLinkText}>Conoce más</Text>
                 <Ionicons name="arrow-forward" size={16} color={theme.colors.primary} />
               </TouchableOpacity>

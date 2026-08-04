@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import api, { apiMessage } from '../services/api';
+import DateField, { toISODate } from '../components/DateField';
 import { clean, isDate, isFutureDate, maxLength } from '../utils/validation';
 
 const { width } = Dimensions.get('window');
@@ -82,6 +83,7 @@ const PreparacionAcademicaScreen = ({ navigation }) => {
   });
 
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [guardando, setGuardando] = useState(false);
 
   const nivelesEstudios = ['Primaria', 'Secundaria', 'Bachillerato', 'Licenciatura', 'Maestría', 'Doctorado'];
   const estatusOptions = ['Completo', 'Incompleto', 'En curso'];
@@ -115,8 +117,8 @@ const PreparacionAcademicaScreen = ({ navigation }) => {
       cedula: prep.Cedula || '',
       estatus: prep.Estatus,
       pais: prep.Pais,
-      fechaInicio: prep.FechaInicio,
-      fechaFin: prep.FechaFin || '',
+      fechaInicio: toISODate(prep.FechaInicio),
+      fechaFin: toISODate(prep.FechaFin),
     });
     setMostrarFormulario(true);
   };
@@ -128,6 +130,7 @@ const PreparacionAcademicaScreen = ({ navigation }) => {
   };
 
   const handleGuardar = async () => {
+    if (guardando) return;
     // Validaciones
     if (!formData.grado || !formData.institucion || !formData.estatus || !formData.pais || !formData.fechaInicio) {
       Alert.alert('Campos incompletos', 'Por favor completa todos los campos obligatorios (*)');
@@ -160,6 +163,7 @@ const PreparacionAcademicaScreen = ({ navigation }) => {
       FechaFin: formData.fechaFin || null,
     };
 
+    setGuardando(true);
     try {
       if (modoEdicion) await api.put(`/preparaciones/${nuevaPreparacion.id}`, nuevaPreparacion);
       else await api.post('/preparaciones', nuevaPreparacion);
@@ -168,6 +172,8 @@ const PreparacionAcademicaScreen = ({ navigation }) => {
       handleCancelar();
     } catch (error) {
       Alert.alert('Error', apiMessage(error));
+    } finally {
+      setGuardando(false);
     }
   };
 
@@ -385,34 +391,34 @@ const PreparacionAcademicaScreen = ({ navigation }) => {
                   <Text style={styles.fieldLabel}>
                     <Ionicons name="calendar-outline" size={14} color="#2563eb" /> Fecha Inicio *
                   </Text>
-                  <TextInput
+                  <DateField
                     style={styles.fieldInput}
                     value={formData.fechaInicio}
-                    onChangeText={(text) => handleInputChange('fechaInicio', text)}
-                    placeholder="YYYY-MM-DD"
-                    placeholderTextColor="#94a3b8"
+                    onChange={(value) => handleInputChange('fechaInicio', value)}
+                    maximumDate={new Date()}
                   />
                 </View>
 
                 <View style={styles.formField}>
                   <Text style={styles.fieldLabel}>
-                    <Ionicons name="calendar-check-outline" size={14} color="#2563eb" /> Fecha Finalización
+                    <Ionicons name="calendar-outline" size={14} color="#2563eb" /> Fecha Finalización
                   </Text>
-                  <TextInput
+                  <DateField
                     style={styles.fieldInput}
                     value={formData.fechaFin}
-                    onChangeText={(text) => handleInputChange('fechaFin', text)}
-                    placeholder="YYYY-MM-DD (Dejar vacío si está en curso)"
-                    placeholderTextColor="#94a3b8"
+                    onChange={(value) => handleInputChange('fechaFin', value)}
+                    placeholder="En curso / seleccionar fecha"
+                    minimumDate={formData.fechaInicio ? new Date(`${formData.fechaInicio}T12:00:00`) : undefined}
+                    optional
                   />
                 </View>
               </View>
 
               <View style={styles.formActions}>
-                <TouchableOpacity style={styles.btnPrimary} onPress={handleGuardar}>
+                <TouchableOpacity style={styles.btnPrimary} onPress={handleGuardar} disabled={guardando}>
                   <Ionicons name="save-outline" size={18} color="white" />
                   <Text style={styles.btnPrimaryText}>
-                    {modoEdicion ? 'Actualizar' : 'Guardar'}
+                    {guardando ? 'Guardando...' : (modoEdicion ? 'Actualizar' : 'Guardar')}
                   </Text>
                 </TouchableOpacity>
                 {modoEdicion && (

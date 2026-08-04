@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import api, { apiMessage } from '../services/api';
+import DateField, { toISODate } from '../components/DateField';
 import { clean, isDate, isFutureDate, isNonNegativeNumber, isPhone, maxLength } from '../utils/validation';
 
 const { width } = Dimensions.get('window');
@@ -92,6 +93,7 @@ const ExperienciaLaboralScreen = ({ navigation }) => {
   });
 
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [guardando, setGuardando] = useState(false);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -122,8 +124,8 @@ const ExperienciaLaboralScreen = ({ navigation }) => {
     setFormData({
       empresa: exp.Empresa,
       puesto: exp.Puesto,
-      fechaIngreso: exp.FechaIngreso,
-      fechaSalida: exp.FechaSalida || '',
+      fechaIngreso: toISODate(exp.FechaIngreso),
+      fechaSalida: toISODate(exp.FechaSalida),
       domicilio: exp.Domicilio || '',
       telefono: exp.Telefono || '',
       sueldoInicial: exp.SueldoInicial ? exp.SueldoInicial.toString() : '',
@@ -141,6 +143,7 @@ const ExperienciaLaboralScreen = ({ navigation }) => {
   };
 
   const handleGuardar = async () => {
+    if (guardando) return;
     // Validaciones
     if (!formData.empresa || !formData.puesto || !formData.fechaIngreso || !formData.funciones) {
       Alert.alert('Campos incompletos', 'Por favor completa todos los campos obligatorios (*)');
@@ -179,6 +182,7 @@ const ExperienciaLaboralScreen = ({ navigation }) => {
       MotivoSeparacion: formData.motivoSeparacion,
     };
 
+    setGuardando(true);
     try {
       if (modoEdicion) {
         await api.put(`/experiencias/${nuevaExperiencia.id}`, nuevaExperiencia);
@@ -190,6 +194,8 @@ const ExperienciaLaboralScreen = ({ navigation }) => {
       handleCancelar();
     } catch (error) {
       Alert.alert('Error', apiMessage(error));
+    } finally {
+      setGuardando(false);
     }
   };
 
@@ -300,25 +306,26 @@ const ExperienciaLaboralScreen = ({ navigation }) => {
                   <Text style={styles.fieldLabel}>
                     <Ionicons name="calendar-outline" size={14} color="#2563eb" /> Fecha Ingreso *
                   </Text>
-                  <TextInput
+                  <DateField
                     style={styles.fieldInput}
                     value={formData.fechaIngreso}
-                    onChangeText={(text) => handleInputChange('fechaIngreso', text)}
-                    placeholder="YYYY-MM-DD"
-                    placeholderTextColor="#94a3b8"
+                    onChange={(value) => handleInputChange('fechaIngreso', value)}
+                    maximumDate={new Date()}
                   />
                 </View>
 
                 <View style={styles.formField}>
                   <Text style={styles.fieldLabel}>
-                    <Ionicons name="calendar-check-outline" size={14} color="#2563eb" /> Fecha Salida
+                    <Ionicons name="calendar-outline" size={14} color="#2563eb" /> Fecha Salida
                   </Text>
-                  <TextInput
+                  <DateField
                     style={styles.fieldInput}
                     value={formData.fechaSalida}
-                    onChangeText={(text) => handleInputChange('fechaSalida', text)}
-                    placeholder="YYYY-MM-DD (Dejar vacío si es actual)"
-                    placeholderTextColor="#94a3b8"
+                    onChange={(value) => handleInputChange('fechaSalida', value)}
+                    placeholder="Actual / seleccionar fecha"
+                    maximumDate={new Date()}
+                    minimumDate={formData.fechaIngreso ? new Date(`${formData.fechaIngreso}T12:00:00`) : undefined}
+                    optional
                   />
                 </View>
               </View>
@@ -326,13 +333,13 @@ const ExperienciaLaboralScreen = ({ navigation }) => {
               <View style={styles.formGrid}>
                 <View style={styles.formField}>
                   <Text style={styles.fieldLabel}>
-                    <Ionicons name="location-outline" size={14} color="#2563eb" /> Domicilio
+                    <Ionicons name="location-outline" size={14} color="#2563eb" /> Ubicación
                   </Text>
                   <TextInput
                     style={styles.fieldInput}
                     value={formData.domicilio}
                     onChangeText={(text) => handleInputChange('domicilio', text)}
-                    placeholder="Dirección de la empresa"
+                    placeholder="Ciudad o ubicación de la empresa"
                     placeholderTextColor="#94a3b8"
                   />
                 </View>
@@ -418,10 +425,10 @@ const ExperienciaLaboralScreen = ({ navigation }) => {
               </View>
 
               <View style={styles.formActions}>
-                <TouchableOpacity style={styles.btnPrimary} onPress={handleGuardar}>
+                <TouchableOpacity style={styles.btnPrimary} onPress={handleGuardar} disabled={guardando}>
                   <Ionicons name="save-outline" size={18} color="white" />
                   <Text style={styles.btnPrimaryText}>
-                    {modoEdicion ? 'Actualizar' : 'Guardar'}
+                    {guardando ? 'Guardando...' : (modoEdicion ? 'Actualizar' : 'Guardar')}
                   </Text>
                 </TouchableOpacity>
                 {modoEdicion && (

@@ -62,6 +62,15 @@ def main():
                        devicename VARCHAR(100),
                        createdat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                        lastusedat TIMESTAMP
+                )"""
+            )
+            cursor.execute(
+                """CREATE TABLE IF NOT EXISTS candidatodocumentos (
+                       candidatoid INTEGER PRIMARY KEY REFERENCES candidatos(candidatoid) ON DELETE CASCADE,
+                       cvnombre VARCHAR(255) NOT NULL,
+                       cvmime VARCHAR(100) NOT NULL DEFAULT 'application/pdf',
+                       cvcontenido BYTEA NOT NULL,
+                       actualizadoen TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
                    )"""
             )
             cursor.execute((ROOT / 'database' / 'seed_catalogs.sql').read_text(encoding='utf-8'))
